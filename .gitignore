@@ -1,0 +1,13 @@
+public
+tags
+tests
+c
+d
+t
+agostle
+agostle.*
+*.text
+testdata/
+*.swp
+equinox.priv
+vendor

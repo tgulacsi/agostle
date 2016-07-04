@@ -1,0 +1,12 @@
+libreoffice
+ghostscript
+GraphicsMagick
+
+pdftk
+poppler-utils
+# wget http://apt.sw.be/redhat/el6/en/x86_64/rpmforge/RPMS/pdftk-1.44-2.el6.rf.x86_64.rpm
+#
+# mupdf-tools (if available)
+
+#Email::Outlook::Message
+libemail-outlook-message-perl

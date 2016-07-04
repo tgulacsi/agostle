@@ -1,0 +1,156 @@
+// Copyright 2013 The Agostle Authors. All rights reserved.
+// Use of this source code is governed by an Apache 2.0
+// license that can be found in the LICENSE file.
+
+package converter
+
+import (
+	"bytes"
+	"io"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"strings"
+
+	"github.com/pkg/errors"
+	"github.com/tgulacsi/go/temp"
+)
+
+// ImageToPdfGm converts image to PDF using GraphicsMagick
+func ImageToPdfGm(w io.Writer, r io.Reader, contentType string) error {
+	//log.Printf("converting image %s to %s", contentType, destfn)
+	imgtyp := ""
+	if false && contentType != "" {
+		imgtyp = contentType[strings.Index(contentType, "/")+1:] + ":"
+	}
+
+	cmd := exec.Command(*ConfGm, "convert", imgtyp+"-", "pdf:-")
+	// cmd.Stdin = io.TeeReader(r, os.Stderr)
+	cmd.Stdin = r
+	cmd.Stdout = w
+	errout := bytes.NewBuffer(nil)
+	cmd.Stderr = errout
+	err := runWithTimeout(cmd)
+	if err != nil {
+		return errors.Wrapf(err, "gm convert converting %s: %s", r, errout.Bytes())
+	}
+	if len(errout.Bytes()) > 0 {
+		Log("msg", "WARN gm convert", "r", r, "error", errout.String())
+	}
+	return nil
+}
+
+// PdfToImage converts PDF to image using PdfToImageGm if available and the result is OK, then PdfToImageCairo.
+func PdfToImage(w io.Writer, r io.Reader, contentType, size string) error {
+	src := temp.NewMemorySlurper("PdfToImage-src-")
+	defer src.Close()
+	dst := temp.NewMemorySlurper("PdfToImage-dst-")
+	defer dst.Close()
+
+	var err error
+	if err = PdfToImageCairo(dst, io.TeeReader(r, src), contentType, size); err == nil {
+		_, err = io.Copy(w, dst)
+		return err
+	}
+	Log("msg", "ERROR PdfToImageCairo", "error", err)
+	return PdfToImageGm(w, io.MultiReader(src, r), contentType, size)
+}
+
+// PdfToImageCairo converts PDF to image using pdftocairo from poppler-utils.
+func PdfToImageCairo(w io.Writer, r io.Reader, contentType, size string) error {
+	imgtyp, ext := "gif", "png"
+	if contentType != "" && strings.HasPrefix(contentType, "image/") {
+		imgtyp = contentType[6:]
+	}
+	if imgtyp == "png" || imgtyp == "jpeg" {
+		ext = imgtyp
+	}
+	args := append(make([]string, 0, 8), "-singlefile", "-"+ext, "-cropbox")
+	if size != "" {
+		i := strings.IndexByte(size, 'x')
+		if i <= 0 || size[:i] == size[i+1:] {
+			if i > 0 {
+				size = size[:i]
+			}
+			args = append(args, "-scale-to", size)
+		} else {
+			args = append(args, "-scale-to-x", size[:i])
+			args = append(args, "-scale-to-y", size[i+1:])
+		}
+	}
+	tfh, err := ioutil.TempFile("", "PdfToImageGm-")
+	if err != nil {
+		Log("msg", "ERROR cannot create temp file", "error", err)
+		return err
+	}
+	tfh.Close()
+	_ = os.Remove(tfh.Name())
+	fn := tfh.Name()
+	args = append(args, "-", fn)
+	fn = fn + "." + ext // pdftocairo appends the .png
+
+	cmd := exec.Command("pdftocairo", args...)
+	cmd.Stdin = r
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err = runWithTimeout(cmd); err != nil {
+		return err
+	}
+	if tfh, err = os.Open(fn); err != nil {
+		Log("msg", "ERROR cannot open temp", "file", fn, "error", err)
+		return err
+	}
+	_ = os.Remove(fn)
+
+	if imgtyp == "png" {
+		_, err = io.Copy(w, tfh)
+		return err
+	}
+
+	// convert to the requested format
+	cmd = exec.Command(*ConfGm, "convert", "png:-", imgtyp+":-")
+	cmd.Stdin = tfh
+	cmd.Stdout = w
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// PdfToImageGm converts PDF to image using GraphicsMagick.
+func PdfToImageGm(w io.Writer, r io.Reader, contentType, size string) error {
+	// gm may pollute its stdout with error & warning messages, so we must use files!
+	var imgtyp = "gif"
+	if contentType != "" && strings.HasPrefix(contentType, "image/") {
+		imgtyp = contentType[6:]
+	}
+	args := make([]string, 3, 5)
+	args[0], args[1] = "convert", "pdf:-"
+	if size != "" {
+		args[2] = "-resize"
+		args = append(args, size)
+	}
+	tfh, err := ioutil.TempFile("", "PdfToImageGm-")
+	if err != nil {
+		Log("msg", "ERROR cannot create temp file", "error", err)
+		return err
+	}
+	args = append(args, imgtyp+"#"+tfh.Name())
+	cmd := exec.Command(*ConfGm, args...)
+	cmd.Stdin = r
+	//cmd.Stdout = &filterFirstLines{Beginning: []string{"Can't find ", "Warning: "}, Writer: w}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err = runWithTimeout(cmd); err != nil {
+		return err
+	}
+	fn := tfh.Name()
+	tfh.Close()
+	if tfh, err = os.Open(fn); err != nil {
+		Log("msg", "ERROR cannot open temp file", "file", fn, "error", err)
+		return err
+	}
+	_ = os.Remove(fn)
+	_, err = io.Copy(w, tfh)
+	_ = tfh.Close()
+	_ = os.Remove(fn)
+	return err
+}
