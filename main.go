@@ -31,6 +31,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+//go:generate sh -c "overseer-bindiff printkeys --go-out agostle-keyring.gpg >overseer_keyring.go"
+
 const defaultUpdateURL = "https://www.unosoft.hu/agostle"
 
 var (
@@ -150,21 +152,33 @@ func main() {
 		defer func() { _ = logFh.Close() }()
 	}
 
+	var keyRing string
 	updateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "update binary to the latest release",
 		Run: func(cmd *cobra.Command, args []string) {
+			if keyRing != "" {
+				fh, err := os.Open(keyRing)
+				if err != nil {
+					Log("msg", "open "+keyRing, "error", err)
+					os.Exit(3)
+				}
+				keyring = readKeyring(fh)
+				fh.Close()
+			}
 			overseer.Run(overseer.Config{
 				Debug:   true,
 				Program: func(state overseer.State) {},
 				Fetcher: &fetcher.HTTPSelfUpdate{
 					URL:      updateURL,
 					Interval: 1 * time.Second,
+					Keyring:  keyring,
 				},
 				NoRestart: true,
 			})
 		},
 	}
+	updateCmd.Flags().StringVar(&keyRing, "keyring", "", "keyring for decrypting the updates")
 	agostleCmd.AddCommand(updateCmd)
 
 	{

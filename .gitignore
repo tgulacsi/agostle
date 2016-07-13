@@ -11,3 +11,4 @@ testdata/
 *.swp
 equinox.priv
 vendor
+*.gpg
