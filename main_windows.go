@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/tylerb/graceful.v1"
+
 	"github.com/kardianos/service"
 	"github.com/spf13/cobra"
 	"github.com/tgulacsi/agostle/converter"
@@ -46,7 +48,7 @@ var _ = service.Interface((*program)(nil))
 
 type program struct {
 	service.Logger
-	Server
+	*graceful.Server
 }
 
 func (p *program) Start(S service.Service) error {
