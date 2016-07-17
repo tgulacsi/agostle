@@ -213,6 +213,7 @@ func main() {
 				})
 			},
 		}
+
 		serveCmd.Flags().DurationVar(&regularUpdates, "regular-updates", 0, "do regular updates at this interval")
 		serveCmd.Flags().BoolVar(&savereq, "savereq", false, "save requests")
 		agostleCmd.AddCommand(serveCmd)
