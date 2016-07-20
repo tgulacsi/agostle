@@ -348,7 +348,7 @@ func fixCT(contentType, fileName string) (ct string) {
 			}
 		}
 		return "application/zip"
-	case "application/x-rar-compressed":
+	case "application/x-rar-compressed", "application/x-rar":
 		return "application/rar"
 	case "image/pdf":
 		return "application/pdf"
