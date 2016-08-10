@@ -6,18 +6,22 @@ package converter
 
 import (
 	"archive/zip"
+	"bytes"
 	"crypto/sha1"
 	"fmt"
 	"hash"
 	"io"
+	"io/ioutil"
 	"mime"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
+	"github.com/tgulacsi/go/temp"
 )
 
 func fileExists(fn string) bool {
@@ -77,11 +81,66 @@ func nakeFilename(fn string) string {
 	return fn
 }
 
+type Statter interface {
+	Stat() (os.FileInfo, error)
+}
+
 // FileLike is a minimal needed interface for ArchFileItem.File
 type FileLike interface {
 	io.Reader
 	io.Closer
-	Stat() (os.FileInfo, error)
+	Statter
+}
+
+func MakeFileLike(r io.Reader) FileLike {
+	if fl, ok := r.(FileLike); ok {
+		return fl
+	}
+	if b, ok := r.(*bytes.Buffer); ok {
+		return ReadCloserFileLike{
+			Reader: r,
+			Closer: ioutil.NopCloser(nil),
+			FileInfo: dummyFileInfo{
+				name: fmt.Sprintf("file-like-%p", b),
+				size: int64(b.Len()),
+				time: time.Now(),
+			},
+		}
+	}
+	c, ok := r.(io.Closer)
+	if !ok {
+		c = ioutil.NopCloser(nil)
+	}
+	rc := ReadCloserFileLike{
+		Reader: r,
+		Closer: c,
+	}
+	if s, ok := r.(Statter); ok {
+		rc.FileInfo, rc.statErr = s.Stat()
+	} else {
+		rs, err := temp.NewReadSeeker(r)
+		rc.statErr = err
+		size, _ := rs.Seek(0, 2)
+		rs.Seek(0, 0)
+		rc.Reader, rc.Closer = rs, rs
+		rc.FileInfo = dummyFileInfo{
+			name: fmt.Sprintf("file-like-%p", r),
+			size: size,
+			time: time.Now(),
+		}
+	}
+	return rc
+}
+
+type ReadCloserFileLike struct {
+	io.Reader
+	io.Closer
+	os.FileInfo
+	statErr error
+}
+
+func (fl ReadCloserFileLike) Stat() (os.FileInfo, error) {
+	return fl.FileInfo, fl.statErr
 }
 
 // ArchFileItem groups an archive item
@@ -339,3 +398,19 @@ func headerGetFileName(hdr map[string][]string) string {
 	}
 	return ""
 }
+
+var _ = os.FileInfo(dummyFileInfo{})
+
+type dummyFileInfo struct {
+	name string
+	size int64
+	mode os.FileMode
+	time time.Time
+}
+
+func (fi dummyFileInfo) Name() string       { return fi.name }
+func (fi dummyFileInfo) Size() int64        { return fi.size }
+func (fi dummyFileInfo) Mode() os.FileMode  { return fi.mode }
+func (fi dummyFileInfo) ModTime() time.Time { return fi.time }
+func (fi dummyFileInfo) IsDir() bool        { return false }
+func (fi dummyFileInfo) Sys() interface{}   { return nil }

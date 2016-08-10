@@ -369,10 +369,10 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 					}
 					Log("msg", "read 0", "size", s, "n", n, "ok", ok)
 				}
-				if ok {
-					return nil // Skip
+				if !ok {
+					Log("warn", errors.Wrapf(err, "cannot read body of %v", mp))
 				}
-				return errors.Wrapf(err, "cannot read head of %d", mp.Seq)
+				return nil // Skip
 			}
 			mp.ContentType = FixContentType(head[:n], mp.ContentType, fn)
 			if _, err := tfh.Seek(0, 0); err != nil {
@@ -541,7 +541,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 		Log("msg", "converting to pdf", "ct", mp.ContentType, "seq", mp.Seq, "error", err)
 		j := strings.Index(mp.ContentType, "/")
 		resultch <- ArchFileItem{
-			File:    mp.Body.(FileLike),
+			File:    MakeFileLike(mp.Body),
 			Archive: mp.ContentType[:j+1] + filepath.Base(fn),
 			Error:   err}
 	} else {
