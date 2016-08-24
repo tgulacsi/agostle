@@ -366,9 +366,19 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	}()
 
 	contentType = fixCT(contentType, fileName)
-	switch contentType {
-	case "", "application/octet-stream", "application/pdf", "application/x-as400attachment", "application/save-as", "text/plain", "message/rfc822":
-		//log.Printf("body=%s", body)
+	var useMagic bool
+	ext := filepath.Ext(fileName)
+	useMagic = ext == ".pdf" && contentType != "application/pdf"
+	if !useMagic {
+		switch contentType {
+		case "", "application/octet-stream",
+			"application/pdf",
+			"application/x-as400attachment", "application/save-as",
+			"text/plain", "message/rfc822":
+			//log.Printf("body=%s", body)
+		}
+	}
+	if useMagic {
 		if nct := mimemagic.Match(contentType, body); nct != "" {
 			return fixCT(nct, fileName)
 		}
