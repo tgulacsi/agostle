@@ -123,9 +123,10 @@ Examples:
 	agostleCmd.AddCommand(mailToTreeCmd)
 
 	outlookToEmailCmd := &cobra.Command{
-		Use:   "outlook2email",
-		Short: "convert outlook .msg to standard .eml",
-		Long:  "uses libemail-outlook-message-perl if installed, or docker to install && run that script",
+		Use:     "outlook2email",
+		Short:   "convert outlook .msg to standard .eml",
+		Long:    "uses libemail-outlook-message-perl if installed, or docker to install && run that script",
+		Aliases: []string{"msg2eml"},
 		Run: func(cmd *cobra.Command, args []string) {
 			fn := inpFromArgs(args)
 			if err := outlookToEmail(ctx, out, fn); err != nil {
