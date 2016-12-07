@@ -133,7 +133,7 @@ func PdfToImageGm(w io.Writer, r io.Reader, contentType, size string) error {
 		Log("msg", "ERROR cannot create temp file", "error", err)
 		return err
 	}
-	args = append(args, imgtyp+"#"+tfh.Name())
+	args = append(args, imgtyp+":"+tfh.Name()) // this MUST be : (colon)!
 	cmd := exec.Command(*ConfGm, args...)
 	cmd.Stdin = r
 	//cmd.Stdout = &filterFirstLines{Beginning: []string{"Can't find ", "Warning: "}, Writer: w}
