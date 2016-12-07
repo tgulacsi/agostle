@@ -88,17 +88,12 @@ func main() {
 	p.StringVarP(&logFile, "logfile", "", "", "logfile")
 
 	Log := logger.Log
-	var logFh io.WriteCloser
+	var closeLogfile func() error
 	cobra.OnInitialize(func() {
-		if logFile != "" {
-			var err error
-			logFh, err = os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
-			if err != nil {
-				Log("error", err)
-				os.Exit(1)
-			}
-			Log("msg", "Will log to", "file", logFile)
-			swLogger.Swap(log.NewLogfmtLogger(io.MultiWriter(os.Stderr, logFh)))
+		var err error
+		if closeLogfile, err = logToFile(logFile); err != nil {
+			Log("error", err)
+			os.Exit(1)
 		}
 		if !verbose {
 			i18nmail.Debugf = nil
@@ -129,6 +124,12 @@ func main() {
 			Log("msg", "Setting timeout", "from", *converter.ConfChildTimeout, "to", timeout)
 			*converter.ConfChildTimeout = timeout
 		}
+		if closeLogfile == nil {
+			if closeLogfile, err = logToFile(*converter.ConfLogFile); err != nil {
+				Log("error", err)
+			}
+		}
+
 		sortBeforeMerge = *converter.ConfSortBeforeMerge
 		Log("msg", "commands",
 			"pdftk", *converter.ConfPdftk,
@@ -144,12 +145,15 @@ func main() {
 			"listen", *converter.ConfListenAddr,
 			"childTimeout", *converter.ConfChildTimeout,
 			"defaultIsService", *converter.ConfDefaultIsService,
+			"logfile", *converter.ConfLogFile,
 		)
 
 		updateURL = strings.NewReplacer("{{.GOOS}}", runtime.GOOS, "{{.GOARCH}}", runtime.GOARCH).Replace(updateURL)
 	})
-	if logFh != nil {
-		defer func() { _ = logFh.Close() }()
+	if closeLogfile != nil {
+		defer func() {
+			Log("msg", "close log file", "error", closeLogfile())
+		}()
 	}
 
 	var keyRing string
@@ -226,6 +230,21 @@ func main() {
 		Log("error", err)
 		os.Exit(1)
 	}
+}
+
+func logToFile(fn string) (func() error, error) {
+	if fn == "" {
+		return nil, nil
+	}
+	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
+	if err != nil {
+		logger.Log("error", err)
+		return nil, errors.Wrap(err, fn)
+	}
+	logger.Log("msg", "Will log to", "file", fh.Name())
+	swLogger.Swap(log.NewLogfmtLogger(io.MultiWriter(os.Stderr, fh)))
+	logger.Log("msg", "Logging to", "file", fh.Name())
+	return fh.Close, nil
 }
 
 func ensureFilename(fn string, out bool) (string, bool) {
