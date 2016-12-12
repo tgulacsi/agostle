@@ -73,6 +73,9 @@ var (
 
 	// ConfUseLofficePortLock defines whether to limit Loffice usage by a port lock
 	ConfLofficeUsePortLock = config.Bool("lofficeUsePortLock", !osgroup.IsInsideDocker())
+
+	// ConfLogFile specifies the file to log - instead of command line.
+	ConfLogFile = config.String("logfile", "")
 )
 
 // LoadConfig loads TOML config file
