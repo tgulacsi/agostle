@@ -8,6 +8,7 @@ package main
 //  /pdf/merge Accept: application/zip
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -26,8 +27,8 @@ import (
 
 	"golang.org/x/net/context"
 
+	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/renstrom/shortuuid"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/temp"
 
@@ -85,13 +86,17 @@ func SetRequestID(ctx context.Context, name string) context.Context {
 	if ctx.Value(name) != nil {
 		return ctx
 	}
-	return context.WithValue(ctx, name, shortuuid.New())
+	return context.WithValue(ctx, name, NewULID().String())
 }
 func GetRequestID(ctx context.Context, name string) string {
 	if v, ok := ctx.Value(name).(string); ok && v != "" {
 		return v
 	}
-	return shortuuid.New()
+	return NewULID().String()
+}
+
+func NewULID() ulid.ULID {
+	return ulid.MustNew(ulid.Now(), rand.Reader)
 }
 
 var defaultBeforeFuncs = []kithttp.RequestFunc{
