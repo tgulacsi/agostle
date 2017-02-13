@@ -10,7 +10,7 @@ import (
 	"io"
 	"strings"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/tgulacsi/go/i18nmail"
 )

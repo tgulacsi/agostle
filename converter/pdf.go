@@ -23,8 +23,8 @@ import (
 	"sync"
 	"unicode/utf16"
 
+	"context"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 
 	"github.com/tgulacsi/go/temp"
 )

@@ -11,7 +11,7 @@ import (
 	"io"
 	"net/http"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/tgulacsi/agostle/converter"
 

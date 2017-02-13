@@ -17,9 +17,9 @@ import (
 	"sync"
 
 	"bitbucket.org/taruti/mimemagic"
+	"context"
 	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/iohlp"
-	"golang.org/x/net/context"
 )
 
 var ErrSkip = errors.New("skip this part")

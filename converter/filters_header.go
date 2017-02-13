@@ -14,7 +14,7 @@ import (
 	"net/textproto"
 	"os"
 
-	"golang.org/x/net/context"
+	"context"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/htmlindex"
 	"golang.org/x/text/transform"

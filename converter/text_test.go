@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"golang.org/x/net/context"
+	"context"
 
 	//"bitbucket.org/zombiezen/gopdf/pdf"
 	//"github.com/mawicks/PDFiG/pdf"

@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"time"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/tgulacsi/go/proc"
 )

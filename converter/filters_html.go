@@ -13,8 +13,8 @@ import (
 	"sort"
 	"strings"
 
+	"context"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"golang.org/x/text/encoding/htmlindex"
 	"golang.org/x/text/transform"
 

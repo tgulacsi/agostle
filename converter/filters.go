@@ -19,7 +19,7 @@ import (
 	"strings"
 	"sync"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/pkg/errors" // MailToPdfZip converts mail to ZIP of PDFs
 	"github.com/tgulacsi/go/i18nmail"

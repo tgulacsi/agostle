@@ -7,7 +7,7 @@ package converter
 import (
 	"io"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/tgulacsi/go/text"
 )

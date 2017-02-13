@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/spf13/cobra"
 	"github.com/tgulacsi/agostle/converter"

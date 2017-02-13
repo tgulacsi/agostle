@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/go-kit/kit/log"
 	"github.com/jpillora/overseer"

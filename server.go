@@ -25,7 +25,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
