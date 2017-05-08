@@ -18,7 +18,7 @@ import (
 	"github.com/tgulacsi/go/osgroup"
 )
 
-var Logger *log.Context
+var Logger log.Logger
 
 func lookPath(fn string) string {
 	path, err := exec.LookPath(fn)
@@ -153,11 +153,11 @@ var SaveOriginalHTML = false
 // name of errors list in resulting archive
 const ErrTextFn = "ZZZ-errors.txt"
 
-func getLogger(ctx context.Context) *log.Context {
+func getLogger(ctx context.Context) log.Logger {
 	if ctx == nil {
 		return Logger
 	}
-	if logger, ok := ctx.Value("logger").(*log.Context); ok {
+	if logger, ok := ctx.Value("logger").(log.Logger); ok {
 		return logger
 	}
 	return Logger

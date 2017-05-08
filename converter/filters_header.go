@@ -15,6 +15,7 @@ import (
 	"os"
 
 	"context"
+
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/htmlindex"
 	"golang.org/x/text/transform"
@@ -78,7 +79,7 @@ func PrependHeaderFilter(ctx context.Context,
 			var buf bytes.Buffer
 			io.Copy(&buf, part.Body)
 			part.Body = bytes.NewReader(buf.Bytes())
-			Log("msg", buf.String())
+			//Log("msg", buf.String())
 			goto Skip
 		}
 

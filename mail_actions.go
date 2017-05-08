@@ -11,6 +11,7 @@ import (
 
 	"context"
 
+	"github.com/go-kit/kit/log"
 	"github.com/spf13/cobra"
 	"github.com/tgulacsi/agostle/converter"
 )
@@ -40,7 +41,7 @@ func mailToTree(ctx context.Context, outdir, inpfn string) error {
 }
 
 func outlookToEmail(ctx context.Context, outfn, inpfn string) error {
-	Log := logger.With("fn", "outlookToEmail").Log
+	Log := log.With(logger, "fn", "outlookToEmail").Log
 	inp, err := openIn(inpfn)
 	if err != nil {
 		return err

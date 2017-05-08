@@ -19,7 +19,6 @@ import (
 )
 
 var outlookToEmailServer = kithttp.NewServer(
-	context.Background(),
 	outlookToEmailEP,
 	outlookToEmailDecode,
 	outlookToEmailEncode,

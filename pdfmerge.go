@@ -15,13 +15,13 @@ import (
 
 	"github.com/tgulacsi/agostle/converter"
 
+	"github.com/go-kit/kit/log"
 	kithttp "github.com/go-kit/kit/transport/http"
 
 	"github.com/pkg/errors"
 )
 
 var pdfMergeServer = kithttp.NewServer(
-	context.Background(),
 	pdfMergeEP,
 	pdfMergeDecode,
 	pdfMergeEncode,
@@ -57,7 +57,7 @@ func pdfMergeEP(ctx context.Context, request interface{}) (response interface{},
 		}
 	}()
 
-	Log := logger.With("fn", "pdfMergeEP").Log
+	Log := log.With(logger, "fn", "pdfMergeEP").Log
 	if sortBeforeMerge && req.Sort != NoSort || !sortBeforeMerge && req.Sort != DoSort {
 		Log("msg", "sorting filenames, as requested", "ask", req.Sort, "config", sortBeforeMerge)
 		sort.Sort(ByName(req.Inputs))

@@ -108,13 +108,13 @@ func prepareContext(ctx context.Context, r *http.Request) context.Context {
 	ctx = context.WithValue(ctx, "cancel", cancel)
 	ctx = SetRequestID(ctx, "")
 	lgr := getLogger(ctx)
-	lgr = lgr.With(
+	lgr = log.With(lgr,
 		"reqid", GetRequestID(ctx, ""),
 		"path", r.URL.Path,
 		"method", r.Method,
 	)
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		lgr = lgr.With("ip", host)
+		lgr = log.With(lgr, "ip", host)
 	}
 	ctx = context.WithValue(ctx, "logger", lgr)
 	logAccept(ctx, r)
@@ -125,7 +125,7 @@ func dumpRequest(ctx context.Context, req *http.Request) context.Context {
 	prefix := filepath.Join(converter.Workdir, time.Now().Format("20060102_150405")+"-")
 	var reqSeq uint64
 	b, err := httputil.DumpRequest(req, true)
-	Log := getLogger(ctx).With("fn", "dumpRequest").Log
+	Log := log.With(getLogger(ctx), "fn", "dumpRequest").Log
 	if err != nil {
 		Log("msg", "dumping request", "error", err)
 	}
@@ -271,11 +271,11 @@ func baseName(fileName string) string {
 	}
 	return fileName
 }
-func getLogger(ctx context.Context) *log.Context {
+func getLogger(ctx context.Context) log.Logger {
 	if ctx == nil {
 		return logger
 	}
-	if logger, ok := ctx.Value("logger").(*log.Context); ok {
+	if logger, ok := ctx.Value("logger").(log.Logger); ok {
 		return logger
 	}
 	return logger

@@ -37,22 +37,22 @@ const defaultUpdateURL = "https://www.unosoft.hu/agostle"
 
 var (
 	swLogger = &log.SwapLogger{}
-	logger   = log.NewContext(kitloghlp.Stringify{swLogger})
+	logger   = log.Logger(kitloghlp.Stringify{swLogger})
 	ctx      = context.Background()
 )
 
 func init() {
-	logger = logger.With("t", log.DefaultTimestamp, "caller", log.Caller(4))
+	logger = log.With(logger, "t", log.DefaultTimestamp, "caller", log.Caller(4))
 	swLogger.Swap(log.NewLogfmtLogger(os.Stderr))
 	stdlog.SetFlags(0)
 	stdlog.SetOutput(log.NewStdlibAdapter(logger))
 
-	converter.Logger = logger.With("lib", "converter")
+	converter.Logger = log.With(logger, "lib", "converter")
 
-	sLog := stdlog.New(log.NewStdlibAdapter(logger.With("lib", "i18nmail")), "", 0)
+	sLog := stdlog.New(log.NewStdlibAdapter(log.With(logger, "lib", "i18nmail")), "", 0)
 	i18nmail.Debugf, i18nmail.Infof = sLog.Printf, sLog.Printf
 
-	fetcher.Logf = stdlog.New(log.NewStdlibAdapter(logger.With("lib", "fetcher")), "", 0).Printf
+	fetcher.Logf = stdlog.New(log.NewStdlibAdapter(log.With(logger, "lib", "fetcher")), "", 0).Printf
 }
 
 func getListenAddr(args []string) string {

@@ -27,7 +27,6 @@ import (
 )
 
 var emailConvertServer = kithttp.NewServer(
-	context.Background(),
 	emailConvertEP,
 	emailConvertDecode,
 	emailConvertEncode,
