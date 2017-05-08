@@ -16,8 +16,9 @@ import (
 	"strings"
 	"sync"
 
-	"bitbucket.org/taruti/mimemagic"
 	"context"
+
+	"bitbucket.org/taruti/mimemagic"
 	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/iohlp"
 )
@@ -339,12 +340,8 @@ func fixCT(contentType, fileName string) (ct string) {
 		if ext := filepath.Ext(fileName); len(ext) > 3 {
 			// http://www.iana.org/assignments/media-types/media-types.xhtml#application
 			switch ext {
-			case ".docx":
-				return "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-			case ".xlsx":
-				return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-			case ".pptx":
-				return "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+			case ".docx", ".xlsx", ".pptx":
+				return ExtContentType[ext[1:]]
 			}
 		}
 		return "application/zip"
@@ -367,17 +364,11 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 
 	contentType = fixCT(contentType, fileName)
 	var useMagic bool
-	ext := filepath.Ext(fileName)
-	useMagic = ext == ".pdf" && contentType != "application/pdf"
-	if !useMagic {
-		switch contentType {
-		case "", "application/octet-stream",
-			"application/pdf",
-			"application/x-as400attachment", "application/save-as",
-			"text/plain", "message/rfc822":
-			//log.Printf("body=%s", body)
-		}
-	}
+	ext := strings.ToLower(filepath.Ext(fileName))
+	useMagic = (ext == ".pdf" && contentType != "application/pdf" ||
+		(ext == ".jpg" || ext == ".jpeg") && contentType != "image/jpeg" ||
+		ext == ".png" && contentType != "image/png")
+
 	if useMagic {
 		if nct := mimemagic.Match(contentType, body); nct != "" {
 			return fixCT(nct, fileName)
