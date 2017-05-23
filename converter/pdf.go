@@ -328,6 +328,12 @@ func PdfClean(ctx context.Context, fn string) (err error) {
 
 func call(ctx context.Context, what string, args ...string) error {
 	cmd := exec.CommandContext(ctx, what, args...)
+	if cmd.Stderr == nil {
+		cmd.Stderr = os.Stderr
+	}
+	if cmd.Stdout == nil {
+		cmd.Stdout = os.Stdout
+	}
 	return execute(cmd)
 }
 

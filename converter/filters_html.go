@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"context"
+
 	"github.com/pkg/errors"
 	"golang.org/x/text/encoding/htmlindex"
 	"golang.org/x/text/transform"
@@ -200,6 +201,7 @@ func HTMLPartFilter(ctx context.Context,
 			fn = filepath.Join(filepath.Dir(cg.htmlFn), fn)
 
 			_ = os.Mkdir(filepath.Dir(fn), 0755) // ignore error
+			Log("save", fn, "cid", cid, "htmlFn", cg.htmlFn)
 			if err = writeToFile(ctx, fn, part.Body, part.ContentType /*, mailHeader*/); err != nil {
 				goto Error
 			}

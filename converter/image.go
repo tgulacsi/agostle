@@ -7,6 +7,7 @@ package converter
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -17,6 +18,13 @@ import (
 	"github.com/tgulacsi/go/temp"
 )
 
+func command(ctx context.Context, prg string, args ...string) *exec.Cmd {
+	if prg == "" {
+		prg, args = args[0], args[1:]
+	}
+	return exec.CommandContext(ctx, prg, args...)
+}
+
 // ImageToPdfGm converts image to PDF using GraphicsMagick
 func ImageToPdfGm(ctx context.Context, w io.Writer, r io.Reader, contentType string) error {
 	//log.Printf("converting image %s to %s", contentType, destfn)
@@ -25,7 +33,7 @@ func ImageToPdfGm(ctx context.Context, w io.Writer, r io.Reader, contentType str
 		imgtyp = contentType[strings.Index(contentType, "/")+1:] + ":"
 	}
 
-	cmd := exec.CommandContext(ctx, *ConfGm, "convert", imgtyp+"-", "pdf:-")
+	cmd := command(ctx, *ConfGm, "convert", imgtyp+"-", "pdf:-")
 	// cmd.Stdin = io.TeeReader(r, os.Stderr)
 	cmd.Stdin = r
 	cmd.Stdout = w
@@ -112,7 +120,7 @@ func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType,
 	}
 
 	// convert to the requested format
-	cmd = exec.CommandContext(ctx, *ConfGm, "convert", "png:-", imgtyp+":-")
+	cmd = command(ctx, *ConfGm, "convert", "png:-", imgtyp+":-")
 	cmd.Stdin = tfh
 	cmd.Stdout = w
 	cmd.Stderr = os.Stderr
@@ -138,7 +146,7 @@ func PdfToImageGm(ctx context.Context, w io.Writer, r io.Reader, contentType, si
 		return err
 	}
 	args = append(args, imgtyp+":"+tfh.Name()) // this MUST be : (colon)!
-	cmd := exec.CommandContext(ctx, *ConfGm, args...)
+	cmd := command(ctx, *ConfGm, args...)
 	cmd.Stdin = r
 	//cmd.Stdout = &filterFirstLines{Beginning: []string{"Can't find ", "Warning: "}, Writer: w}
 	cmd.Stdout = os.Stdout
@@ -157,4 +165,13 @@ func PdfToImageGm(ctx context.Context, w io.Writer, r io.Reader, contentType, si
 	_ = tfh.Close()
 	_ = os.Remove(fn)
 	return err
+}
+
+func fitImageFile(ctx context.Context, dst, src string, width, height int) error {
+	cmd := command(ctx, *ConfGm, "convert", src, "-density", "300", "-resize", fmt.Sprintf("%dx%d", width, height), dst)
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "%q", cmd.Args)
+	}
+	return nil
 }
