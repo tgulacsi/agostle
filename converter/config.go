@@ -79,7 +79,10 @@ var (
 )
 
 // LoadConfig loads TOML config file
-func LoadConfig(fn string) error {
+func LoadConfig(ctx context.Context, fn string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if err := config.Parse(fn); err != nil {
 		Log("msg", "WARN Cannot open config file", "file", fn, "error", err)
 	}
@@ -100,7 +103,7 @@ func LoadConfig(fn string) error {
 	bn := filepath.Base(*ConfPdfseparate)
 	prefix := (*ConfPdfseparate)[:len(*ConfPdfseparate)-len(bn)]
 	for k := range popplerOk {
-		if err := exec.Command(prefix+k, "-h").Run(); err == nil {
+		if err := exec.CommandContext(ctx, prefix+k, "-h").Run(); err == nil {
 			popplerOk[k] = prefix + k
 		}
 	}

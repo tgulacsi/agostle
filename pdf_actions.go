@@ -58,7 +58,7 @@ Example:
 		Aliases: []string{"pdf_split"},
 		Run: func(cmd *cobra.Command, args []string) {
 			fn := inpFromArgs(args)
-			if err := splitPdfZip(out, fn); err != nil {
+			if err := splitPdfZip(ctx, out, fn); err != nil {
 				Log("msg", "splitPdfZip", "out", out, "fn", fn, "error", err)
 				os.Exit(1)
 			}
@@ -74,7 +74,7 @@ Example:
 		Aliases: []string{"pdf_count"},
 		Long:    `[globalopts] pdf_count multipage.pdf`,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := countPdf(args[0]); err != nil {
+			if err := countPdf(ctx, args[0]); err != nil {
 				Log("msg", "countPdf", "fn", args[0], "error", err)
 				os.Exit(1)
 			}
@@ -90,7 +90,7 @@ Example:
 		Long:    `Usage: [-o=/dest/file.pdf] dirty.pdf`,
 		Run: func(cmd *cobra.Command, args []string) {
 			fn := inpFromArgs(args)
-			if err := cleanPdf(out, fn); err != nil {
+			if err := cleanPdf(ctx, out, fn); err != nil {
 				Log("msg", "cleanPdf", "out", out, "fn", fn, "error", err)
 				os.Exit(1)
 			}
@@ -124,7 +124,7 @@ Example:
 		Short:   "fill PDF form",
 		Aliases: []string{"pdf_fill", "fill_form", "pdf_fill_form"},
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := fillFdf(out, args[0], args[1:]...); err != nil {
+			if err := fillFdf(ctx, out, args[0], args[1:]...); err != nil {
 				Log("msg", "fillPdf", "out", out, "args", args, "error", err)
 				os.Exit(1)
 			}
@@ -135,12 +135,12 @@ Example:
 	pdfCmd.AddCommand(fillPdfCmd)
 }
 
-func splitPdfZip(outfn, inpfn string) error {
+func splitPdfZip(ctx context.Context, outfn, inpfn string) error {
 	var changed bool
 	if inpfn, changed = ensureFilename(inpfn, false); changed {
 		defer func() { _ = os.Remove(inpfn) }()
 	}
-	filenames, err := converter.PdfSplit(inpfn)
+	filenames, err := converter.PdfSplit(ctx, inpfn)
 	if err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func mergePdf(outfn string, inpfn []string, sortFiles bool) error {
 	return converter.PdfMerge(context.Background(), outfn, inpfn...)
 }
 
-func cleanPdf(outfn, inpfn string) error {
+func cleanPdf(ctx context.Context, outfn, inpfn string) error {
 	var changed bool
 	fmt.Fprintf(os.Stderr, "inpfn=%s outfn=%s\n", inpfn, outfn)
 	if inpfn, changed = ensureFilename(inpfn, false); changed {
@@ -175,7 +175,7 @@ func cleanPdf(outfn, inpfn string) error {
 	}
 	outfn, changed = ensureFilename(outfn, true)
 	fmt.Fprintf(os.Stderr, "inpfn=%s outfn=%s\n", inpfn, outfn)
-	if err := converter.PdfRewrite(outfn, inpfn); err != nil {
+	if err := converter.PdfRewrite(ctx, outfn, inpfn); err != nil {
 		if changed {
 			_ = os.Remove(outfn)
 		}
@@ -194,8 +194,8 @@ func toPdf(outfn, inpfn string, mime string) error {
 	return errors.New("not implemented")
 }
 
-func countPdf(inpfn string) error {
-	n, err := converter.PdfPageNum(inpfn)
+func countPdf(ctx context.Context, inpfn string) error {
+	n, err := converter.PdfPageNum(ctx, inpfn)
 	if err != nil {
 		return err
 	}
@@ -203,7 +203,7 @@ func countPdf(inpfn string) error {
 	return nil
 }
 
-func fillFdf(outfn, inpfn string, kv ...string) error {
+func fillFdf(ctx context.Context, outfn, inpfn string, kv ...string) error {
 	values := make(map[string]string, len(kv))
 	for _, txt := range kv {
 		i := strings.IndexByte(txt, '=')
@@ -213,5 +213,5 @@ func fillFdf(outfn, inpfn string, kv ...string) error {
 		}
 		values[txt[:i]] = txt[i+1:]
 	}
-	return converter.PdfFillFdf(outfn, inpfn, values)
+	return converter.PdfFillFdf(ctx, outfn, inpfn, values)
 }

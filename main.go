@@ -116,7 +116,7 @@ func main() {
 			}
 		}
 		Log("msg", "Loading config", "file", configFile)
-		if err := converter.LoadConfig(configFile); err != nil {
+		if err := converter.LoadConfig(ctx, configFile); err != nil {
 			Log("msg", "Parsing config", "file", configFile, "error", err)
 			os.Exit(1)
 		}

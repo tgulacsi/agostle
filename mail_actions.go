@@ -59,7 +59,7 @@ func outlookToEmail(ctx context.Context, outfn, inpfn string) error {
 		}
 	}()
 	var r io.ReadCloser
-	r, err = converter.NewOLEStorageReader(inp)
+	r, err = converter.NewOLEStorageReader(ctx, inp)
 	if err != nil {
 		return err
 	}

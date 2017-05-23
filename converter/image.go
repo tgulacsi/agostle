@@ -6,6 +6,7 @@ package converter
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"io/ioutil"
 	"os"
@@ -17,21 +18,21 @@ import (
 )
 
 // ImageToPdfGm converts image to PDF using GraphicsMagick
-func ImageToPdfGm(w io.Writer, r io.Reader, contentType string) error {
+func ImageToPdfGm(ctx context.Context, w io.Writer, r io.Reader, contentType string) error {
 	//log.Printf("converting image %s to %s", contentType, destfn)
 	imgtyp := ""
 	if false && contentType != "" {
 		imgtyp = contentType[strings.Index(contentType, "/")+1:] + ":"
 	}
 
-	cmd := exec.Command(*ConfGm, "convert", imgtyp+"-", "pdf:-")
+	cmd := exec.CommandContext(ctx, *ConfGm, "convert", imgtyp+"-", "pdf:-")
 	// cmd.Stdin = io.TeeReader(r, os.Stderr)
 	cmd.Stdin = r
 	cmd.Stdout = w
 	errout := bytes.NewBuffer(nil)
 	cmd.Stderr = errout
-	err := runWithTimeout(cmd)
-	if err != nil {
+	if err := cmd.Run(); err != nil {
+		err = errors.Wrapf(err, "%q", cmd.Args)
 		return errors.Wrapf(err, "gm convert converting %s: %s", r, errout.Bytes())
 	}
 	if len(errout.Bytes()) > 0 {
@@ -41,23 +42,26 @@ func ImageToPdfGm(w io.Writer, r io.Reader, contentType string) error {
 }
 
 // PdfToImage converts PDF to image using PdfToImageGm if available and the result is OK, then PdfToImageCairo.
-func PdfToImage(w io.Writer, r io.Reader, contentType, size string) error {
+func PdfToImage(ctx context.Context, w io.Writer, r io.Reader, contentType, size string) error {
 	src := temp.NewMemorySlurper("PdfToImage-src-")
 	defer src.Close()
 	dst := temp.NewMemorySlurper("PdfToImage-dst-")
 	defer dst.Close()
 
 	var err error
-	if err = PdfToImageCairo(dst, io.TeeReader(r, src), contentType, size); err == nil {
+	if err = PdfToImageCairo(ctx, dst, io.TeeReader(r, src), contentType, size); err == nil {
 		_, err = io.Copy(w, dst)
 		return err
 	}
 	Log("msg", "ERROR PdfToImageCairo", "error", err)
-	return PdfToImageGm(w, io.MultiReader(src, r), contentType, size)
+	return PdfToImageGm(ctx, w, io.MultiReader(src, r), contentType, size)
 }
 
 // PdfToImageCairo converts PDF to image using pdftocairo from poppler-utils.
-func PdfToImageCairo(w io.Writer, r io.Reader, contentType, size string) error {
+func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType, size string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	imgtyp, ext := "gif", "png"
 	if contentType != "" && strings.HasPrefix(contentType, "image/") {
 		imgtyp = contentType[6:]
@@ -89,12 +93,12 @@ func PdfToImageCairo(w io.Writer, r io.Reader, contentType, size string) error {
 	args = append(args, "-", fn)
 	fn = fn + "." + ext // pdftocairo appends the .png
 
-	cmd := exec.Command("pdftocairo", args...)
+	cmd := exec.CommandContext(ctx, "pdftocairo", args...)
 	cmd.Stdin = r
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if err = runWithTimeout(cmd); err != nil {
-		return err
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "%q", cmd.Args)
 	}
 	if tfh, err = os.Open(fn); err != nil {
 		Log("msg", "ERROR cannot open temp", "file", fn, "error", err)
@@ -108,7 +112,7 @@ func PdfToImageCairo(w io.Writer, r io.Reader, contentType, size string) error {
 	}
 
 	// convert to the requested format
-	cmd = exec.Command(*ConfGm, "convert", "png:-", imgtyp+":-")
+	cmd = exec.CommandContext(ctx, *ConfGm, "convert", "png:-", imgtyp+":-")
 	cmd.Stdin = tfh
 	cmd.Stdout = w
 	cmd.Stderr = os.Stderr
@@ -116,7 +120,7 @@ func PdfToImageCairo(w io.Writer, r io.Reader, contentType, size string) error {
 }
 
 // PdfToImageGm converts PDF to image using GraphicsMagick.
-func PdfToImageGm(w io.Writer, r io.Reader, contentType, size string) error {
+func PdfToImageGm(ctx context.Context, w io.Writer, r io.Reader, contentType, size string) error {
 	// gm may pollute its stdout with error & warning messages, so we must use files!
 	var imgtyp = "gif"
 	if contentType != "" && strings.HasPrefix(contentType, "image/") {
@@ -134,13 +138,13 @@ func PdfToImageGm(w io.Writer, r io.Reader, contentType, size string) error {
 		return err
 	}
 	args = append(args, imgtyp+":"+tfh.Name()) // this MUST be : (colon)!
-	cmd := exec.Command(*ConfGm, args...)
+	cmd := exec.CommandContext(ctx, *ConfGm, args...)
 	cmd.Stdin = r
 	//cmd.Stdout = &filterFirstLines{Beginning: []string{"Can't find ", "Warning: "}, Writer: w}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if err = runWithTimeout(cmd); err != nil {
-		return err
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "%q", cmd.Args)
 	}
 	fn := tfh.Name()
 	tfh.Close()

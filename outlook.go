@@ -33,7 +33,7 @@ func outlookToEmailDecode(ctx context.Context, r *http.Request) (interface{}, er
 func outlookToEmailEP(ctx context.Context, request interface{}) (response interface{}, err error) {
 	f := request.(reqFile)
 	defer func() { _ = f.Close() }()
-	return converter.NewOLEStorageReader(f)
+	return converter.NewOLEStorageReader(ctx, f)
 }
 
 func outlookToEmailEncode(ctx context.Context, w http.ResponseWriter, response interface{}) error {

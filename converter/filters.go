@@ -200,13 +200,13 @@ func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string,
 			rch <- maybeArchItems{Items: []ArchFileItem{ArchFileItem{Filename: fn}}}
 			continue
 		}
-		sfiles, err = PdfSplit(fn)
+		sfiles, err = PdfSplit(ctx, fn)
 		if err != nil || len(sfiles) == 0 {
 			Log("msg", "Splitting", "file", fn, "error", err)
-			if err = PdfRewrite(fn, fn); err != nil {
+			if err = PdfRewrite(ctx, fn, fn); err != nil {
 				Log("msg", "Cannot clean", "file", fn, "error", err)
 			} else {
-				if sfiles, err = PdfSplit(fn); err != nil || len(sfiles) == 0 {
+				if sfiles, err = PdfSplit(ctx, fn); err != nil || len(sfiles) == 0 {
 					Log("msg", "splitting CLEANED", "file", fn, "error", err)
 				}
 			}
@@ -286,7 +286,7 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 		defer workWg.Done()
 		var err error
 		for args := range workch {
-			err = PdfToImage(args.w, args.r, args.mime, args.size)
+			err = PdfToImage(ctx, args.w, args.r, args.mime, args.size)
 			if e := args.w.Close(); e != nil && err == nil {
 				err = e
 			}
@@ -683,7 +683,7 @@ func ExtractingFilter(ctx context.Context,
 		)
 		body := part.Body
 		if part.ContentType == "application/x-ole-storage" {
-			r, err := NewOLEStorageReader(body)
+			r, err := NewOLEStorageReader(ctx, body)
 			if err != nil {
 				goto Error
 			}

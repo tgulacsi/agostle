@@ -96,7 +96,7 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 	if err != nil {
 		return err
 	}
-	if err = ImageToPdfGm(w, ifh, contentType); err != nil {
+	if err = ImageToPdfGm(ctx, w, ifh, contentType); err != nil {
 		Log("msg", "ImageToPdfGm", "error", err)
 	}
 	closeErr := w.Close()
@@ -225,7 +225,7 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 		lofficePortLock.Lock()
 		defer lofficePortLock.Unlock()
 	}
-	cmd := exec.Command(*ConfLoffice, args...)
+	cmd := exec.CommandContext(ctx, *ConfLoffice, args...)
 	cmd.Dir = filepath.Dir(inpfn)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = cmd.Stderr
@@ -249,12 +249,11 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 		}
 	}
 
-	err := runWithTimeout(cmd)
-	if err != nil {
-		return err
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "%q", cmd.Args)
 	}
 	outfn := filepath.Join(outDir, filepath.Base(nakeFilename(inpfn))+".pdf")
-	if _, err = os.Stat(outfn); err != nil {
+	if _, err := os.Stat(outfn); err != nil {
 		return errors.Wrapf(err, "loffice no output for %s", filepath.Base(inpfn))
 	}
 	return nil
@@ -265,18 +264,23 @@ func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 	Log := getLogger(ctx).Log
 	args := []string{
 		"--quiet",
+		"-O", "landscape",
 		inpfn,
 		"--encoding", "utf-8",
 		"--load-error-handling", "ignore",
 		"--load-media-error-handling", "ignore",
+		"--images",
+		"--enable-local-file-access",
+		"--no-background",
 		outfn}
 	var buf bytes.Buffer
-	cmd := exec.Command(*ConfWkhtmltopdf, args...)
+	cmd := exec.CommandContext(ctx, *ConfWkhtmltopdf, args...)
 	cmd.Dir = filepath.Dir(inpfn)
 	cmd.Stderr = &buf
 	cmd.Stdout = os.Stdout
-	err := runWithTimeout(cmd)
-	if err != nil {
+	Log("start", "wkhtmltopdf", "args", cmd.Args)
+	if err := cmd.Run(); err != nil {
+		err = errors.Wrapf(err, "%q", cmd.Args)
 		if bytes.HasSuffix(buf.Bytes(), []byte("ContentNotFoundError\n")) ||
 			bytes.HasSuffix(buf.Bytes(), []byte("ProtocolUnknownError\n")) ||
 			bytes.HasSuffix(buf.Bytes(), []byte("HostNotFoundError\n")) { // K-MT11422:99503

@@ -7,6 +7,7 @@ package converter
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"io"
 	"io/ioutil"
 	"os"
@@ -24,10 +25,13 @@ import (
 // with `cpan -i Email::Outlook::Message`).
 //
 // See http://www.matijs.net/software/msgconv
-func NewOLEStorageReader(r io.Reader) (io.ReadCloser, error) {
+func NewOLEStorageReader(ctx context.Context, r io.Reader) (io.ReadCloser, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	var buf bytes.Buffer
 	tr := io.TeeReader(r, &buf)
-	rc, err := newOLEStorageReaderDirect(tr)
+	rc, err := newOLEStorageReaderDirect(ctx, tr)
 	if err == nil {
 		br := bufio.NewReader(rc)
 		if _, err = br.Peek(1); err == nil {
@@ -45,10 +49,10 @@ func NewOLEStorageReader(r io.Reader) (io.ReadCloser, error) {
 	}
 	rc.Close()
 	Log("msg", "Email::Outlook::Message is not installed, trying with docker")
-	return newOLEStorageReaderDocker(io.MultiReader(bytes.NewReader(buf.Bytes()), r))
+	return newOLEStorageReaderDocker(ctx, io.MultiReader(bytes.NewReader(buf.Bytes()), r))
 }
 
-func newOLEStorageReaderDirect(r io.Reader) (io.ReadCloser, error) {
+func newOLEStorageReaderDirect(ctx context.Context, r io.Reader) (io.ReadCloser, error) {
 	var err error
 	// Email::Outlook::Message needs a filename!
 	var remove bool
@@ -88,7 +92,7 @@ func newOLEStorageReaderDirect(r io.Reader) (io.ReadCloser, error) {
 		  print new Email::Outlook::Message($file, 0)->to_email_mime->as_string;
 		}
 	*/
-	cmd := exec.Command("perl", "-w",
+	cmd := exec.CommandContext(ctx, "perl", "-w",
 		"-e", "use Email::Outlook::Message",
 		"-e", "print (new Email::Outlook::Message($ARGV[0], 1)->to_email_mime->as_string);",
 		"--", in.Name(),
@@ -120,8 +124,8 @@ func newOLEStorageReaderDirect(r io.Reader) (io.ReadCloser, error) {
 	}, nil
 }
 
-func newOLEStorageReaderDocker(r io.Reader) (io.ReadCloser, error) {
-	cmd := exec.Command("docker", "build", "-t", "tgulacsi/agostle-outlook2email", "-")
+func newOLEStorageReaderDocker(ctx context.Context, r io.Reader) (io.ReadCloser, error) {
+	cmd := exec.CommandContext(ctx, "docker", "build", "-t", "tgulacsi/agostle-outlook2email", "-")
 	cmd.Stdin = strings.NewReader(`FROM debian:testing
 MAINTAINER Tamás Gulácsi <tgulacsi78@gmail.com>
 
@@ -139,7 +143,7 @@ CMD ["/bin/sh", "-c", "cat ->/tmp/input.msg && perl -w -e 'use Email::Outlook::M
 		Log("msg", "ERROR docker build tgulacsi/agostle-outlook2email", "error", err, "errTxt", errBuf.String())
 		return nil, errors.Wrapf(err, "docker build")
 	}
-	cmd = exec.Command("docker", "run", "-i", "tgulacsi/agostle-outlook2email")
+	cmd = exec.CommandContext(ctx, "docker", "run", "-i", "tgulacsi/agostle-outlook2email")
 	cmd.Stdin = r
 	errBuf.Reset()
 	cmd.Stderr = io.MultiWriter(&errBuf, os.Stderr)
