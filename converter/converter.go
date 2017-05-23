@@ -7,11 +7,13 @@ package converter
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -19,8 +21,10 @@ import (
 	"context"
 
 	"bitbucket.org/taruti/mimemagic"
+	"github.com/go-kit/kit/log"
 	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/iohlp"
+	"golang.org/x/net/html"
 )
 
 var ErrSkip = errors.New("skip this part")
@@ -168,6 +172,7 @@ func MPRelatedToPdf(ctx context.Context, destfn string, r io.Reader, contentType
 
 // HTMLToPdf converts HTML (text/html) to PDF
 func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	Log := log.With(getLogger(ctx), "func", "HTMLToPdf", "dest", destfn).Log
 	var inpfn string
 	if fh, ok := r.(*os.File); ok && fileExists(fh.Name()) {
 		inpfn = fh.Name()
@@ -184,6 +189,58 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 		if _, err = io.Copy(fh, r); err != nil {
 			return err
 		}
+	} else {
+
+		b, err := ioutil.ReadFile(inpfn)
+		if err == nil {
+			var f func(*html.Node) *html.Node
+			f = func(n *html.Node) *html.Node {
+				if n == nil || n.Type == html.ElementNode && n.Data == "img" {
+					return n
+				}
+				for c := n.FirstChild; c != nil; c = c.NextSibling {
+					if n := f(c); n != nil {
+						return n
+					}
+				}
+				return nil
+			}
+			var buf bytes.Buffer
+			for _, pos := range reHtmlImg.FindAllIndex(b, -1) {
+				line := b[pos[0]:pos[1]]
+				img, _ := html.Parse(bytes.NewReader(line))
+				if img = f(img); img == nil {
+					continue
+				}
+				// delete height, modify width
+				for i := 0; i < len(img.Attr); i++ {
+					switch strings.ToLower(img.Attr[i].Key) {
+					case "height":
+						img.Attr[i] = img.Attr[0]
+						img.Attr = img.Attr[1:]
+					case "width":
+						if len(img.Attr[i].Val) > 3 {
+							img.Attr[i].Val = "100%"
+						}
+					}
+				}
+				buf.Reset()
+				if err := html.Render(&buf, img); err != nil {
+					Log("msg", "html.Render", "img", img, "error", err)
+					continue
+				}
+				Log("old", string(line), "new", buf.String())
+				i := pos[0] + copy(b[pos[0]:pos[1]], buf.Bytes())
+				for i < pos[1] {
+					b[i] = ' '
+					i++
+				}
+			}
+
+			if err = ioutil.WriteFile(inpfn, b, 0644); err != nil {
+				return errors.Wrap(err, "overwrite inpfn")
+			}
+		}
 	}
 	if *ConfWkhtmltopdf != "" {
 		return wkhtmltopdf(ctx, destfn, inpfn)
@@ -199,6 +256,8 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 	}
 	return nil
 }
+
+var reHtmlImg = regexp.MustCompile(`(?i)(<img[^>]*/?>)`)
 
 // Skip skips the conversion
 func Skip(ctx context.Context, destfn string, r io.Reader, contentType string) error {
@@ -264,13 +323,13 @@ func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 	Log := getLogger(ctx).Log
 	args := []string{
 		"--quiet",
-		"-O", "landscape",
 		inpfn,
+		"--allow", "images",
 		"--encoding", "utf-8",
 		"--load-error-handling", "ignore",
 		"--load-media-error-handling", "ignore",
 		"--images",
-		"--enable-local-file-access",
+		"--disable-local-file-access",
 		"--no-background",
 		outfn}
 	var buf bytes.Buffer
