@@ -33,4 +33,4 @@ for flavor in $FLAVORS; do
 done
 (cd "$TUF" tuf add agostle/)
 
-rsync -avz --delete-after "$TUF/repository" websrv3:/var/www/www.unosoft.hu/tuf/
+rsync -avz --delete-after "$TUF/repository/" websrv3:/var/www/www.unosoft.hu/tuf/
