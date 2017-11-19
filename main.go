@@ -5,7 +5,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -170,31 +169,6 @@ func main() {
 			if err != nil {
 				return err
 			}
-			if fn := os.Getenv("AGOSTLE_UPDATE"); fn != "" {
-				logger.Log("msg", "update", "from", fn)
-				inp, err := os.Open(fn)
-				if err != nil {
-					return err
-				}
-				defer func() {
-					inp.Close()
-					os.Remove(inp.Name())
-				}()
-				br := bufio.NewReader(inp)
-				if _, err := br.Peek(1024); err != nil {
-					return err
-				}
-				logger.Log("msg", "overwrite", "file", self)
-				out, err := os.Create(self)
-				if err != nil {
-					return err
-				}
-				if _, err := io.Copy(out, br); err != nil {
-					return err
-				}
-				return out.Close()
-			}
-
 			logger.Log("msg", "update", "from", updateURL)
 			remote, err := tufclient.HTTPRemoteStore(updateURL, nil)
 			if err != nil {
@@ -236,7 +210,7 @@ func main() {
 			dest := &downloadFile{File: destFh}
 			if err := tc.Download(
 				strings.Replace(strings.Replace(
-					"/agostle/{{GOOS}}_{{GOARCH}}/agostle",
+					"/agostle/{{GOOS}}_{{GOARCH}}",
 					"{{GOOS}}", runtime.GOOS, -1),
 					"{{GOARCH}}", runtime.GOARCH, -1),
 				dest,
