@@ -30,7 +30,6 @@ import (
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/i18nmail"
 	"github.com/tgulacsi/go/loghlp/kitloghlp"
-	"github.com/tgulacsi/overseer-bindiff/fetcher"
 
 	"github.com/pkg/errors"
 )
@@ -56,7 +55,6 @@ func init() {
 	sLog := stdlog.New(log.NewStdlibAdapter(log.With(logger, "lib", "i18nmail")), "", 0)
 	i18nmail.Debugf, i18nmail.Infof = sLog.Printf, sLog.Printf
 
-	fetcher.Logf = stdlog.New(log.NewStdlibAdapter(log.With(logger, "lib", "fetcher")), "", 0).Printf
 }
 
 func getListenAddr(args []string) string {
