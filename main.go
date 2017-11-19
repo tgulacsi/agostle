@@ -1,12 +1,16 @@
-// Copyright 2013 The Agostle Authors. All rights reserved.
+// Copyright 2017 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
 package main
 
 import (
+	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	stdlog "log"
 	"math/rand"
 	"os"
@@ -18,22 +22,23 @@ import (
 
 	"context"
 
+	tufclient "github.com/flynn/go-tuf/client"
+	tufdata "github.com/flynn/go-tuf/data"
 	"github.com/go-kit/kit/log"
-	"github.com/jpillora/overseer"
-	"github.com/tgulacsi/overseer-bindiff/fetcher"
 
 	"github.com/kardianos/osext"
 	"github.com/spf13/cobra"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/i18nmail"
 	"github.com/tgulacsi/go/loghlp/kitloghlp"
+	"github.com/tgulacsi/overseer-bindiff/fetcher"
 
 	"github.com/pkg/errors"
 )
 
-//go:generate sh -c "overseer-bindiff printkeys --go-out agostle-keyring.gpg >overseer_keyring.go"
+// go:generate sh -c "overseer-bindiff printkeys --go-out agostle-keyring.gpg >overseer_keyring.go"
 
-const defaultUpdateURL = "https://www.unosoft.hu/agostle"
+const defaultUpdateURL = "https://www.unosoft.hu/tuf"
 
 var (
 	swLogger = &log.SwapLogger{}
@@ -42,7 +47,7 @@ var (
 )
 
 func init() {
-	logger = log.With(logger, "t", log.DefaultTimestamp, "caller", log.Caller(4))
+	logger = log.With(logger, "t", log.DefaultTimestamp, "caller", log.DefaultCaller())
 	swLogger.Swap(log.NewLogfmtLogger(os.Stderr))
 	stdlog.SetFlags(0)
 	stdlog.SetOutput(log.NewStdlibAdapter(logger))
@@ -156,33 +161,107 @@ func main() {
 		}()
 	}
 
-	var keyRing string
+	var updateRootJSON, updateRootKeys string
 	updateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "update binary to the latest release",
-		Run: func(cmd *cobra.Command, args []string) {
-			if keyRing != "" {
-				fh, err := os.Open(keyRing)
-				if err != nil {
-					Log("msg", "open "+keyRing, "error", err)
-					os.Exit(3)
-				}
-				keyring = readKeyring(fh)
-				fh.Close()
+		RunE: func(cmd *cobra.Command, args []string) error {
+			self, err := os.Executable()
+			if err != nil {
+				return err
 			}
-			overseer.Run(overseer.Config{
-				Debug:   true,
-				Program: func(state overseer.State) {},
-				Fetcher: &fetcher.HTTPSelfUpdate{
-					URL:      updateURL,
-					Interval: 1 * time.Second,
-					Keyring:  keyring,
-				},
-				NoRestart: true,
-			})
+			if fn := os.Getenv("AGOSTLE_UPDATE"); fn != "" {
+				logger.Log("msg", "update", "from", fn)
+				inp, err := os.Open(fn)
+				if err != nil {
+					return err
+				}
+				defer func() {
+					inp.Close()
+					os.Remove(inp.Name())
+				}()
+				br := bufio.NewReader(inp)
+				if _, err := br.Peek(1024); err != nil {
+					return err
+				}
+				logger.Log("msg", "overwrite", "file", self)
+				out, err := os.Create(self)
+				if err != nil {
+					return err
+				}
+				if _, err := io.Copy(out, br); err != nil {
+					return err
+				}
+				return out.Close()
+			}
+
+			logger.Log("msg", "update", "from", updateURL)
+			remote, err := tufclient.HTTPRemoteStore(updateURL, nil)
+			if err != nil {
+				return err
+			}
+			var rootKeysSrc io.Reader = strings.NewReader(updateRootKeys)
+			if updateRootJSON != "" {
+				logger.Log("msg", "using root keys", "from", updateRootJSON)
+				b, err := ioutil.ReadFile(updateRootJSON)
+				if err != nil {
+					return err
+				}
+				rootKeysSrc = bytes.NewReader(b)
+			}
+			var rootKeys []*tufdata.Key
+			if json.NewDecoder(rootKeysSrc).Decode(&rootKeys); err != nil {
+				return err
+			}
+			tc := tufclient.NewClient(tufclient.MemoryLocalStore(), remote)
+			if err := tc.Init(rootKeys, len(rootKeys)); err != nil {
+				return errors.Wrap(err, "Init")
+			}
+			targets, err := tc.Update()
+			if err != nil {
+				return errors.Wrap(err, "Update")
+			}
+			for f := range targets {
+				logger.Log("target", f)
+			}
+
+			destFh, err := os.Create(
+				filepath.Join(filepath.Dir(self), "."+filepath.Base(self)+".new"),
+			)
+			if err != nil {
+				return err
+			}
+			defer destFh.Close()
+			logger.Log("msg", "download", "to", destFh.Name())
+			dest := &downloadFile{File: destFh}
+			if err := tc.Download(
+				strings.Replace(strings.Replace(
+					"/agostle/{{GOOS}}_{{GOARCH}}/agostle",
+					"{{GOOS}}", runtime.GOOS, -1),
+					"{{GOARCH}}", runtime.GOARCH, -1),
+				dest,
+			); err != nil {
+				return errors.Wrap(err, "Download")
+			}
+			_ = os.Chmod(destFh.Name(), 0775)
+
+			old := filepath.Join(filepath.Dir(self), "."+filepath.Base(self)+".old")
+			logger.Log("msg", "rename", "from", self, "to", old)
+			if err := os.Rename(self, old); err != nil {
+				return err
+			}
+			logger.Log("msg", "rename", "from", destFh.Name(), "to", self)
+			if err := os.Rename(destFh.Name(), self); err != nil {
+				logger.Log("error", err)
+			} else {
+				os.Remove(old)
+			}
+
+			return nil
 		},
 	}
-	updateCmd.Flags().StringVar(&keyRing, "keyring", "", "keyring for decrypting the updates")
+	updateCmd.Flags().StringVarP(&updateRootKeys, "root-keys-string", "", defaultRootKeys, "CONTENTS of root.json for TUF update")
+	updateCmd.Flags().StringVarP(&updateRootJSON, "root-keys-file", "", updateRootJSON, "PATH of root.json for TUF update")
 	agostleCmd.AddCommand(updateCmd)
 
 	{
@@ -195,26 +274,8 @@ func main() {
 			Long:  "serve [-savereq] addr.to.listen.on:port",
 			Run: func(cmd *cobra.Command, args []string) {
 				addr := getListenAddr(args)
-				if updateURL == "" || regularUpdates == 0 {
-					Log("msg", newHTTPServer(addr, savereq).ListenAndServe())
-					os.Exit(1)
-				}
-				overseer.Run(overseer.Config{
-					Debug: true,
-					Program: func(state overseer.State) {
-						if state.Listener == nil {
-							Log("msg", "overseer gave nil listener! Will try "+addr)
-							Log("msg", newHTTPServer(addr, savereq).ListenAndServe())
-							os.Exit(1)
-						}
-						startHTTPServerListener(state.Listener, savereq)
-					},
-					Address: addr,
-					Fetcher: &fetcher.HTTPSelfUpdate{
-						URL:      updateURL,
-						Interval: regularUpdates,
-					},
-				})
+				Log("msg", newHTTPServer(addr, savereq).ListenAndServe())
+				os.Exit(1)
 			},
 		}
 
@@ -223,9 +284,7 @@ func main() {
 		agostleCmd.AddCommand(serveCmd)
 	}
 
-	if len(os.Args) == 1 {
-		overseer.SanityCheck()
-	}
+	logger.Log("args", os.Args)
 	if err := agostleCmd.Execute(); err != nil {
 		Log("error", err)
 		os.Exit(1)
@@ -303,4 +362,18 @@ func isDir(fn string) bool {
 		return false
 	}
 	return fi.IsDir()
+}
+
+var _ = tufclient.Destination((*downloadFile)(nil))
+
+type downloadFile struct {
+	*os.File
+}
+
+func (f *downloadFile) Delete() error {
+	if f == nil || f.File == nil {
+		return nil
+	}
+	f.File.Close()
+	return os.Remove(f.File.Name())
 }
