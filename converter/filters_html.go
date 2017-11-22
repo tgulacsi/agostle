@@ -276,7 +276,7 @@ func SaveOriHTMLFilter(ctx context.Context,
 	defer func() {
 		close(outch)
 	}()
-	ctx, wd := prepareContext(ctx, "")
+	_, wd := prepareContext(ctx, "")
 
 	if !SaveOriginalHTML {
 		for part := range inch {

@@ -68,7 +68,7 @@ func TestText(t *testing.T) {
 			t.Errorf("error writing %q: %s", accented, err)
 		}
 	}
-	t.Logf("out: %q", out)
+	t.Logf("out: %v", out)
 }
 
 func TestLoHtmlPdf(t *testing.T) {

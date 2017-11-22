@@ -37,7 +37,7 @@ const defaultUpdateURL = "https://www.unosoft.hu/agostle"
 
 var (
 	swLogger = &log.SwapLogger{}
-	logger   = log.Logger(kitloghlp.Stringify{swLogger})
+	logger   = log.Logger(kitloghlp.Stringify{Logger: swLogger})
 	ctx      = context.Background()
 )
 
@@ -58,7 +58,7 @@ func init() {
 func getListenAddr(args []string) string {
 	for _, x := range args {
 		if x == "" {
-			break
+			continue
 		}
 		return x
 	}

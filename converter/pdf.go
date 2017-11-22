@@ -306,7 +306,8 @@ func PdfClean(ctx context.Context, fn string) (err error) {
 		if encrypted {
 			Log("msg", "WARN "+cleaner+": file %q is encrypted!", fn)
 		}
-	} else if !cleaned || encrypted {
+	}
+	if !cleaned || encrypted {
 		if err = PdfRewrite(ctx, fn+"-cleaned.pdf", fn); err != nil {
 			return
 		}
@@ -517,7 +518,7 @@ func getFdf(ctx context.Context, inpfn string) (fieldParts, error) {
 		if err == nil {
 			return fp, nil
 		}
-		Log("msg", "ERROR decoding %s: %v", f.Name, err)
+		Log("msg", "decoding", "file", f.Name(), "error", err)
 	}
 
 	fdf, err := ioutil.ReadFile(fdfFn)

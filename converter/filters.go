@@ -129,7 +129,7 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 
 func cleanupFiles(ctx context.Context, files []ArchFileItem, tbz []ArchFileItem) {
 	Log := getLogger(ctx).Log
-	ctx, wd := prepareContext(ctx, "")
+	_, wd := prepareContext(ctx, "")
 	dirs := make(map[string]bool, 16)
 	for _, item := range files {
 		dirs[filepath.Dir(item.Filename)] = true
@@ -350,10 +350,6 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 			}
 			mp.Body = tfh
 			fn := headerGetFileName(mp.Header)
-			ext := filepath.Ext(fn)
-			if ext == "" {
-				ext = ".eml"
-			}
 			n, err := io.ReadAtLeast(mp.Body, head[:], 512)
 			if cErr := errors.Cause(err); err != nil &&
 				(cErr != io.EOF && cErr != io.ErrUnexpectedEOF || n == 0) {
@@ -495,7 +491,7 @@ Collect:
 }
 
 func savePart(ctx context.Context, mp *i18nmail.MailPart) (fn string, err error) {
-	ctx, wd := prepareContext(ctx, "")
+	_, wd := prepareContext(ctx, "")
 	fn = filepath.Join(wd, fmt.Sprintf("%02d#%03d.%s.%s", mp.Level, mp.Seq,
 		strings.Replace(mp.ContentType, "/", "--", -1), fn))
 
