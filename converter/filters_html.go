@@ -1,4 +1,4 @@
-// Copyright 2013 The Agostle Authors. All rights reserved.
+// Copyright 2017 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -179,7 +179,7 @@ func HTMLPartFilter(ctx context.Context,
 			found := false
 			if len(groups) > 0 {
 				for act := &part; act != nil; act = act.Parent {
-					if _, ok := groups[act.Seq]; ok {
+					if _, ok = groups[act.Seq]; ok {
 						found = true
 						this = act.Seq
 						break

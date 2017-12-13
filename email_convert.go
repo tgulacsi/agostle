@@ -1,4 +1,4 @@
-// Copyright 2013 The Agostle Authors. All rights reserved.
+// Copyright 2017 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -106,9 +106,9 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 			return "", fmt.Errorf("bad hsh: %q", hsh)
 		}
 		outFn := getOutFn(hsh)
-		outFh, err := os.Open(outFn)
-		if err != nil {
-			return outFn, err
+		outFh, outErr := os.Open(outFn)
+		if outErr != nil {
+			return outFn, outErr
 		}
 		defer func() {
 			if closeErr := outFh.Close(); closeErr != nil && err == nil {
@@ -122,14 +122,14 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 			}
 		}()
 
-		fi, err := outFh.Stat()
-		if err != nil || fi.Size() == 0 {
-			return outFn, err
+		fi, statErr := outFh.Stat()
+		if statErr != nil || fi.Size() == 0 {
+			return outFn, statErr
 		}
 		// test correctness of the zip file
-		z, err := zip.OpenReader(outFh.Name())
-		if err != nil {
-			return outFn, err
+		z, zErr := zip.OpenReader(outFh.Name())
+		if zErr != nil {
+			return outFn, zErr
 		}
 		_ = z.Close()
 		return outFn, nil
@@ -139,7 +139,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	}
 
 	for _, hsh := range req.IfNoneMatch {
-		if _, err := getCachedFn(hsh); err == nil {
+		if _, err = getCachedFn(hsh); err == nil {
 			resp.NotModified = true
 			return resp, nil
 		}

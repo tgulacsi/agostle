@@ -6,6 +6,7 @@ package converter
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -17,17 +18,13 @@ import (
 )
 
 func TestDumpFields(t *testing.T) {
-	fields, err := PdfDumpFields("testdata/f1040.pdf")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	fields, err := PdfDumpFields(ctx, "testdata/f1040.pdf")
+	cancel()
 	if err != nil {
 		t.Fatalf("PdfDumpFields: %v", err)
 	}
 	t.Logf("fields=%v", fields)
-
-	var buf bytes.Buffer
-	if _, err := (xfdf{Fields: fields}).WriteTo(&buf); err != nil {
-		t.Errorf("WriteTo: %v", err)
-	}
-	t.Logf("WriteTo: %s", buf.String())
 }
 
 func TestGetFdf(t *testing.T) {
@@ -37,8 +34,10 @@ func TestGetFdf(t *testing.T) {
 	}
 	defer os.RemoveAll(Workdir)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	s := time.Now()
-	fp1, err := getFdf("testdata/f1040.pdf")
+	fp1, err := getFdf(ctx, "testdata/f1040.pdf")
+	cancel()
 	t.Logf("PDF -> FDF vanilla route: %s", time.Since(s))
 	if err != nil {
 		t.Errorf("getFdf: %v", err)
@@ -51,8 +50,10 @@ func TestGetFdf(t *testing.T) {
 		t.Errorf("WriteTo1: %v", err)
 	}
 
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	s = time.Now()
-	fp2, err := getFdf("testdata/f1040.pdf")
+	fp2, err := getFdf(ctx, "testdata/f1040.pdf")
+	cancel()
 	t.Logf("gob -> FDF route: %s", time.Since(s))
 	if err != nil {
 		t.Errorf("getFdf2: %v", err)

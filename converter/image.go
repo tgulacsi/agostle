@@ -1,4 +1,4 @@
-// Copyright 2013 The Agostle Authors. All rights reserved.
+// Copyright 2017 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -7,7 +7,6 @@ package converter
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -105,7 +104,7 @@ func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType,
 	cmd.Stdin = r
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	if err = cmd.Run(); err != nil {
 		return errors.Wrapf(err, "%q", cmd.Args)
 	}
 	if tfh, err = os.Open(fn); err != nil {
@@ -151,7 +150,7 @@ func PdfToImageGm(ctx context.Context, w io.Writer, r io.Reader, contentType, si
 	//cmd.Stdout = &filterFirstLines{Beginning: []string{"Can't find ", "Warning: "}, Writer: w}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	if err = cmd.Run(); err != nil {
 		return errors.Wrapf(err, "%q", cmd.Args)
 	}
 	fn := tfh.Name()
@@ -165,13 +164,4 @@ func PdfToImageGm(ctx context.Context, w io.Writer, r io.Reader, contentType, si
 	_ = tfh.Close()
 	_ = os.Remove(fn)
 	return err
-}
-
-func fitImageFile(ctx context.Context, dst, src string, width, height int) error {
-	cmd := command(ctx, *ConfGm, "convert", src, "-density", "300", "-resize", fmt.Sprintf("%dx%d", width, height), dst)
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "%q", cmd.Args)
-	}
-	return nil
 }

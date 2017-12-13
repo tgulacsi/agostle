@@ -1,4 +1,4 @@
-// Copyright 2013 The Agostle Authors. All rights reserved.
+// Copyright 2017 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -39,9 +39,9 @@ func TestFixXMLCharset(t *testing.T) {
 		`<?xml version="1.0" charset="utf-8" ?>` + want[22:],
 		`<?xml version="1.0" charset="iso-8859-2" ?><!DOCTYPE html><p>` + string([]rune{225}) + "</p></html>",
 	} {
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		b, err := ioutil.ReadAll(fixXMLCharset(ctx, strings.NewReader(elt)))
-		cancel()
+		subCtx, subCancel := context.WithTimeout(ctx, 10*time.Second)
+		b, err := ioutil.ReadAll(fixXMLCharset(subCtx, strings.NewReader(elt)))
+		subCancel()
 		if err != nil {
 			t.Errorf("%d. read: %v", i, err)
 			continue

@@ -1,4 +1,4 @@
-// Copyright 2013 The Agostle Authors. All rights reserved.
+// Copyright 2017 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -10,7 +10,6 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/gob"
-	"encoding/xml"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -47,7 +46,7 @@ func PdfPageNum(ctx context.Context, srcfn string) (numberofpages int, err error
 	if numberofpages, _, err = pdfPageNum(ctx, srcfn); err == nil {
 		return
 	}
-	if err := PdfClean(ctx, srcfn); err != nil {
+	if err = PdfClean(ctx, srcfn); err != nil {
 		Log("msg", "ERROR PdfClean", "file", srcfn, "error", err)
 	}
 	numberofpages, _, err = pdfPageNum(ctx, srcfn)
@@ -98,7 +97,7 @@ func pdfPageNum(ctx context.Context, srcfn string) (numberofpages int, encrypted
 
 // PdfSplit splits pdf to pages, returns those filenames
 func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error) {
-	if err := ctx.Err(); err != nil {
+	if err = ctx.Err(); err != nil {
 		return nil, err
 	}
 	if n, e := PdfPageNum(ctx, srcfn); err != nil {
@@ -442,35 +441,6 @@ func PdfDumpFields(ctx context.Context, inpfn string) ([]string, error) {
 	return fields, nil
 }
 
-type xfdf struct {
-	Fields []string
-	Values map[string]string
-}
-
-func (xf xfdf) WriteTo(w io.Writer) (int64, error) {
-	cew := &countErrWriter{w: w}
-	if _, err := io.WriteString(cew, `<?xml version="1.0" encoding="UTF-8"?>
-<xfdf xmlns="http://ns.adobe.com/xfdf/" xml:space="preserve">
-   <fields>
-`); err != nil {
-		return cew.n, err
-	}
-
-	for _, key := range xf.Fields {
-		io.WriteString(cew, `		<field name="`)
-		cew.err = xml.EscapeText(cew, []byte(key))
-		io.WriteString(cew, `"><value>`)
-		cew.err = xml.EscapeText(cew, []byte(""))
-		io.WriteString(cew, "</value></field>\n")
-		if cew.err != nil {
-			return cew.n, cew.err
-		}
-	}
-	io.WriteString(cew, `	</fields>
-</xfdf>`)
-	return cew.n, cew.err
-}
-
 // PdfDumpFdf dumps the FDF from the given PDF.
 func PdfDumpFdf(ctx context.Context, destfn, inpfn string) error {
 	if err := call(ctx, *ConfPdftk, inpfn, "generate_fdf", "output", destfn); err != nil {
@@ -512,7 +482,7 @@ func getFdf(ctx context.Context, inpfn string) (fieldParts, error) {
 		return fp, err
 	}
 	fdfFn := filepath.Join(Workdir, base64.URLEncoding.EncodeToString(hsh.Sum(nil))+".fdf")
-	if f, err := os.Open(fdfFn + ".gob"); err == nil {
+	if f, gobErr := os.Open(fdfFn + ".gob"); gobErr == nil {
 		err = gob.NewDecoder(f).Decode(&fp)
 		f.Close()
 		if err == nil {
@@ -521,10 +491,10 @@ func getFdf(ctx context.Context, inpfn string) (fieldParts, error) {
 		Log("msg", "decoding", "file", f.Name(), "error", err)
 	}
 
-	fdf, err := ioutil.ReadFile(fdfFn)
-	if err != nil {
-		if _, ok := err.(*os.PathError); !ok {
-			Log("msg", "cannot read fdf %q: %v", fdfFn, err)
+	fdf, fdfErr := ioutil.ReadFile(fdfFn)
+	if fdfErr != nil {
+		if _, ok := fdfErr.(*os.PathError); !ok {
+			Log("msg", "cannot read fdf %q: %v", fdfFn, fdfErr)
 			os.Remove(fdfFn)
 		} else {
 			fillFdfMu.Lock()

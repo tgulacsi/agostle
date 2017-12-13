@@ -1,4 +1,4 @@
-// Copyright 2013 The Agostle Authors. All rights reserved.
+// Copyright 2017 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -29,6 +29,7 @@ import (
 
 	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/temp"
 
@@ -54,7 +55,7 @@ func newHTTPServer(address string, saveReq bool) *graceful.Server {
 
 	mux := http.DefaultServeMux
 	//mux.Handle("/debug/pprof", pprof.Handler)
-	mux.Handle("/metrics", prometheus.Handler())
+	mux.Handle("/metrics", promhttp.Handler())
 
 	H := func(path string, handleFunc http.HandlerFunc) {
 		mux.HandleFunc(path,
@@ -277,8 +278,8 @@ func getLogger(ctx context.Context) log.Logger {
 	if ctx == nil {
 		return logger
 	}
-	if logger, ok := ctx.Value("logger").(log.Logger); ok {
-		return logger
+	if lgr, ok := ctx.Value("logger").(log.Logger); ok {
+		return lgr
 	}
 	return logger
 }

@@ -1,4 +1,4 @@
-// Copyright 2013 The Agostle Authors. All rights reserved.
+// Copyright 2017 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -225,7 +225,7 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 					}
 				}
 				buf.Reset()
-				if err := html.Render(&buf, img); err != nil {
+				if err = html.Render(&buf, img); err != nil {
 					Log("msg", "html.Render", "img", img, "error", err)
 					continue
 				}

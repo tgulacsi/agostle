@@ -1,4 +1,4 @@
-// Copyright 2013 The Agostle Authors. All rights reserved.
+// Copyright 2017 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -102,13 +102,13 @@ func main() {
 		converter.LeaveTempFiles = leaveTempFiles
 		converter.Concurrency = concurrency
 		if configFile == "" {
-			if self, err := osext.Executable(); err != nil {
-				Log("msg", "Cannot determine executable file name", "error", err)
+			if self, execErr := osext.Executable(); execErr != nil {
+				Log("msg", "Cannot determine executable file name", "error", execErr)
 			} else {
 				ini := filepath.Join(filepath.Dir(self), "agostle.ini")
-				f, err := os.Open(ini)
-				if err != nil {
-					Log("msg", "Cannot open config", "file", ini, "error", err)
+				f, iniErr := os.Open(ini)
+				if iniErr != nil {
+					Log("msg", "Cannot open config", "file", ini, "error", iniErr)
 				} else {
 					_ = f.Close()
 					configFile = ini
@@ -116,7 +116,7 @@ func main() {
 			}
 		}
 		Log("msg", "Loading config", "file", configFile)
-		if err := converter.LoadConfig(ctx, configFile); err != nil {
+		if err = converter.LoadConfig(ctx, configFile); err != nil {
 			Log("msg", "Parsing config", "file", configFile, "error", err)
 			os.Exit(1)
 		}

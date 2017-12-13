@@ -1,4 +1,4 @@
-// Copyright 2013 The Agostle Authors. All rights reserved.
+// Copyright 2017 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -69,9 +69,7 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 	rch := make(chan maybeArchItems, len(files))
 	tbz := make([]ArchFileItem, 0, 2*len(files))
 	if !split && imgmime == "" {
-		for _, a := range files {
-			tbz = append(tbz, a)
-		}
+		tbz = append(tbz, files...)
 	} else {
 		fts := make([]string, len(files))
 		for i, a := range files {
@@ -284,15 +282,14 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 	work := func() {
 		defer ConcLimit.Release(ConcLimit.Acquire())
 		defer workWg.Done()
-		var err error
 		for args := range workch {
-			err = PdfToImage(ctx, args.w, args.r, args.mime, args.size)
-			if e := args.w.Close(); e != nil && err == nil {
-				err = e
+			imErr := PdfToImage(ctx, args.w, args.r, args.mime, args.size)
+			if e := args.w.Close(); e != nil && imErr == nil {
+				imErr = e
 			}
 			_ = args.r.Close()
-			if err != nil {
-				errch <- err
+			if imErr != nil {
+				errch <- imErr
 			} else {
 				imgfnsMtx.Lock()
 				imgfilenames = append(imgfilenames, args.name)
@@ -357,7 +354,6 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 				if _, params, _ := mime.ParseMediaType(
 					mp.Header.Get("Content-Disposition"),
 				); params != nil {
-					var n int
 					s := params["size"]
 					if s != "" {
 						n, _ = strconv.Atoi(s)
@@ -424,7 +420,7 @@ func MailToPdfFiles(ctx context.Context, r io.Reader) (files []ArchFileItem, err
 
 	hshS := base64.URLEncoding.EncodeToString(hsh.Sum(nil))
 	ctx, _ = prepareContext(ctx, hshS)
-	if _, err := br.Seek(0, 0); err != nil {
+	if _, err = br.Seek(0, 0); err != nil {
 		return nil, err
 	}
 	r = br
@@ -444,7 +440,7 @@ func MailToPdfFiles(ctx context.Context, r io.Reader) (files []ArchFileItem, err
 	worker := func() {
 		defer workWg.Done()
 		for mp := range partch {
-			if err := convertPart(ctx, mp, resultch); err != nil {
+			if err = convertPart(ctx, mp, resultch); err != nil {
 				errch <- err
 			}
 		}
@@ -561,18 +557,18 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 	upr := make([]string, 4)
 
 	mpName := func(mp i18nmail.MailPart) string {
-		fn := mp.Header.Get("X-FileName")
-		if fn == "" {
-			fn = "eml"
+		xfn := mp.Header.Get("X-FileName")
+		if xfn == "" {
+			xfn = "eml"
 		}
 		return fmt.Sprintf("%03d.%s.%s", mp.Seq,
-			strings.Replace(mp.ContentType, "/", "--", -1), fn)
+			strings.Replace(mp.ContentType, "/", "--", -1), xfn)
 	}
 
 	if err = os.MkdirAll(outdir, 0750); err != nil {
 		return errors.Wrapf(err, "MailToTree(%q)", outdir)
 	}
-	partch := make(chan i18nmail.MailPart, 0)
+	partch := make(chan i18nmail.MailPart)
 	errch := make(chan error, 128)
 	go SlurpMail(ctx, partch, errch, r)
 
@@ -679,8 +675,9 @@ func ExtractingFilter(ctx context.Context,
 		)
 		body := part.Body
 		if part.ContentType == "application/x-ole-storage" {
-			r, err := NewOLEStorageReader(ctx, body)
-			if err != nil {
+			r, oleErr := NewOLEStorageReader(ctx, body)
+			if oleErr != nil {
+				err = oleErr
 				goto Error
 			}
 			child := part.Spawn()
@@ -711,15 +708,15 @@ func ExtractingFilter(ctx context.Context,
 			goto Error
 		}
 		for i, z := range zr.List() {
-			rc, err := z.Open()
-			if err != nil {
-				Log("msg", "open zip element", "i", i, "error", err)
+			rc, zErr := z.Open()
+			if zErr != nil {
+				Log("msg", "open zip element", "i", i, "error", zErr)
 				continue
 			}
-			chunk, err := ioutil.ReadAll(rc)
+			chunk, cErr := ioutil.ReadAll(rc)
 			_ = rc.Close()
-			if err != nil {
-				Log("msg", "read zip element", "i", i, "error", err)
+			if cErr != nil {
+				Log("msg", "read zip element", "i", i, "error", cErr)
 				continue
 			}
 			child := part.Spawn()
@@ -744,15 +741,6 @@ func ExtractingFilter(ctx context.Context,
 	}
 }
 
-func min(x ...int) int {
-	a := x[0]
-	for i := 1; i < len(x); i++ {
-		if a > x[i] {
-			a = x[i]
-		}
-	}
-	return a
-}
 func max(x ...int) int {
 	a := x[0]
 	for i := 1; i < len(x); i++ {

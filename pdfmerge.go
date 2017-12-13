@@ -1,4 +1,4 @@
-// Copyright 2013 The Agostle Authors. All rights reserved.
+// Copyright 2017 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -88,7 +88,7 @@ func pdfMergeEP(ctx context.Context, request interface{}) (response interface{},
 	if err != nil {
 		return nil, err
 	}
-	if err := converter.PdfMerge(ctx, dst, filenames...); err != nil {
+	if err = converter.PdfMerge(ctx, dst, filenames...); err != nil {
 		Log("msg", "PdfMerge", "dst", dst, "filenames", filenames, "error", err)
 		return nil, err
 	}
