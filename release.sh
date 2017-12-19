@@ -31,6 +31,10 @@ for flavor in $FLAVORS; do
 	rsync -avz "${exe}" "$TUF/staged/targets/agostle/${flavor}"
 	(cd "$TUF" && tuf add "agostle/$flavor")
 done
-(cd "$TUF" tuf add agostle/)
+(cd "$TUF" && 
+tuf snapshot && 
+tuf timestamp &&
+tuf commit
+)
 
 rsync -avz --delete-after "$TUF/repository/" websrv3:/var/www/www.unosoft.hu/tuf/
