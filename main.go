@@ -24,9 +24,9 @@ import (
 	tufclient "github.com/flynn/go-tuf/client"
 	tufdata "github.com/flynn/go-tuf/data"
 	"github.com/go-kit/kit/log"
+	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/kardianos/osext"
-	"github.com/spf13/cobra"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/i18nmail"
 	"github.com/tgulacsi/go/loghlp/kitloghlp"
@@ -57,211 +57,203 @@ func init() {
 
 }
 
-func getListenAddr(args []string) string {
-	for _, x := range args {
-		if x == "" {
-			continue
-		}
-		return x
-	}
-	return *converter.ConfListenAddr
-}
-
-var agostleCmd = &cobra.Command{
-	Use:   "agostle",
-	Short: "agostle is an \"apostle\" which turns everything to PDF",
-}
-
 func main() {
+	if err := Main(); err != nil {
+		logger.Log("error", err)
+		os.Exit(1)
+	}
+}
+
+var app = kingpin.New("agostle", "agostle is an \"apostle\" which turns everything to PDF")
+var (
+	configFile, listenAddr string
+)
+
+func Main() error {
 	updateURL := defaultUpdateURL
 	var (
 		verbose, leaveTempFiles bool
 		concurrency             int
 		timeout                 time.Duration
-		configFile, logFile     string
+		logFile                 string
 	)
-	p := agostleCmd.PersistentFlags()
-	p.StringVarP(&updateURL, "update-url", "", updateURL, "URL to download updates from (with GOOS and GOARCH template vars)")
-	p.BoolVarP(&leaveTempFiles, "leave-tempfiles", "x", false, "leave tempfiles?")
-	p.BoolVarP(&verbose, "verbose", "v", false, "verbose logging")
-	p.IntVarP(&concurrency, "concurrency", "C", converter.Concurrency, "number of childs start in parallel")
-	p.DurationVar(&timeout, "timeout", 10*time.Minute, "timeout for external programs")
-	p.StringVarP(&configFile, "config", "c", "", "config file (TOML)")
-	p.StringVarP(&logFile, "logfile", "", "", "logfile")
+
+	app.Flag("update-url", "URL to download updates from (with GOOS and GOARCH template vars)").Default(updateURL).StringVar(&updateURL)
+	app.Flag("leave-tempfiles", "leave tempfiles?").Short('x').BoolVar(&leaveTempFiles)
+	app.Flag("verbose", "verbose logging").Short('v').BoolVar(&verbose)
+	app.Flag("concurrency", "number of childs start in parallel").Short('C').Default(strconv.Itoa(converter.Concurrency)).IntVar(&concurrency)
+	app.Flag("timeout", "timeout for external programs").Default("10m").DurationVar(&timeout)
+	app.Flag("config", "config file (TOML)").Short('c').ExistingFileVar(&configFile)
+	app.Flag("logfile", "logfile").StringVar(&logFile)
+
+	var updateRootJSON, updateRootKeys string
+	updateCmd := app.Command("update", "update binary to the latest release")
+	updateCmd.Flag("root-keys-string", "CONTENTS of root.json for TUF update").Default(defaultRootKeys).StringVar(&updateRootKeys)
+	updateCmd.Flag("root-keys-file", "PATH of root.json for TUF update").Default(updateRootJSON).StringVar(&updateRootJSON)
+
+	var savereq bool
+	var regularUpdates time.Duration
+	serveCmd := app.Command("server", "serve HTTP")
+	serveCmd.Flag("regular-updates", "do regular updates at this interval").DurationVar(&regularUpdates)
+	serveCmd.Flag("savereq", "save requests").BoolVar(&savereq)
+	serveCmd.Arg("addr", "addr.to.listen.on:port").Default("").StringVar(&listenAddr)
+
+	todo, err := app.Parse(os.Args[1:])
+	if err != nil {
+		return err
+	}
 
 	Log := logger.Log
 	var closeLogfile func() error
-	cobra.OnInitialize(func() {
-		var err error
-		if closeLogfile, err = logToFile(logFile); err != nil {
-			Log("error", err)
-			os.Exit(1)
-		}
-		if !verbose {
-			i18nmail.Debugf = nil
-		}
-		Log("leave_tempfiles?", leaveTempFiles)
-		converter.LeaveTempFiles = leaveTempFiles
-		converter.Concurrency = concurrency
-		if configFile == "" {
-			if self, execErr := osext.Executable(); execErr != nil {
-				Log("msg", "Cannot determine executable file name", "error", execErr)
+
+	if closeLogfile, err = logToFile(logFile); err != nil {
+		return err
+	}
+	if !verbose {
+		i18nmail.Debugf = nil
+	}
+	Log("leave_tempfiles?", leaveTempFiles)
+	converter.LeaveTempFiles = leaveTempFiles
+	converter.Concurrency = concurrency
+	if configFile == "" {
+		if self, execErr := osext.Executable(); execErr != nil {
+			Log("msg", "Cannot determine executable file name", "error", execErr)
+		} else {
+			ini := filepath.Join(filepath.Dir(self), "agostle.ini")
+			f, iniErr := os.Open(ini)
+			if iniErr != nil {
+				Log("msg", "Cannot open config", "file", ini, "error", iniErr)
 			} else {
-				ini := filepath.Join(filepath.Dir(self), "agostle.ini")
-				f, iniErr := os.Open(ini)
-				if iniErr != nil {
-					Log("msg", "Cannot open config", "file", ini, "error", iniErr)
-				} else {
-					_ = f.Close()
-					configFile = ini
-				}
+				_ = f.Close()
+				configFile = ini
 			}
 		}
-		Log("msg", "Loading config", "file", configFile)
-		if err = converter.LoadConfig(ctx, configFile); err != nil {
-			Log("msg", "Parsing config", "file", configFile, "error", err)
-			os.Exit(1)
+	}
+	Log("msg", "Loading config", "file", configFile)
+	if err = converter.LoadConfig(ctx, configFile); err != nil {
+		Log("msg", "Parsing config", "file", configFile, "error", err)
+		return err
+	}
+	if timeout > 0 && timeout != *converter.ConfChildTimeout {
+		Log("msg", "Setting timeout", "from", *converter.ConfChildTimeout, "to", timeout)
+		*converter.ConfChildTimeout = timeout
+	}
+	if closeLogfile == nil {
+		if closeLogfile, err = logToFile(*converter.ConfLogFile); err != nil {
+			Log("error", err)
 		}
-		if timeout > 0 && timeout != *converter.ConfChildTimeout {
-			Log("msg", "Setting timeout", "from", *converter.ConfChildTimeout, "to", timeout)
-			*converter.ConfChildTimeout = timeout
-		}
-		if closeLogfile == nil {
-			if closeLogfile, err = logToFile(*converter.ConfLogFile); err != nil {
-				Log("error", err)
-			}
-		}
+	}
 
-		sortBeforeMerge = *converter.ConfSortBeforeMerge
-		Log("msg", "commands",
-			"pdftk", *converter.ConfPdftk,
-			"loffice", *converter.ConfLoffice,
-			"gm", *converter.ConfGm,
-			"gs", *converter.ConfGs,
-			"pdfclean", *converter.ConfPdfClean,
-			"wkhtmltopdf", *converter.ConfWkhtmltopdf,
-		)
-		Log("msg", "parameters",
-			"sortBeforeMerge", sortBeforeMerge,
-			"workdir", converter.Workdir,
-			"listen", *converter.ConfListenAddr,
-			"childTimeout", *converter.ConfChildTimeout,
-			"defaultIsService", *converter.ConfDefaultIsService,
-			"logfile", *converter.ConfLogFile,
-		)
+	sortBeforeMerge = *converter.ConfSortBeforeMerge
+	Log("msg", "commands",
+		"pdftk", *converter.ConfPdftk,
+		"loffice", *converter.ConfLoffice,
+		"gm", *converter.ConfGm,
+		"gs", *converter.ConfGs,
+		"pdfclean", *converter.ConfPdfClean,
+		"wkhtmltopdf", *converter.ConfWkhtmltopdf,
+	)
+	Log("msg", "parameters",
+		"sortBeforeMerge", sortBeforeMerge,
+		"workdir", converter.Workdir,
+		"listen", *converter.ConfListenAddr,
+		"childTimeout", *converter.ConfChildTimeout,
+		"defaultIsService", *converter.ConfDefaultIsService,
+		"logfile", *converter.ConfLogFile,
+	)
 
-		updateURL = strings.NewReplacer("{{.GOOS}}", runtime.GOOS, "{{.GOARCH}}", runtime.GOARCH).Replace(updateURL)
-	})
+	updateURL = strings.NewReplacer("{{.GOOS}}", runtime.GOOS, "{{.GOARCH}}", runtime.GOARCH).Replace(updateURL)
+
 	if closeLogfile != nil {
 		defer func() {
 			Log("msg", "close log file", "error", closeLogfile())
 		}()
 	}
 
-	var updateRootJSON, updateRootKeys string
-	updateCmd := &cobra.Command{
-		Use:   "update",
-		Short: "update binary to the latest release",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			self, err := os.Executable()
+	switch todo {
+	case updateCmd.FullCommand():
+		self, err := os.Executable()
+		if err != nil {
+			return err
+		}
+		logger.Log("msg", "update", "from", updateURL)
+		remote, err := tufclient.HTTPRemoteStore(updateURL, nil)
+		if err != nil {
+			return err
+		}
+		var rootKeysSrc io.Reader = strings.NewReader(updateRootKeys)
+		if updateRootJSON != "" {
+			logger.Log("msg", "using root keys", "from", updateRootJSON)
+			b, err := ioutil.ReadFile(updateRootJSON)
 			if err != nil {
 				return err
 			}
-			logger.Log("msg", "update", "from", updateURL)
-			remote, err := tufclient.HTTPRemoteStore(updateURL, nil)
-			if err != nil {
-				return err
-			}
-			var rootKeysSrc io.Reader = strings.NewReader(updateRootKeys)
-			if updateRootJSON != "" {
-				logger.Log("msg", "using root keys", "from", updateRootJSON)
-				b, err := ioutil.ReadFile(updateRootJSON)
-				if err != nil {
-					return err
-				}
-				rootKeysSrc = bytes.NewReader(b)
-			}
-			var rootKeys []*tufdata.Key
-			if json.NewDecoder(rootKeysSrc).Decode(&rootKeys); err != nil {
-				return err
-			}
-			tc := tufclient.NewClient(tufclient.MemoryLocalStore(), remote)
-			if err := tc.Init(rootKeys, len(rootKeys)); err != nil {
-				return errors.Wrap(err, "Init")
-			}
-			targets, err := tc.Update()
-			if err != nil {
-				return errors.Wrap(err, "Update")
-			}
-			for f := range targets {
-				logger.Log("target", f)
-			}
-
-			destFh, err := os.Create(
-				filepath.Join(filepath.Dir(self), "."+filepath.Base(self)+".new"),
-			)
-			if err != nil {
-				return err
-			}
-			defer destFh.Close()
-			logger.Log("msg", "download", "to", destFh.Name())
-			dest := &downloadFile{File: destFh}
-			if err := tc.Download(
-				strings.Replace(strings.Replace(
-					"/agostle/{{GOOS}}_{{GOARCH}}",
-					"{{GOOS}}", runtime.GOOS, -1),
-					"{{GOARCH}}", runtime.GOARCH, -1),
-				dest,
-			); err != nil {
-				return errors.Wrap(err, "Download")
-			}
-			_ = os.Chmod(destFh.Name(), 0775)
-
-			old := filepath.Join(filepath.Dir(self), "."+filepath.Base(self)+".old")
-			logger.Log("msg", "rename", "from", self, "to", old)
-			if err := os.Rename(self, old); err != nil {
-				return err
-			}
-			logger.Log("msg", "rename", "from", destFh.Name(), "to", self)
-			if err := os.Rename(destFh.Name(), self); err != nil {
-				logger.Log("error", err)
-			} else {
-				os.Remove(old)
-			}
-
-			return nil
-		},
-	}
-	updateCmd.Flags().StringVarP(&updateRootKeys, "root-keys-string", "", defaultRootKeys, "CONTENTS of root.json for TUF update")
-	updateCmd.Flags().StringVarP(&updateRootJSON, "root-keys-file", "", updateRootJSON, "PATH of root.json for TUF update")
-	agostleCmd.AddCommand(updateCmd)
-
-	{
-		var savereq bool
-		var regularUpdates time.Duration
-
-		serveCmd := &cobra.Command{
-			Use:   "serve",
-			Short: "serve HTTP",
-			Long:  "serve [-savereq] addr.to.listen.on:port",
-			Run: func(cmd *cobra.Command, args []string) {
-				addr := getListenAddr(args)
-				Log("msg", newHTTPServer(addr, savereq).ListenAndServe())
-				os.Exit(1)
-			},
+			rootKeysSrc = bytes.NewReader(b)
+		}
+		var rootKeys []*tufdata.Key
+		if json.NewDecoder(rootKeysSrc).Decode(&rootKeys); err != nil {
+			return err
+		}
+		tc := tufclient.NewClient(tufclient.MemoryLocalStore(), remote)
+		if err := tc.Init(rootKeys, len(rootKeys)); err != nil {
+			return errors.Wrap(err, "Init")
+		}
+		targets, err := tc.Update()
+		if err != nil {
+			return errors.Wrap(err, "Update")
+		}
+		for f := range targets {
+			logger.Log("target", f)
 		}
 
-		serveCmd.Flags().DurationVar(&regularUpdates, "regular-updates", 0, "do regular updates at this interval")
-		serveCmd.Flags().BoolVar(&savereq, "savereq", false, "save requests")
-		agostleCmd.AddCommand(serveCmd)
-	}
+		destFh, err := os.Create(
+			filepath.Join(filepath.Dir(self), "."+filepath.Base(self)+".new"),
+		)
+		if err != nil {
+			return err
+		}
+		defer destFh.Close()
+		logger.Log("msg", "download", "to", destFh.Name())
+		dest := &downloadFile{File: destFh}
+		if err := tc.Download(
+			strings.Replace(strings.Replace(
+				"/agostle/{{GOOS}}_{{GOARCH}}",
+				"{{GOOS}}", runtime.GOOS, -1),
+				"{{GOARCH}}", runtime.GOARCH, -1),
+			dest,
+		); err != nil {
+			return errors.Wrap(err, "Download")
+		}
+		_ = os.Chmod(destFh.Name(), 0775)
 
-	logger.Log("args", os.Args)
-	if err := agostleCmd.Execute(); err != nil {
-		Log("error", err)
-		os.Exit(1)
+		old := filepath.Join(filepath.Dir(self), "."+filepath.Base(self)+".old")
+		logger.Log("msg", "rename", "from", self, "to", old)
+		if err := os.Rename(self, old); err != nil {
+			return err
+		}
+		logger.Log("msg", "rename", "from", destFh.Name(), "to", self)
+		if err := os.Rename(destFh.Name(), self); err != nil {
+			logger.Log("error", err)
+		} else {
+			os.Remove(old)
+		}
+
+		return nil
+
+	case serveCmd.FullCommand():
+		if listenAddr == "" {
+			listenAddr = *converter.ConfListenAddr
+		}
+
+		return errors.Wrap(
+			newHTTPServer(listenAddr, savereq).ListenAndServe(),
+			listenAddr)
+
 	}
+	return commands[todo](ctx)
 }
+
+var commands = make(map[string]func(context.Context) error)
 
 func logToFile(fn string) (func() error, error) {
 	if fn == "" {

@@ -6,14 +6,15 @@ package main
 
 import (
 	"io"
-	"os"
+	"strconv"
 	"strings"
 
 	"context"
 
 	"github.com/go-kit/kit/log"
-	"github.com/spf13/cobra"
+	"github.com/pkg/errors"
 	"github.com/tgulacsi/agostle/converter"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func mailToPdfZip(ctx context.Context, outfn, inpfn string, splitted bool, outimg string, imgsize string) error {
@@ -69,18 +70,20 @@ func outlookToEmail(ctx context.Context, outfn, inpfn string) error {
 }
 
 func init() {
-	Log := logger.Log
-	var out string
+	var inp, out string
+	withOutFlag := func(cmd *kingpin.CmdClause) {
+		cmd.Flag("out", "output file").Short('o').StringVar(&out)
+		cmd.Arg("inp", "input file").Default("-").StringVar(&inp)
+	}
 	{
 		var (
 			split   bool
 			outimg  string
 			imgsize = "640x640"
 		)
-		mailToPdfZipCmd := &cobra.Command{
-			Use:   "mail",
-			Short: "convert mail to zip of PDFs",
-			Long: `reads a message/rfc822 email, converts all of it to PDF files
+		mailToPdfZipCmd := app.Command("mail", `convert mail to zip of PDFs
+
+reads a message/rfc822 email, converts all of it to PDF files
 (including attachments), and outputs a zip file containing these pdfs,
 optionally splits the PDFs to separate pages, and converts these pages to images.
 
@@ -89,61 +92,35 @@ Usage:
 
 Examples:
 	mail2pdfzip -split --outimg=image/gif --imgsize=800x800 -o=/tmp/email.pdf.zip email.eml
-`,
-			Aliases: []string{"mail2pdfzip", "mail", "mailToPdfZip"},
-			Run: func(cmd *cobra.Command, args []string) {
-				fn := inpFromArgs(args)
-				if err := mailToPdfZip(ctx, out, fn, split, outimg, imgsize); err != nil {
-					Log("msg", "mailToPdfZip to", "out", out, "error", err)
-					os.Exit(1)
-				}
-			},
+`).Alias("mail2pdfzip").Alias("mail").Alias("mailToPdfZip")
+
+		withOutFlag(mailToPdfZipCmd)
+		mailToPdfZipCmd.Flag("split", "split PDF to pages").BoolVar(&split)
+		mailToPdfZipCmd.Flag("save-original-html", "save original html").Default(strconv.FormatBool(converter.SaveOriginalHTML)).BoolVar(&converter.SaveOriginalHTML)
+		mailToPdfZipCmd.Flag("outimg", "output image format").StringVar(&outimg)
+		mailToPdfZipCmd.Flag("imgsize", "image size").Default("640x480").StringVar(&imgsize)
+		commands[mailToPdfZipCmd.FullCommand()] = func(ctx context.Context) error {
+			return errors.WithMessage(
+				mailToPdfZip(ctx, out, inp, split, outimg, imgsize),
+				"mailToPdfZip out="+out)
 		}
-		f := mailToPdfZipCmd.Flags()
-		f.StringVarP(&out, "out", "o", "", "output file")
-		f.BoolVar(&split, "split", false, "split PDF to pages")
-		f.BoolVar(&converter.SaveOriginalHTML, "save-original-html", converter.SaveOriginalHTML, "save original html")
-		f.StringVar(&outimg, "outimg", "", "output image format")
-		f.StringVar(&imgsize, "imgsize", "640x640", "image size")
-		agostleCmd.AddCommand(mailToPdfZipCmd)
 	}
 
-	mailToTreeCmd := &cobra.Command{
-		Use:   "mail2tree",
-		Short: "extract mail tree to a directory",
-		Run: func(cmd *cobra.Command, args []string) {
-			fn := inpFromArgs(args)
-			if err := mailToTree(ctx, out, fn); err != nil {
-				Log("msg", "mailToTree", "out", out, "fn", fn, "error", err)
-				os.Exit(1)
-				os.Exit(1)
-			}
-		},
+	mailToTreeCmd := app.Command("mail2tree", "extract mail tree to a directory")
+	withOutFlag(mailToTreeCmd)
+	commands[mailToTreeCmd.FullCommand()] = func(ctx context.Context) error {
+		return errors.WithMessage(
+			mailToTree(ctx, out, inp),
+			"mailToTree out="+out)
 	}
-	mailToTreeCmd.Flags().StringVarP(&out, "out", "o", "", "output file")
-	agostleCmd.AddCommand(mailToTreeCmd)
 
-	outlookToEmailCmd := &cobra.Command{
-		Use:     "outlook2email",
-		Short:   "convert outlook .msg to standard .eml",
-		Long:    "uses libemail-outlook-message-perl if installed, or docker to install && run that script",
-		Aliases: []string{"msg2eml"},
-		Run: func(cmd *cobra.Command, args []string) {
-			fn := inpFromArgs(args)
-			if err := outlookToEmail(ctx, out, fn); err != nil {
-				Log("msg", "outlookToEmail", "out", out, "fn", fn, "error", err)
-				os.Exit(1)
-				os.Exit(1)
-			}
-		},
-	}
-	outlookToEmailCmd.Flags().StringVarP(&out, "out", "o", "", "output file")
-	agostleCmd.AddCommand(outlookToEmailCmd)
-}
+	outlookToEmailCmd := app.Command("outlook2email", `convert outlook .msg to standard .eml
 
-func inpFromArgs(args []string) string {
-	if len(args) > 0 {
-		return args[0]
+uses libemail-outlook-message-perl if installed, or docker to install && run that script`).Alias("msg2eml")
+	withOutFlag(outlookToEmailCmd)
+	commands[outlookToEmailCmd.FullCommand()] = func(ctx context.Context) error {
+		return errors.WithMessage(
+			outlookToEmail(ctx, out, inp),
+			"outlookToEmail out="+out)
 	}
-	return "-"
 }

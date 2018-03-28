@@ -7,6 +7,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"strings"
 	"time"
@@ -14,7 +15,7 @@ import (
 	"gopkg.in/tylerb/graceful.v1"
 
 	"github.com/kardianos/service"
-	"github.com/spf13/cobra"
+	"github.com/pkg/errors"
 	"github.com/tgulacsi/agostle/converter"
 )
 
@@ -26,18 +27,14 @@ const exeName = "agostle.exe"
 func init() {
 	topCmd = []string{"tasklist", "/v", "/fi", "USERNAME eq " + os.Getenv("USER")}
 
-	serviceCmd := &cobra.Command{
-		Use: "service",
-	}
-	agostleCmd.AddCommand(serviceCmd)
+	serviceCmd := app.Command("service", "manage Windows service")
 
 	addcmd := func(todo string) {
-		serviceCmd.AddCommand(&cobra.Command{
-			Use: todo,
-			Run: func(cmd *cobra.Command, args []string) {
-				doServiceWindows(todo, args)
-			},
-		})
+		cmd := serviceCmd.Command(todo, todo+" service")
+		args := cmd.Arg("args", "arguments").Strings()
+		commands[cmd.FullCommand()] = func(ctx context.Context) error {
+			return doServiceWindows(todo, *args)
+		}
 	}
 	for _, todo := range []string{"install", "remove", "run", "start", "stop"} {
 		addcmd(todo)
@@ -61,7 +58,7 @@ func (p *program) Start(S service.Service) error {
 }
 
 func (p *program) run() {
-	p.Server = newHTTPServer(getListenAddr(nil), false)
+	p.Server = newHTTPServer(listenAddr, false)
 	logger.Log("msg", "run")
 	if err := p.Server.ListenAndServe(); err != nil {
 		logger.Log("error", err)
@@ -78,7 +75,7 @@ func (p *program) Stop(S service.Service) error {
 	return nil
 }
 
-func doServiceWindows(todo string, args []string) {
+func doServiceWindows(todo string, args []string) error {
 	if todo == "" {
 		todo = "run"
 	}
@@ -90,11 +87,6 @@ func doServiceWindows(todo string, args []string) {
 	var capShort = strings.ToUpper(short[:1]) + short[1:]
 	var name = capShort + " HTTP service"
 
-	configFile, err := agostleCmd.PersistentFlags().GetString("config")
-	if err != nil {
-		logger.Log("msg", "get config file", "error", err)
-		os.Exit(1)
-	}
 	p := &program{}
 	s, err := service.New(p, &service.Config{
 		Name:             short,
@@ -104,13 +96,11 @@ func doServiceWindows(todo string, args []string) {
 		WorkingDirectory: converter.Workdir,
 	})
 	if err != nil {
-		logger.Log("msg", "unable to start", "service", name, "error", err)
-		os.Exit(1)
+		return errors.Wrap(err, "start service "+name)
 	}
 	errs := make(chan error, 5)
 	if p.Logger, err = s.Logger(errs); err != nil {
-		logger.Log("msg", "get logger", "error", err)
-		os.Exit(1)
+		return errors.Wrap(err, "get logger")
 	}
 	go func() {
 		for err := range errs {
@@ -124,39 +114,35 @@ func doServiceWindows(todo string, args []string) {
 	switch todo {
 	case "install":
 		if err = s.Install(); err != nil {
-			logger.Log("msg", "Failed to install", "error", err)
-			os.Exit(1)
+			return errors.Wrap(err, "install")
 		}
 		logger.Log("msg", "Service "+name+" installed.")
 	case "remove":
 		if err = s.Uninstall(); err != nil {
-			logger.Log("msg", "Failed to remove", "error", err)
-			os.Exit(1)
+			return errors.Wrap(err, "remove")
 		}
 		logger.Log("msg", "Service "+name+" removed.")
 	case "run":
 		logger.Log("msg", "running", "service", name)
 		if err = s.Run(); err != nil {
-			logger.Log("msg", "Running service "+name+" failed.", "error", err)
+			err = errors.Wrap(err, "run "+name)
 			if p.Logger != nil {
 				_ = p.Logger.Error(name + " failed: " + err.Error())
 			}
-			os.Exit(1)
+			return err
 		}
 	case "start":
 		if err = s.Start(); err != nil {
-			logger.Log("msg", "Failed to start", "error", err)
-			os.Exit(1)
+			return errors.Wrap(err, "start "+name)
 		}
 		logger.Log("msg", "Service "+name+" started.")
 	case "stop":
 		if err = s.Stop(); err != nil {
-			logger.Log("msg", "Failed to stop", "error", err)
-			os.Exit(1)
+			return errors.Wrap(err, "stop "+name)
 		}
 		logger.Log("msg", "Service "+name+" stopped.")
 	default:
-		logger.Log("msg", "unknown service "+todo)
-		os.Exit(1)
+		return errors.New("unknown service " + todo)
 	}
+	return nil
 }

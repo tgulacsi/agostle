@@ -139,17 +139,6 @@ func dumpRequest(ctx context.Context, req *http.Request) context.Context {
 	return ctx
 }
 
-// startHTTPServerListener starts the server on the address, and NEVER RETURNS!
-func startHTTPServerListener(listener net.Listener, saveReq bool) {
-	s := newHTTPServer("", saveReq)
-	Log := logger.Log
-	Log("msg", "Start listening on", "listener", listener)
-	if err := s.Serve(listener); err != nil {
-		Log("msg", "Serve", "error", err)
-		os.Exit(1)
-	}
-}
-
 func adminStopHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Refresh", "3;URL=/")
 	w.WriteHeader(200)

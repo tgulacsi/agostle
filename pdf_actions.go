@@ -5,7 +5,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,125 +13,94 @@ import (
 
 	"context"
 
-	"github.com/spf13/cobra"
+	"github.com/pkg/errors"
 	"github.com/tgulacsi/agostle/converter"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func init() {
 
-	pdfCmd := &cobra.Command{
-		Use: "pdf",
-	}
-	agostleCmd.AddCommand(pdfCmd)
+	pdfCmd := app.Command("pdf", "pdf commands")
 
-	Log := logger.Log
 	var out string
+	withOutFlag := func(cmd *kingpin.CmdClause) {
+		cmd.Flag("out", "output file").Short('o').StringVar(&out)
+	}
 	{
 		var sort bool
-		mergeCmd := &cobra.Command{
-			Use:   "merge",
-			Short: "merges the given PDFs into one",
-			Long: `Usage:
-	[globalopts] pdf_merge [-sort] [-o=/dest/merged.pdf] lot of pdf files
-
-Example:
-	-o=/dest/merged.pdf *.pdf", "-o=/dest/merged.pdf -split 2.pdf 1.pdf
-`,
-			Aliases: []string{"pdf_merge"},
-			Run: func(cmd *cobra.Command, args []string) {
-				if err := mergePdf(out, args, sort); err != nil {
-					Log("msg", "mergePdf", "out", out, "sort", sort, "args", args, "error", err)
-					os.Exit(1)
+		mergeCmd := pdfCmd.Command("merge", "merges the given PDFs into one").
+			Alias("pdf_merge").Alias("pdfmerge")
+		withOutFlag(mergeCmd)
+		mergeCmd.Flag("sort", "shall we sort the files by name before merge?").BoolVar(&sort)
+		mergeInp := mergeCmd.Arg("inp", "input files").Strings()
+		commands[mergeCmd.FullCommand()] = func(ctx context.Context) error {
+			for i, s := range *mergeInp {
+				if s == "" {
+					(*mergeInp)[i] = "-"
 				}
-			},
+			}
+			return errors.WithMessage(
+				mergePdf(out, *mergeInp, sort),
+				fmt.Sprintf("mergePDF out=%q sort=%v inp=%q", out, sort, mergeInp))
 		}
-		mergeCmd.Flags().StringVarP(&out, "out", "o", "", "output file")
-		mergeCmd.Flags().BoolVar(&sort, "sort", false, "shall we sort the files by name before merge?")
-		agostleCmd.AddCommand(mergeCmd)
-		pdfCmd.AddCommand(mergeCmd)
 	}
 
-	splitCmd := &cobra.Command{
-		Use:     "split",
-		Short:   "splits the given PDF into one per page",
-		Aliases: []string{"pdf_split"},
-		Run: func(cmd *cobra.Command, args []string) {
-			fn := inpFromArgs(args)
-			if err := splitPdfZip(ctx, out, fn); err != nil {
-				Log("msg", "splitPdfZip", "out", out, "fn", fn, "error", err)
-				os.Exit(1)
-			}
-		},
+	splitCmd := pdfCmd.Command("split", "splits the given PDF into one per page").
+		Alias("pdf_split")
+	withOutFlag(splitCmd)
+	splitInp := splitCmd.Arg("inp", "input file").Default("-").String()
+	commands[splitCmd.FullCommand()] = func(ctx context.Context) error {
+		if *splitInp == "" {
+			*splitInp = "-"
+		}
+		return errors.WithMessage(
+			splitPdfZip(ctx, out, *splitInp),
+			fmt.Sprintf("splitPdfZip out=%q inp=%q", out, *splitInp))
 	}
-	splitCmd.Flags().StringVarP(&out, "out", "o", "", "output file")
-	agostleCmd.AddCommand(splitCmd)
-	pdfCmd.AddCommand(splitCmd)
 
-	countCmd := &cobra.Command{
-		Use:     "count",
-		Short:   "prints the number of pages in the given pdf",
-		Aliases: []string{"pdf_count"},
-		Long:    `[globalopts] pdf_count multipage.pdf`,
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := countPdf(ctx, args[0]); err != nil {
-				Log("msg", "countPdf", "fn", args[0], "error", err)
-				os.Exit(1)
-			}
-		},
+	countCmd := pdfCmd.Command("count", "prints the number of pages in the given pdf").
+		Alias("pdf_count").Alias("pagecount").Alias("pageno")
+	countInp := countCmd.Arg("inp", "input file").String()
+	commands[countCmd.FullCommand()] = func(ctx context.Context) error {
+		return errors.WithMessage(
+			countPdf(ctx, *countInp),
+			"countPdf inp="+*countInp)
 	}
-	agostleCmd.AddCommand(countCmd)
-	pdfCmd.AddCommand(countCmd)
 
-	cleanCmd := &cobra.Command{
-		Use:     "clean",
-		Aliases: []string{"pdf_clean"},
-		Short:   "clean PDF from encryption",
-		Long:    `Usage: [-o=/dest/file.pdf] dirty.pdf`,
-		Run: func(cmd *cobra.Command, args []string) {
-			fn := inpFromArgs(args)
-			if err := cleanPdf(ctx, out, fn); err != nil {
-				Log("msg", "cleanPdf", "out", out, "fn", fn, "error", err)
-				os.Exit(1)
-			}
-		},
+	cleanCmd := pdfCmd.Command("clean", "clean PDF from encryption").
+		Alias("pdf_clean")
+	withOutFlag(cleanCmd)
+	cleanInp := cleanCmd.Arg("inp", "input file").String()
+	commands[countCmd.FullCommand()] = func(ctx context.Context) error {
+		return errors.WithMessage(
+			cleanPdf(ctx, out, *cleanInp),
+			fmt.Sprintf("cleanPdf out=%q inp=%q", out, *cleanInp))
 	}
-	cleanCmd.Flags().StringVarP(&out, "out", "o", "-", "output filename")
-	agostleCmd.AddCommand(cleanCmd)
-	pdfCmd.AddCommand(cleanCmd)
 
 	{
 		var mime string
-		topdfCmd := &cobra.Command{
-			Use:   "topdf",
-			Short: "tries to convert the given file (you can specify its mime-type) to PDF",
-			Long:  `[globalopts] [-mime=input-mime/type] [-o=output.pdf] input.something`,
-			Run: func(cmd *cobra.Command, args []string) {
-				fn := inpFromArgs(args)
-				if err := toPdf(out, fn, mime); err != nil {
-					Log("msg", "topdf", "out", out, "fn", fn, "mime", mime, "error", err)
-					os.Exit(1)
-				}
-			},
+		topdfCmd := pdfCmd.Command("topdf", "tries to convert the given file (you can specify its mime-type) to PDF")
+		withOutFlag(topdfCmd)
+		topdfCmd.Flag("mime", "input mimetype").Default("application/octet-stream").StringVar(&mime)
+		topdfInp := topdfCmd.Arg("inp", "input file").String()
+		commands[topdfCmd.FullCommand()] = func(ctx context.Context) error {
+			return errors.WithMessage(
+				toPdf(out, *topdfInp, mime),
+				fmt.Sprintf("topdf out=%q inp=%q mime=%q", out, *topdfInp, mime))
 		}
-		topdfCmd.Flags().StringVarP(&out, "out", "o", "-", "output file")
-		topdfCmd.Flags().StringVar(&mime, "mime", "application/octet-stream", "input mimetype")
-		agostleCmd.AddCommand(topdfCmd)
 	}
 
-	fillPdfCmd := &cobra.Command{
-		Use:     "fill [-o output] input.pdf key1=value1 key2=value2...",
-		Short:   "fill PDF form",
-		Aliases: []string{"pdf_fill", "fill_form", "pdf_fill_form"},
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := fillFdf(ctx, out, args[0], args[1:]...); err != nil {
-				Log("msg", "fillPdf", "out", out, "args", args, "error", err)
-				os.Exit(1)
-			}
-		},
+	fillPdfCmd := pdfCmd.Command("fill", `fill PDF form
+input.pdf key1=value1 key2=value2...`).
+		Alias("pdf_fill").Alias("fill_form").Alias("pdf_fill_form")
+	withOutFlag(fillPdfCmd)
+	fillInp := fillPdfCmd.Arg("inp", "input file").String()
+	fillKeyvals := fillPdfCmd.Arg("keyvals", "key1=val1, key2=val2...").Strings()
+	commands[fillPdfCmd.FullCommand()] = func(ctx context.Context) error {
+		return errors.WithMessage(
+			fillFdf(ctx, out, *fillInp, *fillKeyvals...),
+			fmt.Sprintf("fillPdf out=%q inp=%q keyvals=%q", out, *fillInp, *fillKeyvals))
 	}
-	fillPdfCmd.Flags().StringVarP(&out, "out", "o", "-", "output file")
-	agostleCmd.AddCommand(fillPdfCmd)
-	pdfCmd.AddCommand(fillPdfCmd)
 }
 
 func splitPdfZip(ctx context.Context, outfn, inpfn string) error {
