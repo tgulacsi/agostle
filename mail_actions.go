@@ -92,7 +92,7 @@ Usage:
 
 Examples:
 	mail2pdfzip -split --outimg=image/gif --imgsize=800x800 -o=/tmp/email.pdf.zip email.eml
-`).Alias("mail2pdfzip").Alias("mail").Alias("mailToPdfZip")
+`).Alias("mail2pdfzip").Alias("mailToPdfZip")
 
 		withOutFlag(mailToPdfZipCmd)
 		mailToPdfZipCmd.Flag("split", "split PDF to pages").BoolVar(&split)

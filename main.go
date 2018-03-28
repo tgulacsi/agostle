@@ -250,7 +250,11 @@ func Main() error {
 			listenAddr)
 
 	}
-	return commands[todo](ctx)
+	f, ok := commands[todo]
+	if !ok {
+		return errors.New("unknown command " + todo)
+	}
+	return f(ctx)
 }
 
 var commands = make(map[string]func(context.Context) error)

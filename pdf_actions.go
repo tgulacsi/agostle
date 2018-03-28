@@ -71,7 +71,7 @@ func init() {
 		Alias("pdf_clean")
 	withOutFlag(cleanCmd)
 	cleanInp := cleanCmd.Arg("inp", "input file").String()
-	commands[countCmd.FullCommand()] = func(ctx context.Context) error {
+	commands[cleanCmd.FullCommand()] = func(ctx context.Context) error {
 		return errors.WithMessage(
 			cleanPdf(ctx, out, *cleanInp),
 			fmt.Sprintf("cleanPdf out=%q inp=%q", out, *cleanInp))
