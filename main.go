@@ -93,7 +93,7 @@ func Main() error {
 
 	var savereq bool
 	var regularUpdates time.Duration
-	serveCmd := app.Command("server", "serve HTTP")
+	serveCmd := app.Command("server", "serve HTTP").Alias("serve")
 	serveCmd.Flag("regular-updates", "do regular updates at this interval").DurationVar(&regularUpdates)
 	serveCmd.Flag("savereq", "save requests").BoolVar(&savereq)
 	serveCmd.Arg("addr", "addr.to.listen.on:port").Default("").StringVar(&listenAddr)
@@ -184,9 +184,9 @@ func Main() error {
 		var rootKeysSrc io.Reader = strings.NewReader(updateRootKeys)
 		if updateRootJSON != "" {
 			logger.Log("msg", "using root keys", "from", updateRootJSON)
-			b, err := ioutil.ReadFile(updateRootJSON)
-			if err != nil {
-				return err
+			b, readErr := ioutil.ReadFile(updateRootJSON)
+			if readErr != nil {
+				return readErr
 			}
 			rootKeysSrc = bytes.NewReader(b)
 		}
