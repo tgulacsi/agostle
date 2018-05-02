@@ -20,11 +20,12 @@ import (
 
 	"context"
 
-	"bitbucket.org/taruti/mimemagic"
 	"github.com/go-kit/kit/log"
 	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/iohlp"
 	"golang.org/x/net/html"
+	"gopkg.in/h2non/filetype.v1"
+	"gopkg.in/h2non/filetype.v1/types"
 )
 
 var ErrSkip = errors.New("skip this part")
@@ -417,7 +418,7 @@ func fixCT(contentType, fileName string) (ct string) {
 }
 
 // FixContentType ensures proper content-type
-// (uses mimemagic for "" and application/octet-stream)
+// (uses filetype.v1 for "" and application/octet-stream)
 func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	defer func() {
 		if contentType != ct {
@@ -433,14 +434,18 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 		ext == ".png" && contentType != "image/png")
 
 	if useMagic {
-		if nct := mimemagic.Match(contentType, body); nct != "" {
-			return fixCT(nct, fileName)
+		if !filetype.IsType(body, types.Type{MIME: types.NewMIME(contentType)}) {
+			if typ, err := filetype.Match(body); err == nil && typ.MIME.Type != "" {
+				return fixCT(typ.MIME.Type+"/"+typ.MIME.Subtype, fileName)
+			}
 		}
 	}
 	c := GetConverter(contentType, nil)
 	if c == nil { // no converter for this
-		if nct := mimemagic.Match(contentType, body); nct != "" {
-			return fixCT(nct, fileName)
+		if filetype.IsType(body, types.Type{MIME: types.NewMIME(contentType)}) {
+			if typ, err := filetype.Match(body); err == nil && typ.MIME.Type != "" {
+				return fixCT(typ.MIME.Type+"/"+typ.MIME.Subtype, fileName)
+			}
 		}
 	}
 	if fileName != "" &&
