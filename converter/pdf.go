@@ -180,6 +180,7 @@ func PdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 	if len(filenames) == 0 {
 		return errors.New("filenames required!")
 	} else if len(filenames) == 1 {
+		os.Remove(destfn)
 		return temp.LinkOrCopy(filenames[0], destfn)
 	}
 	var buf bytes.Buffer
