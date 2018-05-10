@@ -19,8 +19,8 @@ require (
 	github.com/stvp/go-toml-config v0.0.0-20170523163211-314328849d78
 	github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613
 	github.com/tgulacsi/go v0.2.1
-	golang.org/x/crypto v0.0.0-20180502184808-8b1d31080a76
-	golang.org/x/net v0.0.0-20180502164142-640f4622ab69
+	golang.org/x/crypto v0.0.0-20180509205747-2d027ae1dddd
+	golang.org/x/net v0.0.0-20180509002218-f73e4c9ed3b7
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/h2non/filetype.v1 v1.0.5
 	gopkg.in/tylerb/graceful.v1 v1.2.15
