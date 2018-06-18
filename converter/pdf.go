@@ -117,7 +117,7 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 		}
 	}
 	destdir := filepath.Join(Workdir,
-		filepath.Base(srcfn)+"-"+strconv.Itoa(rand.Int())+"-split")
+		filepath.Base(srcfn)+"-"+strconv.Itoa(rand.Int())+"-split") //nolint:gas
 	if !fileExists(destdir) {
 		if err = os.Mkdir(destdir, 0755); err != nil {
 			return

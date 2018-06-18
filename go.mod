@@ -12,20 +12,20 @@ require (
 	github.com/go-stack/stack v1.7.0
 	github.com/golang/protobuf v1.1.0
 	github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1
-	github.com/matttproud/golang_protobuf_extensions v1.0.0
+	github.com/matttproud/golang_protobuf_extensions v1.0.1
 	github.com/oklog/ulid v0.3.0
-	github.com/pelletier/go-toml v1.1.0
+	github.com/pelletier/go-toml v1.2.0
 	github.com/pkg/errors v0.8.0
 	github.com/prometheus/client_golang v0.9.0-pre1
 	github.com/prometheus/client_model v0.0.0-20171117100541-99fa1f4be8e5
 	github.com/prometheus/common v0.0.0-20180518154759-7600349dcfe1
-	github.com/prometheus/procfs v0.0.0-20180408092902-8b1c2da0d56d
+	github.com/prometheus/procfs v0.0.0-20180612222113-7d6f385de8be
 	github.com/sloonz/go-qprintable v0.0.0-20160203160305-775b3a4592d5
 	github.com/stvp/go-toml-config v0.0.0-20170523163211-314328849d78
 	github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613
 	github.com/tgulacsi/go v0.2.2
-	golang.org/x/crypto v0.0.0-20180525160159-a3beeb748656
-	golang.org/x/net v0.0.0-20180524181706-dfa909b99c79
+	golang.org/x/crypto v0.0.0-20180617042118-027cca12c2d6
+	golang.org/x/net v0.0.0-20180611182652-db08ff08e862
 	golang.org/x/text v0.3.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/h2non/filetype.v1 v1.0.5

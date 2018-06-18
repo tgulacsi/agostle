@@ -85,6 +85,7 @@ func Main() error {
 	app.Flag("timeout", "timeout for external programs").Default("10m").DurationVar(&timeout)
 	app.Flag("config", "config file (TOML)").Short('c').ExistingFileVar(&configFile)
 	app.Flag("logfile", "logfile").StringVar(&logFile)
+	app.HelpFlag.Short('h')
 
 	var updateRootJSON, updateRootKeys string
 	updateCmd := app.Command("update", "update binary to the latest release")
@@ -279,7 +280,7 @@ func ensureFilename(fn string, out bool) (string, bool) {
 		return fn, false
 	}
 	fn = filepath.Join(converter.Workdir,
-		strconv.Itoa(os.Getpid())+"-"+strconv.Itoa(rand.Int()))
+		strconv.Itoa(os.Getpid())+"-"+strconv.Itoa(rand.Int())) //nolint:gas
 	fmt.Fprintf(os.Stderr, "fn=%s out? %t\n", fn, out)
 	if out {
 		return fn, true

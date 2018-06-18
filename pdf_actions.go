@@ -41,7 +41,7 @@ func init() {
 			}
 			return errors.WithMessage(
 				mergePdf(out, *mergeInp, sort),
-				fmt.Sprintf("mergePDF out=%q sort=%v inp=%q", out, sort, mergeInp))
+				fmt.Sprintf("mergePDF out=%q sort=%v inp=%v", out, sort, mergeInp))
 		}
 	}
 

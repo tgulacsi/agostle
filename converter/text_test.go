@@ -7,16 +7,15 @@ package converter
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 	"unicode/utf16"
 
 	"context"
 
-	//"bitbucket.org/zombiezen/gopdf/pdf"
-	//"github.com/mawicks/PDFiG/pdf"
-	//"github.com/signintech/gopdf/src/gopdf"
 	"github.com/tgulacsi/go/text"
 )
 
@@ -24,13 +23,34 @@ var accented = `
 Árvíztűrő
  tükörfúrógép`
 
-func TestText(t *testing.T) {
-	out, err := os.Create("/tmp/a.pdf")
+func tempFile(fn string) (*os.File, error) {
+	fn = filepath.Base(fn)
+	ext := filepath.Ext(fn)
+	bn := fn[:len(fn)-len(ext)]
+
+	fh, err := ioutil.TempFile("", bn)
 	if err != nil {
-		t.Errorf("error creating out file /tmp/a.pdf: %s", err)
-		return
+		return nil, err
 	}
+	if ext == "" {
+		return fh, nil
+	}
+	if err = os.Rename(fh.Name(), fh.Name()+ext); err != nil {
+		fh.Close()
+		os.Remove(fh.Name())
+		return nil, err
+	}
+	return fh, nil
+}
+
+func TestText(t *testing.T) {
+	out, err := tempFile("a.pdf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(out.Name())
 	defer out.Close()
+
 	in := bytes.NewBuffer(nil)
 	in.WriteString("UTF-8: ")
 	in.WriteString(accented)
@@ -72,11 +92,13 @@ func TestText(t *testing.T) {
 }
 
 func TestLoHtmlPdf(t *testing.T) {
-	out, err := os.Create("/tmp/b.html")
+	out, err := tempFile("b.html")
 	if err != nil {
-		t.Errorf("error creating out file /tmp/b.html: %s", err)
-		return
+		t.Fatal(err)
 	}
+	defer os.Remove(out.Name())
+	defer out.Close()
+
 	io.WriteString(out, `<!DOCTYPE html>
 <html lang="hu" />
 <head><meta charset="utf-8" /><title>proba</title></head>
@@ -90,5 +112,4 @@ func TestLoHtmlPdf(t *testing.T) {
 	if err != nil {
 		t.Errorf("error converting with loffice: %s", err)
 	}
-	//os.Remove("/tmp/b.html")
 }
