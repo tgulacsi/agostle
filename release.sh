@@ -17,7 +17,7 @@ if [ -e "$fn" ]; then
 fi
 TUF=${TUF:-~/projects/TUF}
 
-#rsync -avz --delete-before websrv3:/var/www/www.unosoft.hu/agostle/ ./public/ || echo $?
+#rsync -avz --delete-before web:/var/www/www.unosoft.hu/agostle/ ./public/ || echo $?
 mkdir -p "$TUF/staged/targets/agostle"
 for flavor in $FLAVORS; do
 	EXT=
@@ -31,10 +31,10 @@ for flavor in $FLAVORS; do
 	rsync -avz "${exe}" "$TUF/staged/targets/agostle/${flavor}"
 	(cd "$TUF" && tuf add "agostle/$flavor")
 done
-(cd "$TUF" && 
-tuf snapshot && 
+(cd "$TUF" &&
+tuf snapshot &&
 tuf timestamp &&
 tuf commit
 )
 
-rsync -avz --delete-after "$TUF/repository/" websrv3:/var/www/www.unosoft.hu/tuf/
+rsync -avz --delete-after "$TUF/repository/" web:/var/www/www.unosoft.hu/tuf/

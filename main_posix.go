@@ -5,3 +5,14 @@
 // license that can be found in the LICENSE file.
 
 package main
+
+import (
+	"net"
+
+	"github.com/coreos/go-systemd/activation"
+)
+
+func getListeners() []net.Listener {
+	listeners, _ := activation.Listeners()
+	return listeners
+}

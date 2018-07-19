@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -144,5 +145,9 @@ func doServiceWindows(todo string, args []string) error {
 	default:
 		return errors.New("unknown service " + todo)
 	}
+	return nil
+}
+
+func getListeners() []net.Listener {
 	return nil
 }

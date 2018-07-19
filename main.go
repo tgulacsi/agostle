@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	stdlog "log"
 	"math/rand"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -242,13 +243,22 @@ func Main() error {
 		return nil
 
 	case serveCmd.FullCommand():
+		var listeners []net.Listener
 		if listenAddr == "" {
-			listenAddr = *converter.ConfListenAddr
+			listeners = getListeners()
+			if len(listeners) == 0 {
+				listenAddr = *converter.ConfListenAddr
+			}
 		}
 
-		return errors.Wrap(
-			newHTTPServer(listenAddr, savereq).ListenAndServe(),
-			listenAddr)
+		s := newHTTPServer(listenAddr, savereq)
+		if listenAddr == "" {
+			err = s.Serve(listeners[0])
+		} else {
+			err = s.ListenAndServe()
+		}
+
+		return errors.Wrap(err, listenAddr)
 
 	}
 	f, ok := commands[todo]
