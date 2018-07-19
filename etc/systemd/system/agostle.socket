@@ -1,0 +1,10 @@
+[Unit]
+Description=Agostle listening socket
+
+[Socket]
+Service=agostle@1.service
+ListenStream=9500
+NoDelay=true
+
+[Install]
+WantedBy=local.target
