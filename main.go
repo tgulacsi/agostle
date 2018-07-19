@@ -246,11 +246,13 @@ func Main() error {
 		var listeners []net.Listener
 		if listenAddr == "" {
 			listeners = getListeners()
+			logger.Log("listeners", listeners)
 			if len(listeners) == 0 {
 				listenAddr = *converter.ConfListenAddr
 			}
 		}
 
+		logger.Log("listenAddr", listenAddr)
 		s := newHTTPServer(listenAddr, savereq)
 		if listenAddr == "" {
 			err = s.Serve(listeners[0])
