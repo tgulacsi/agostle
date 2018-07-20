@@ -1,19 +1,20 @@
 [Unit]
 Description=Agostle anything-to-PDF daemon
 Requires=agostle.socket
+Requires=xvfb.service
 After=network.target
 
 [Install]
-WantedBy=local.target
+WantedBy=default.target
 
 [Service]
 Restart=always
-Environment=LOGDIR=/var/log/agostle-%i TMPDIR=/var/tmp/agostle-%i
+Environment=LOGDIR=/var/log/agostle-%i TMPDIR=/var/tmp/agostle-%i DISPLAY=:99
 User=agostle
 WorkingDirectory=/home/agostle
 ExecStartPre=+/bin/mkdir -p $LOGDIR $TMPDIR
 ExecStartPre=+/bin/chown agostle $LOGDIR $TMPDIR
-ExecStartPre=-/home/agostle/agostle update
+#ExecStartPre=-/home/agostle/agostle update
 ExecStart=/home/agostle/agostle serve
 
 RuntimeMaxSec=86400

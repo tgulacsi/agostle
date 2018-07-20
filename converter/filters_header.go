@@ -137,7 +137,7 @@ func PrependHeaderFilter(ctx context.Context,
 				)
 			}
 		} else {
-			b := make([]byte, 4096)
+			b := make([]byte, 1<<20)
 			n, _ := io.ReadAtLeast(part.Body, b, len(b)/2)
 			b = b[:n]
 			if _, j := tagIndex(b, "body"); j >= 0 {
@@ -148,7 +148,11 @@ func PrependHeaderFilter(ctx context.Context,
 					part.Body,
 				)
 			} else {
-				Log("msg", "no body in", "b", b)
+				c := b
+				if len(c) > 4096 {
+					c = c[len(c)-4096:]
+				}
+				Log("msg", "no body in", "b", string(c))
 				part.Body = io.MultiReader(
 					bytes.NewReader(headersBuf.Bytes()),
 					bytes.NewReader(b),
