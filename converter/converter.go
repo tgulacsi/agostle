@@ -42,7 +42,7 @@ func TextToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 func textToHTML(r io.Reader) io.Reader {
 	pr, pw := io.Pipe()
 	go func() {
-		if _, err := io.Copy(&htmlEscaper{pw}, iohlp.WrappingReader(r, 80)); err != nil {
+		if _, err := io.Copy(&htmlEscaper{w: pw}, iohlp.WrappingReader(r, 80)); err != nil {
 			Log("msg", "escape", "error", err)
 			pw.CloseWithError(err)
 			return

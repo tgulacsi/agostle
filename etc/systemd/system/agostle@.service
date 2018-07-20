@@ -16,6 +16,7 @@ ExecStartPre=+/bin/chown agostle $LOGDIR $TMPDIR
 ExecStartPre=-/home/agostle/agostle update
 ExecStart=/home/agostle/agostle serve
 
+RuntimeMaxSec=86400
 NonBlocking=true
 Sockets=agostle.socket
 
