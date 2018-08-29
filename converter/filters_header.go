@@ -210,20 +210,21 @@ func decodeHTML(ctx context.Context, r io.Reader, deleteMETA bool) io.Reader {
 		if k = bytes.IndexByte(c, '"'); k < 0 {
 			continue
 		}
-		cs := c[:k]
+		cs := bytes.TrimSpace(c[:k])
 		if len(cs) == 0 {
 			continue
 		}
+		charset := string(cs)
 		if deleteMETA {
 			// delete the whole <meta .../> part
 			copy(b[i:j], bytes.Repeat([]byte{' '}, j-i))
 		}
 		var err error
-		if enc, err = htmlindex.Get(string(cs)); err != nil {
-			Log("msg", "cannot find encoding for "+string(cs))
+		if enc, err = htmlindex.Get(charset); err != nil {
+			Log("msg", "cannot find encoding", "charset", charset)
 			continue
 		}
-		if !deleteMETA && len(cs) >= 5 {
+		if !deleteMETA && len(charset) >= 5 {
 			copy(c[:5], []byte("utf-8"))
 			if len(cs) > 5 {
 				copy(c[5:k], bytes.Repeat([]byte{' '}, k-5))
