@@ -19,14 +19,15 @@ TUF=${TUF:-~/projects/TUF}
 
 #rsync -avz --delete-before web:/var/www/www.unosoft.hu/agostle/ ./public/ || echo $?
 mkdir -p "$TUF/staged/targets/agostle"
+GOBIN="${GOBIN:-"$(go env GOBIN)"}"
 for flavor in $FLAVORS; do
 	EXT=
 	if echo "$flavor" | grep -Fq windows; then
 		EXT=.exe
 	fi
-	exe=$GOPATH/bin/agostle${EXT}
-	if [ -e "$GOPATH/bin/$flavor" ]; then
-		exe=$GOPATH/bin/$flavor/agostle${EXT}
+	exe=$GOBIN/agostle${EXT}
+	if [ -e "$GOBIN/$flavor" ]; then
+		exe=$GOBIN/$flavor/agostle${EXT}
 	fi
 	rsync -avz "${exe}" "$TUF/staged/targets/agostle/${flavor}"
 	(cd "$TUF" && tuf add "agostle/$flavor")
