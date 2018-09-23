@@ -26,6 +26,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/tgulacsi/go/pdf"
 	"github.com/tgulacsi/go/temp"
 )
 
@@ -57,6 +58,10 @@ func pdfPageNum(ctx context.Context, srcfn string) (numberofpages int, encrypted
 	numberofpages = -1
 	if err = ctx.Err(); err != nil {
 		return
+	}
+
+	if numberofpages, err = pdf.PageNum(ctx, srcfn); err == nil {
+		return numberofpages, false, nil
 	}
 
 	pdfinfo := false
@@ -123,21 +128,26 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 			return
 		}
 	}
-	prefix := strings.Replace(filepath.Base(srcfn), "%", "!P!", -1) + "-"
-
-	if popplerOk["pdfseparate"] != "" {
-		if err = callAt(ctx, popplerOk["pdfseparate"],
-			destdir,
-			srcfn,
-			filepath.Join(destdir, prefix+"%d.pdf"),
-		); err != nil {
-			err = errors.Wrapf(err, "executing %s", popplerOk["pdfseparate"])
-			return
-		}
+	var prefix string
+	if err = pdf.Split(ctx, destdir, srcfn); err == nil {
+		prefix = filepath.Base(srcfn) + "_"
 	} else {
-		if err = callAt(ctx, *ConfPdftk, destdir, srcfn, "burst", "output", prefix+"%03d.pdf"); err != nil {
-			err = errors.Wrapf(err, "executing %s", *ConfPdftk)
-			return
+		prefix = strings.Replace(filepath.Base(srcfn), "%", "!P!", -1) + "-"
+
+		if popplerOk["pdfseparate"] != "" {
+			if err = callAt(ctx, popplerOk["pdfseparate"],
+				destdir,
+				srcfn,
+				filepath.Join(destdir, prefix+"%d.pdf"),
+			); err != nil {
+				err = errors.Wrapf(err, "executing %s", popplerOk["pdfseparate"])
+				return
+			}
+		} else {
+			if err = callAt(ctx, *ConfPdftk, destdir, srcfn, "burst", "output", prefix+"%03d.pdf"); err != nil {
+				err = errors.Wrapf(err, "executing %s", *ConfPdftk)
+				return
+			}
 		}
 	}
 	dh, e := os.Open(destdir)
@@ -183,6 +193,10 @@ func PdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 		os.Remove(destfn)
 		return temp.LinkOrCopy(filenames[0], destfn)
 	}
+	if err := pdf.MergeFiles(destfn, filenames...); err == nil {
+		return nil
+	}
+
 	var buf bytes.Buffer
 	pdfunite := popplerOk["pdfunite"]
 	if pdfunite != "" {
