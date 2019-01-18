@@ -30,10 +30,14 @@ github.com/dgryski/go-linebreak v0.0.0-20180304144711-01074422d4a3 h1:5sQvVAwWxU
 github.com/dgryski/go-linebreak v0.0.0-20180304144711-01074422d4a3/go.mod h1:FDHdQKtI1NtvxIYsG/y+ymRaIQIsp+LRSTGl7eBKQEU=
 github.com/disintegration/gift v1.1.2 h1:9ZyHJr+kPamiH10FX3Pynt1AxFUob812bU9Wt4GMzhs=
 github.com/disintegration/gift v1.1.2/go.mod h1:Jh2i7f7Q2BM7Ezno3PhfezbR1xpUg9dUg3/RlKGr4HI=
+github.com/docker/docker v1.13.1 h1:IkZjBSIc8hBjLpqeAbeE5mca5mNgeatLHBy3GO78BWo=
+github.com/docker/docker v1.13.1/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=
 github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76 h1:eX+pdPPlD279OWgdx7f6KqIRSONuK7egk+jDx7OM3Ac=
 github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76/go.mod h1:KjxHHirfLaw19iGT70HvVjHQsL1vq1SRQB4yOsAfy2s=
 github.com/edsrzf/mmap-go v0.0.0-20170320065105-0bce6a688712 h1:aaQcKT9WumO6JEJcRyTqFVq4XUZiUcKR2/GI31TOcz8=
 github.com/edsrzf/mmap-go v0.0.0-20170320065105-0bce6a688712/go.mod h1:YO35OhQPt3KJa3ryjFM5Bs14WD66h8eGKpfaBNrHW5M=
+github.com/flynn/go-docopt v0.0.0-20140912013429-f6dd2ebbb31e h1:Ss/B3/5wWRh8+emnK0++g5zQzwDTi30W10pKxKc4JXI=
+github.com/flynn/go-docopt v0.0.0-20140912013429-f6dd2ebbb31e/go.mod h1:HyVoz1Mz5Co8TFO8EupIdlcpwShBmY98dkT2xeHkvEI=
 github.com/flynn/go-tuf v0.0.0-20170108035750-a98aea1463c9 h1:EM9MV0ZcKitybx0TFWzf9n+NcPDNapLKyv5jvu6IbV8=
 github.com/flynn/go-tuf v0.0.0-20170108035750-a98aea1463c9/go.mod h1:soTiGLiCdLcBrB3ENlJpiwKOqzZ9K1QLaRPS4hEAxJk=
 github.com/fsnotify/fsnotify v1.4.2/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=

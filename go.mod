@@ -8,7 +8,9 @@ require (
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/coreos/go-systemd v0.0.0-20180828140353-eee3db372b31
 	github.com/disintegration/gift v1.1.2
+	github.com/docker/docker v1.13.1 // indirect
 	github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76 // indirect
+	github.com/flynn/go-docopt v0.0.0-20140912013429-f6dd2ebbb31e // indirect
 	github.com/flynn/go-tuf v0.0.0-20170108035750-a98aea1463c9
 	github.com/go-kit/kit v0.7.0
 	github.com/golang/protobuf v1.1.0 // indirect
