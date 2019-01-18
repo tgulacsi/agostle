@@ -36,7 +36,7 @@ type Converter func(context.Context, string, io.Reader, string) error
 // TextToPdf converts text (text/plain) to PDF
 func TextToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	getLogger(ctx).Log("msg", "Converting into", "ct", contentType, "dest", destfn)
-	return HTMLToPdf(ctx, destfn, textToHTML(r), "text/html")
+	return HTMLToPdf(ctx, destfn, textToHTML(r), textHtml)
 }
 
 func textToHTML(r io.Reader) io.Reader {
@@ -385,7 +385,7 @@ var ExtContentType = map[string]string{
 	"odb": "application/vnd.oasis.database",
 	"odi": "application/vnd.oasis.image",
 
-	"txt": "text/plain",
+	"txt": textPlain,
 	"msg": "application/x-ole-storage",
 
 	"jpg":  "image/jpeg",
@@ -400,7 +400,7 @@ func fixCT(contentType, fileName string) (ct string) {
 	//}()
 
 	switch contentType {
-	case "application/zip", "application/x-zip-compressed":
+	case applicationZIP, "application/x-zip-compressed":
 		if ext := filepath.Ext(fileName); len(ext) > 3 {
 			// http://www.iana.org/assignments/media-types/media-types.xhtml#application
 			switch ext {
@@ -408,11 +408,11 @@ func fixCT(contentType, fileName string) (ct string) {
 				return ExtContentType[ext[1:]]
 			}
 		}
-		return "application/zip"
+		return applicationZIP
 	case "application/x-rar-compressed", "application/x-rar":
 		return "application/rar"
 	case "image/pdf":
-		return "application/pdf"
+		return applicationPDF
 	}
 	return contentType
 }
@@ -429,7 +429,7 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	contentType = fixCT(contentType, fileName)
 	var useMagic bool
 	ext := strings.ToLower(filepath.Ext(fileName))
-	useMagic = (ext == ".pdf" && contentType != "application/pdf" ||
+	useMagic = (ext == ".pdf" && contentType != applicationPDF ||
 		(ext == ".jpg" || ext == ".jpeg") && contentType != "image/jpeg" ||
 		ext == ".png" && contentType != "image/png")
 
@@ -463,15 +463,23 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	return contentType
 }
 
+const (
+	textHtml       = "text/html"
+	textPlain      = "text/plain"
+	applicationPDF = "application/pdf"
+	applicationZIP = "application/zip"
+	messageRFC822  = "message/rfc822"
+)
+
 // GetConverter gets converter for the content-type
 func GetConverter(contentType string, mediaType map[string]string) (converter Converter) {
 	converter = nil
 	switch contentType {
-	case "application/pdf":
+	case applicationPDF:
 		converter = PdfToPdf
 	case "application/rtf":
 		converter = OfficeToPdf
-	case "text/plain":
+	case textPlain:
 		if mediaType != nil {
 			if cs, ok := mediaType["charset"]; ok && cs != "" {
 				converter = NewTextConverter(cs)
@@ -480,9 +488,9 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 		if converter == nil {
 			converter = TextToPdf
 		}
-	case "text/html":
+	case textHtml:
 		converter = HTMLToPdf
-	case "message/rfc822":
+	case messageRFC822:
 		converter = MailToPdfZip
 	case "multipart/related":
 		converter = MPRelatedToPdf

@@ -24,7 +24,8 @@ import (
 	"github.com/pkg/errors" // MailToPdfZip converts mail to ZIP of PDFs
 	"github.com/tgulacsi/go/i18nmail"
 	"github.com/tgulacsi/go/temp"
-	"github.com/tgulacsi/go/uncompr"
+	//"github.com/tgulacsi/go/uncompr"
+	"github.com/mholt/archiver"
 )
 
 func MailToPdfZip(ctx context.Context, destfn string, body io.Reader, contentType string) error {
@@ -195,7 +196,7 @@ func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string,
 
 	for _, fn := range files {
 		if !strings.HasSuffix(fn, ".pdf") {
-			rch <- maybeArchItems{Items: []ArchFileItem{ArchFileItem{Filename: fn}}}
+			rch <- maybeArchItems{Items: []ArchFileItem{{Filename: fn}}}
 			continue
 		}
 		sfiles, err = PdfSplit(ctx, fn)
@@ -334,7 +335,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	Log := getLogger(ctx).Log
 	var head [1024]byte
 	err := i18nmail.Walk(
-		i18nmail.MailPart{ContentType: "message/rfc822", Body: body},
+		i18nmail.MailPart{ContentType: messageRFC822, Body: body},
 		func(mp i18nmail.MailPart) error {
 			select {
 			case <-ctx.Done():
@@ -506,7 +507,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 		return
 	}
 
-	if "message/rfc822" != mp.ContentType {
+	if messageRFC822 != mp.ContentType {
 		converter = GetConverter(mp.ContentType, mp.MediaType)
 	} else {
 		plus, e := MailToPdfFiles(ctx, mp.Body)
@@ -669,9 +670,10 @@ func ExtractingFilter(ctx context.Context,
 
 	for part := range allIn {
 		var (
-			makeReader func(io.Reader) (uncompr.Lister, error)
-			zr         uncompr.Lister
-			err        error
+			makeReader   func(io.Reader) (uncomprLister, error)
+			zr           uncomprLister
+			err          error
+			archRowCount int
 		)
 		body := part.Body
 		if part.ContentType == "application/x-ole-storage" {
@@ -681,13 +683,13 @@ func ExtractingFilter(ctx context.Context,
 				goto Error
 			}
 			child := part.Spawn()
-			child.ContentType, child.Body = "message/rfc822", r
+			child.ContentType, child.Body = messageRFC822, r
 			fn := headerGetFileName(part.Header)
 			if fn == "" {
 				fn = ".eml"
 			}
 			child.Header = textproto.MIMEHeader(map[string][]string{
-				"X-FileName": []string{safeFn(fn, true)}})
+				"X-FileName": {safeFn(fn, true)}})
 			wg.Add(1)
 			allIn <- child
 			wg.Done()
@@ -695,10 +697,29 @@ func ExtractingFilter(ctx context.Context,
 		}
 
 		switch part.ContentType {
-		case "application/zip":
-			makeReader = uncompr.NewZipLister
+		case applicationZIP:
+			makeReader = func(r io.Reader) (uncomprLister, error) {
+				rsc, err := temp.MakeReadSeekCloser("", r)
+				if err != nil {
+					return nil, err
+				}
+				n, err := rsc.Seek(0, 2)
+				if err != nil {
+					return nil, err
+				}
+				if _, err = rsc.Seek(0, 0); err != nil {
+					return nil, err
+				}
+				zp := archiver.NewZip()
+				err = zp.Open(rsc, n)
+				return zp, err
+			}
 		case "application/rar":
-			makeReader = uncompr.NewRarLister
+			makeReader = func(r io.Reader) (uncomprLister, error) {
+				rar := archiver.NewRar()
+				err := rar.Open(r, 0)
+				return rar, err
+			}
 		//case "application/tar": makeReader = UnTar
 		default:
 			goto Skip
@@ -707,16 +728,20 @@ func ExtractingFilter(ctx context.Context,
 		if err != nil {
 			goto Error
 		}
-		for i, z := range zr.List() {
-			rc, zErr := z.Open()
+		for {
+			z, zErr := zr.Read()
 			if zErr != nil {
-				Log("msg", "open zip element", "i", i, "error", zErr)
-				continue
+				if zErr == io.EOF {
+					break
+				}
+				Log("msg", "read archive", "error", err)
+				break
 			}
-			chunk, cErr := ioutil.ReadAll(rc)
-			_ = rc.Close()
+			archRowCount++
+			chunk, cErr := ioutil.ReadAll(z)
+			_ = z.Close()
+			Log("msg", "read zip element", "i", archRowCount, "fi", z.Name(), "error", err)
 			if cErr != nil {
-				Log("msg", "read zip element", "i", i, "error", cErr)
 				continue
 			}
 			child := part.Spawn()
@@ -792,4 +817,8 @@ func DupFilter(ctx context.Context,
 		}
 		outch <- part
 	}
+}
+
+type uncomprLister interface {
+	Read() (archiver.File, error)
 }

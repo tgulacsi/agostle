@@ -29,7 +29,7 @@ func TextDecodeFilter(ctx context.Context,
 	ctx, _ = prepareContext(ctx, "")
 	for part := range inch {
 		// decode text/plain and text/html
-		if part.ContentType == "text/plain" || part.ContentType == "text/html" {
+		if part.ContentType == textPlain || part.ContentType == textHtml {
 			// QUOTED-PRINTABLE
 			if part.Header.Get(cet) != "quoted-printable" &&
 				strings.ToLower(part.Header.Get(cet)) == "quoted-printable" {
@@ -48,7 +48,7 @@ func TextDecodeFilter(ctx context.Context,
 			}
 			part.Body = r
 
-			if part.ContentType == "text/plain" {
+			if part.ContentType == textPlain {
 				part.Body = NewTextReader(ctx, part.Body, part.MediaType["charset"])
 				part.MediaType["charset"] = "utf-8"
 			}

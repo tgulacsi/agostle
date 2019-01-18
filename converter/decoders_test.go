@@ -21,8 +21,8 @@ func min(x ...int) int {
 }
 
 var deBorkTests = [][2]string{
-	[2]string{"saddsgfgrv$#EWfedsv+dsfsadgfg", "saddsgfgrv$#EWfedsv+dsfsadgfg"},
-	[2]string{`+ADw-p class+AD0AIg-MsoNormal+ACI- align+AD0AIg-right+ACI- style+AD0AIg-tex=
+	{"saddsgfgrv$#EWfedsv+dsfsadgfg", "saddsgfgrv$#EWfedsv+dsfsadgfg"},
+	{`+ADw-p class+AD0AIg-MsoNormal+ACI- align+AD0AIg-right+ACI- style+AD0AIg-tex=
 t-align:right+ACIAPgA8-span style+AD0AIg-font-size:11.0pt+ADs-font-family:+=
 ACY-quot+ADs-Calibri+ACY-quot+ADs-,+ACY-quot+ADs-sans-serif+ACY-quot+ADsAOw=
 -color:+ACM-1F497D+ACIAPgA8-img border+AD0AIg-0+ACI- width+AD0AIg-124+ACI- =
@@ -32,7 +32,7 @@ nts and Settings+AFw-holloa+AFw-Application Data+AFw-brands.png+ACIAPgA8-/s=
 pan+AD4APA-span style+AD0AIg-color:+ACM-1F497D+ADs-mso-fareast-language:EN-=
 US+ACIAPgA8-o:p+AD4APA-/o:p+AD4APA-/span+AD4APA-/p+AD4-`,
 		`<p class="MsoNormal" align="right" style="text-align:right"><span style="font-size:11.0pt;font-family:&quot;Calibri&quot;,&quot;sans-serif&quot;;color:#1F497D"><img border="0" width="124" height="26" id="_x0000_i1026" src="cid:image002.png@01CE1E47.CD9AD230" alt="Leiras: C:\Documents and Settings\holloa\Application Data\brands.png"></span><span style="color:#1F497D;mso-fareast-language:EN-US"><o:p></o:p></span></p>`},
-	[2]string{`+AF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF=
+	{`+AF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF=
 8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AX=
 wBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXw-`,
 		`_________________________________________________________________`},

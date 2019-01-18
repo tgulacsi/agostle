@@ -3,8 +3,22 @@ linters-settings:
     suggest-new: true
 
 linters:
+  enable:
+    - maligned
+    - interfacer
+    - dupl
+    - goconst
+    - misspell
+    - unparam
+    - prealloc
+    - unused
+    - staticcheck
+    - gofmt
+
   disable:
     - errcheck
+    - typecheck
+    - megacheck
 
 issues:
   exclude:

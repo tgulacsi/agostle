@@ -45,7 +45,7 @@ func HTMLPartFilter(ctx context.Context,
 
 	var (
 		alter      = ""
-		converter  = GetConverter("text/html", nil)
+		converter  = GetConverter(textHtml, nil)
 		aConverter Converter
 		tbd        = make(map[string]struct{}, 4)
 	)
@@ -73,7 +73,7 @@ func HTMLPartFilter(ctx context.Context,
 		if err != nil {
 			err = errors.Wrapf(err, "open html %s", fn)
 		} else {
-			if err = converter(ctx, destfn, fh, "text/html"); err != nil {
+			if err = converter(ctx, destfn, fh, textHtml); err != nil {
 				err = errors.Wrapf(err, "converting %s to %s", fn, destfn)
 			}
 		}
@@ -84,7 +84,7 @@ func HTMLPartFilter(ctx context.Context,
 				if fh, err = os.Open(alter); err != nil {
 					err = errors.Wrapf(err, "open txt %s", alter)
 				} else {
-					if err = aConverter(ctx, destfn, fh, "text/plain"); err != nil {
+					if err = aConverter(ctx, destfn, fh, textPlain); err != nil {
 						err = errors.Wrapf(err, "converting %s to %s", alter, destfn)
 					}
 				}
@@ -112,9 +112,9 @@ func HTMLPartFilter(ctx context.Context,
 		} else {
 			grandpa = parent.Parent
 		}
-		if part.ContentType == "text/plain" || part.ContentType == "text/html" {
+		if part.ContentType == textPlain || part.ContentType == textHtml {
 			//if part.Parent.ContentType != "multipart/alternative" || part.Parent.ContentType != "multipart/related" {
-			if part.ContentType == "text/plain" && part.Parent.ContentType != "multipart/alternative" {
+			if part.ContentType == textPlain && part.Parent.ContentType != "multipart/alternative" {
 				goto Skip
 			}
 			if grandpa != nil {
@@ -143,7 +143,7 @@ func HTMLPartFilter(ctx context.Context,
 			}
 
 			var cids map[string]string
-			if part.ContentType == "text/plain" {
+			if part.ContentType == textPlain {
 				fn = fn + ".txt"
 			} else {
 				part.Body = fixXMLCharset(ctx, fixXMLHeader(part.Body))
@@ -156,10 +156,10 @@ func HTMLPartFilter(ctx context.Context,
 				goto Error
 			}
 			tbd[fn] = struct{}{}
-			if part.ContentType == "text/plain" {
+			if part.ContentType == textPlain {
 				alter = fn
-				aConverter = GetConverter("text/plain", part.MediaType)
-			} else if part.ContentType == "text/html" {
+				aConverter = GetConverter(textPlain, part.MediaType)
+			} else if part.ContentType == textHtml {
 				//log.Printf("last==this? %b  cidmap: %s", last == this, cids)
 				groups[this] = append(groups[this], cidGroup{htmlFn: fn, cids: cids})
 			}
@@ -286,7 +286,7 @@ func SaveOriHTMLFilter(ctx context.Context,
 	}
 
 	for part := range inch {
-		if part.ContentType == "text/html" {
+		if part.ContentType == textHtml {
 			fn := filepath.Join(wd, fmt.Sprintf("%02d#%03d.ori.html", part.Level, part.Seq))
 			Log("msg", "saving original html "+fn)
 			if orifh, e := os.Create(fn); e == nil {

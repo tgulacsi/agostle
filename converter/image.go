@@ -17,6 +17,8 @@ import (
 	"github.com/tgulacsi/go/temp"
 )
 
+const png = "png"
+
 func command(ctx context.Context, prg string, args ...string) *exec.Cmd {
 	if prg == "" {
 		prg, args = args[0], args[1:]
@@ -69,11 +71,11 @@ func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType,
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	imgtyp, ext := "gif", "png"
+	imgtyp, ext := "gif", png
 	if contentType != "" && strings.HasPrefix(contentType, "image/") {
 		imgtyp = contentType[6:]
 	}
-	if imgtyp == "png" || imgtyp == "jpeg" {
+	if imgtyp == png || imgtyp == "jpeg" {
 		ext = imgtyp
 	}
 	args := append(make([]string, 0, 8), "-singlefile", "-"+ext, "-cropbox")
@@ -113,7 +115,7 @@ func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType,
 	}
 	_ = os.Remove(fn)
 
-	if imgtyp == "png" {
+	if imgtyp == png {
 		_, err = io.Copy(w, tfh)
 		return err
 	}

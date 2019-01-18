@@ -64,7 +64,7 @@ func PrependHeaderFilter(ctx context.Context,
 			}
 		}
 
-		if !(part.ContentType == "text/plain" || part.ContentType == "text/html") {
+		if !(part.ContentType == textPlain || part.ContentType == textHtml) {
 			goto Skip
 		}
 		headersBuf.Reset()
@@ -74,7 +74,7 @@ func PrependHeaderFilter(ctx context.Context,
 		}
 		//Log("msg", "headers written", "buf", headersBuf.String())
 
-		if part.ContentType != "text/html" {
+		if part.ContentType != textHtml {
 			part.Body = io.MultiReader(bytes.NewReader(headersBuf.Bytes()), part.Body)
 			var buf bytes.Buffer
 			io.Copy(&buf, part.Body)
@@ -259,7 +259,7 @@ func writeToFile(ctx context.Context, fn string, r io.Reader, contentType string
 
 func writeHeaders(ctx context.Context, w io.Writer, mailHeader mail.Header, contentType string) error {
 	Log := getLogger(ctx).Log
-	if mailHeader == nil || !(contentType == "text/plain" || contentType == "text/html") {
+	if mailHeader == nil || !(contentType == textPlain || contentType == textHtml) {
 		return nil
 	}
 	var buf bytes.Buffer
@@ -269,7 +269,7 @@ func writeHeaders(ctx context.Context, w io.Writer, mailHeader mail.Header, cont
 	bol, eol := "  ", "\r\n"
 	escape := func(s string) string { return s }
 
-	if contentType == "text/html" {
+	if contentType == textHtml {
 		preList, postList = "<div><ul>\n", "</ul></div>\n"
 		preKey, postKey = "<em>", ":</em> "
 		bol, eol = "<li>", "</li>\n"
