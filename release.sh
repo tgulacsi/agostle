@@ -29,7 +29,6 @@ for flavor in $FLAVORS; do
 	if [ -e "$GOBIN/$flavor" ]; then
 		exe=$GOBIN/$flavor/agostle${EXT}
 	fi
-	upx -2 "$exe"
 	rsync -avz "${exe}" "$TUF/staged/targets/agostle/${flavor}"
 	(cd "$TUF" && tuf -d "$TUF" add "agostle/$flavor")
 done
