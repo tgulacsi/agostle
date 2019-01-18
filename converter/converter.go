@@ -392,6 +392,8 @@ var ExtContentType = map[string]string{
 	"jpeg": "image/jpeg",
 	"gif":  "image/gif",
 	"png":  "image/png",
+	"tif":  "image/tif",
+	"tiff": "image/tiff",
 }
 
 func fixCT(contentType, fileName string) (ct string) {
@@ -427,16 +429,12 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	}()
 
 	contentType = fixCT(contentType, fileName)
-	var useMagic bool
-	ext := strings.ToLower(filepath.Ext(fileName))
-	useMagic = (ext == ".pdf" && contentType != applicationPDF ||
-		(ext == ".jpg" || ext == ".jpeg") && contentType != "image/jpeg" ||
-		ext == ".png" && contentType != "image/png")
-
-	if useMagic {
-		if !filetype.IsType(body, types.Type{MIME: types.NewMIME(contentType)}) {
-			if typ, err := filetype.Match(body); err == nil && typ.MIME.Type != "" {
-				return fixCT(typ.MIME.Type+"/"+typ.MIME.Subtype, fileName)
+	if ext := strings.ToLower(filepath.Ext(fileName)); strings.HasPrefix(ext, ".") {
+		if want, ok := ExtContentType[ext[1:]]; ok && contentType != want {
+			if !filetype.IsType(body, types.Type{MIME: types.NewMIME(contentType)}) {
+				if typ, err := filetype.Match(body); err == nil && typ.MIME.Type != "" {
+					return fixCT(typ.MIME.Type+"/"+typ.MIME.Subtype, fileName)
+				}
 			}
 		}
 	}
