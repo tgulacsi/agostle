@@ -34,7 +34,7 @@ require (
 	github.com/tgulacsi/go v0.2.8
 	github.com/ulikunitz/xz v0.5.5 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
-	golang.org/x/image v0.0.0-20180708004352-c73c2afc3b81
+	golang.org/x/image v0.0.0-20190118043309-183bebdce1b2
 	golang.org/x/net v0.0.0-20180911220305-26e67e76b6c3
 	golang.org/x/sys v0.0.0-20180828065106-d99a578cf41b // indirect
 	golang.org/x/text v0.3.0
