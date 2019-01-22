@@ -157,7 +157,7 @@ CMD ["/bin/sh", "-c", "cat ->/tmp/input.msg && perl -w -e 'use Email::Outlook::M
 		var err error
 		if err = cmd.Wait(); err != nil {
 			errTxt := errBuf.String()
-			Log("msg", "ERROR OLEStorageReader(%v): %s (%v)", cmd.Args, errTxt, err)
+			Log("msg", "OLEStorageReader", "args", cmd.Args, "stderr", errTxt, "error", err)
 			err = errors.Wrapf(err, errTxt)
 		}
 		pw.CloseWithError(err)

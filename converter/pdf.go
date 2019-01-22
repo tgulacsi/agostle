@@ -274,7 +274,7 @@ func PdfClean(ctx context.Context, fn string) (err error) {
 		}
 	}
 	if ok := isAlreadyCleaned(fn); ok {
-		Log("msg", "PdfClean file %q is already cleaned.", fn)
+		Log("msg", "PdfClean already cleaned.", "file", fn)
 		return nil
 	}
 	cleanMtx.Lock()
@@ -282,14 +282,14 @@ func PdfClean(ctx context.Context, fn string) (err error) {
 		pdfCleanStatus = pcNothing
 		if ConfPdfClean != nil && *ConfPdfClean != "" {
 			if _, e := exec.LookPath(*ConfPdfClean); e != nil {
-				Log("msg", "no pdfclean (%q) exists?: %v", *ConfPdfClean, e)
+				Log("msg", "no pdfclean exists?", "pdfclean", *ConfPdfClean, "error", e)
 			} else {
 				pdfCleanStatus = pcPdfClean
 			}
 		}
 		if ConfMutool != nil && *ConfMutool != "" {
 			if _, e := exec.LookPath(*ConfMutool); e != nil {
-				Log("msg", "no mutool (%q) exists?: %v", *ConfMutool, e)
+				Log("msg", "no mutool exists?", "mutool", *ConfMutool, "error", e)
 			} else {
 				if pdfCleanStatus == pcNothing {
 					pdfCleanStatus = pcMutool
@@ -318,7 +318,7 @@ func PdfClean(ctx context.Context, fn string) (err error) {
 		cleaned = true
 		_, encrypted, _ = pdfPageNum(ctx, fn+"-cleaned.pdf")
 		if encrypted {
-			Log("msg", "WARN "+cleaner+": file %q is encrypted!", fn)
+			Log("msg", "WARN "+cleaner+": encrypted!", "file", fn)
 		}
 	}
 	if !cleaned || encrypted {
@@ -367,7 +367,7 @@ func execute(cmd *exec.Cmd) error {
 		return errors.Wrapf(err, "%#v while converting %s", cmd, errout.Bytes())
 	}
 	if len(errout.Bytes()) > 0 {
-		Log("msg", "WARN execute %v: %s", cmd, errout.String())
+		Log("msg", "WARN executes", "cmd", cmd, "error", errout.String())
 	}
 	return nil
 }
@@ -443,7 +443,7 @@ func PdfDumpFields(ctx context.Context, inpfn string) ([]string, error) {
 			}
 		}
 		if scan.Err() != nil {
-			Log("msg", "ERROR scan: %v", scan.Err())
+			Log("msg", "scan", "error", scan.Err())
 		}
 	}()
 	err := cmd.Run()
@@ -509,7 +509,7 @@ func getFdf(ctx context.Context, inpfn string) (fieldParts, error) {
 	fdf, fdfErr := ioutil.ReadFile(fdfFn)
 	if fdfErr != nil {
 		if _, ok := fdfErr.(*os.PathError); !ok {
-			Log("msg", "cannot read fdf %q: %v", fdfFn, fdfErr)
+			Log("msg", "read fdf", "file", fdfFn, "error", fdfErr)
 			os.Remove(fdfFn)
 		} else {
 			fillFdfMu.Lock()
@@ -528,16 +528,16 @@ func getFdf(ctx context.Context, inpfn string) (fieldParts, error) {
 
 	f, err := os.OpenFile(fdfFn+".gob", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
-		Log("msg", "cannot create %q: %v", fdfFn+".gob", err)
+		Log("msg", "cannot create", "file", fdfFn+".gob", "error", err)
 	} else {
 		fillFdfMu.Lock()
 		err = gob.NewEncoder(f).Encode(fp)
 		fillFdfMu.Unlock()
 		if err != nil {
-			Log("msg", "encode gob %q: %v", f.Name(), err)
+			Log("msg", "encode gobv", "file", f.Name(), "error", err)
 		} else {
 			if err = f.Close(); err != nil {
-				Log("msg", "close %q: %v", f.Name(), err)
+				Log("msg", "close", "file", f.Name(), "error", err)
 				os.Remove(f.Name())
 			}
 		}
@@ -591,7 +591,7 @@ func (fp fieldParts) WriteTo(w io.Writer) (n int64, err error) {
 
 func (fp fieldParts) Set(key, value string) error {
 	if _, ok := fp.Values[key]; !ok {
-		Log("msg", "unknown field %q", fp.Fields)
+		Log("msg", "unknown field", "field", fp.Fields)
 		return errors.New("field " + key + " not exist")
 	}
 	fp.Values[key] = value
