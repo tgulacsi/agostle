@@ -21,6 +21,7 @@ import (
 
 	"context"
 
+	"github.com/go-kit/kit/log"
 	"github.com/pkg/errors" // MailToPdfZip converts mail to ZIP of PDFs
 	"github.com/tgulacsi/go/i18nmail"
 	"github.com/tgulacsi/go/temp"
@@ -440,7 +441,6 @@ func MailToPdfFiles(ctx context.Context, r io.Reader) (files []ArchFileItem, err
 	worker := func() {
 		defer workWg.Done()
 		for mp := range partch {
-			Log("convertPart", mp)
 			if err = convertPart(ctx, mp, resultch); err != nil {
 				errch <- err
 			}
@@ -784,13 +784,20 @@ type FilterFunc func(context.Context, <-chan i18nmail.MailPart, chan<- i18nmail.
 var Filters = make([]FilterFunc, 0, 6)
 
 func init() {
+	Debug := os.Getenv("DEBUG") == "1"
 	Filters = append(Filters, ExtractingFilter)
 	Filters = append(Filters, NewDupFilter(nil))
+	if Debug {
+		Filters = append(Filters, NewDebugFilter("BEFORE"))
+	}
 	Filters = append(Filters, TextDecodeFilter)
 	Filters = append(Filters, SaveOriHTMLFilter)
 	Filters = append(Filters, PrependHeaderFilter)
 	Filters = append(Filters, HTMLPartFilter)
-	//Filters = append(Filters, DupFilter)
+	if Debug {
+		Filters = append(Filters, NewDebugFilter("AFTER"))
+	}
+	Filters = append(Filters, NewDupFilter(nil))
 }
 
 func NewDupFilter(seen map[string]int) FilterFunc {
@@ -803,9 +810,7 @@ func NewDupFilter(seen map[string]int) FilterFunc {
 		files chan<- ArchFileItem, errch chan<- error,
 	) {
 		Log := getLogger(ctx).Log
-		defer func() {
-			close(outch)
-		}()
+		defer close(outch)
 		if seen == nil {
 			seen = make(map[string]int, 32)
 		}
@@ -814,7 +819,7 @@ func NewDupFilter(seen map[string]int) FilterFunc {
 				cnt := seen[hsh]
 				cnt++
 				seen[hsh] = cnt
-				if cnt > 10 {
+				if cnt > 1 {
 					Log("msg", "DupFilter DROPs", "hash", hsh)
 					continue
 				}
@@ -826,4 +831,18 @@ func NewDupFilter(seen map[string]int) FilterFunc {
 
 type uncomprLister interface {
 	Read() (archiver.File, error)
+}
+
+func NewDebugFilter(message string) FilterFunc {
+	return func(ctx context.Context,
+		inch <-chan i18nmail.MailPart, outch chan<- i18nmail.MailPart,
+		files chan<- ArchFileItem, errch chan<- error,
+	) {
+		Log := log.With(getLogger(ctx), "debug", message).Log
+		defer close(outch)
+		for mp := range inch {
+			Log("part", mp)
+			outch <- mp
+		}
+	}
 }

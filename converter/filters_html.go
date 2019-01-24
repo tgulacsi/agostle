@@ -104,7 +104,6 @@ func HTMLPartFilter(ctx context.Context,
 	)
 	last = -1
 	for part := range inch {
-
 		this = -1
 		parent = part.Parent
 		if parent == nil {
@@ -152,6 +151,7 @@ func HTMLPartFilter(ctx context.Context,
 				fn = fmt.Sprintf("%s-%02d.html", fn, this)
 			}
 			fn = filepath.Join(dn, fn)
+			Log("msg", "writeToFile", "fn", fn, "part", part, "ct", part.ContentType)
 			if err = writeToFile(ctx, fn, part.Body, part.ContentType /*, mailHeader*/); err != nil {
 				goto Error
 			}
@@ -171,6 +171,7 @@ func HTMLPartFilter(ctx context.Context,
 		}
 		cid = strings.Trim(part.Header.Get("Content-ID"), "<>")
 		if cid == "" {
+			Log("msg", "empty CID", "part", part)
 			goto Skip
 		}
 		this = parent.Seq
@@ -196,26 +197,29 @@ func HTMLPartFilter(ctx context.Context,
 		// K-MT9641 skip images which aren't in the .html
 		for _, cg := range groups[this] {
 			if fn, ok = cg.cids[cid]; !ok {
+				Log("msg", "SKIP", "cg", cg)
 				goto Skip
 			}
 			fn = filepath.Join(filepath.Dir(cg.htmlFn), fn)
 
 			_ = os.Mkdir(filepath.Dir(fn), 0755) // ignore error
-			Log("save", fn, "cid", cid, "htmlFn", cg.htmlFn)
+			Log("save", fn, "cid", cid, "htmlFn", cg.htmlFn, "part", part)
 			if err = writeToFile(ctx, fn, part.Body, part.ContentType /*, mailHeader*/); err != nil {
 				goto Error
 			}
 			tbd[filepath.Dir(fn)] = struct{}{}
 		}
-
 		continue
+
+	Skip:
+		outch <- part
+		continue
+
 	Error:
 		Log("error", err)
 		if err != nil {
 			errch <- err
 		}
-	Skip:
-		outch <- part
 	}
 
 	for _, vv := range groups {

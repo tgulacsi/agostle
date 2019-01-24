@@ -69,30 +69,31 @@ func ScanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 
 // NewCidMapper remaps Content-Id urls to ContentDir/filename and returns the map
 func NewCidMapper(cids map[string]string, subDir string, r io.Reader) io.Reader {
+	data, _ := ioutil.ReadAll(r)
 	start := []byte(`src="cid:`)
-
-	split := func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-		advance, token, err = ScanLines(data, atEOF)
-		i := bytes.Index(token, start)
+	var offset int
+	result := make([]byte, 0, 2*len(data))
+	for {
+		i := bytes.Index(data[offset:], start)
 		if i < 0 {
-			return
+			break
 		}
-		j := bytes.IndexByte(token[i+len(start):], '"')
+		i += offset
+		j := bytes.IndexByte(data[i+len(start):], '"')
 		if j < 0 {
-			return
+			break
 		}
 		j += i + len(start)
-		key := token[i+len(start) : j]
+		i += 5
+		result = append(result, data[offset:i]...)
+		offset = j
 
+		key := data[i+4 : j]
 		nfn := regulateCid(key, subDir)
+		result = append(result, nfn...)
 		cids[string(key)] = string(nfn)
-		token = append(append(append(make([]byte, 0, len(token)+3),
-			token[:i+5]...), nfn...), token[j:]...)
-		return
 	}
-	s := bufio.NewScanner(r)
-	s.Split(split)
-	return NewScannerReader(s)
+	return bytes.NewReader(append(result, data[offset:]...))
 }
 
 // NewEqsignStripper returns a reader which strips equal signs from line endings

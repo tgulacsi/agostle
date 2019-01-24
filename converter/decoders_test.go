@@ -89,16 +89,17 @@ func TestEqsignStripper(t *testing.T) {
 }
 
 func TestCidMapper(t *testing.T) {
-	data := []byte("<html><body><a\nsrc=\"cid:<image.png@ewee>\"\n>b</a></body></html>")
-	await := "<html><body><a\nsrc=\"images/image.png@ewee\"\n>b</a></body></html>"
+	data := []byte("<html><body><a\nsrc=\"cid:<image.png@ewee>\"\n>b</a>\n<img src=\"not\" /><img src=\"cid:aaa\" /></body></html>")
+	await := "<html><body><a\nsrc=\"images/image.png@ewee\"\n>b</a>\n<img src=\"not\" /><img src=\"images/aaa\" /></body></html>"
 	cids := make(map[string]string, 1)
 	read, err := ioutil.ReadAll(NewCidMapper(cids, "images", bytes.NewBuffer(data)))
 	if err != nil {
 		t.Errorf("error with stripper: %s", err)
 	}
 	if string(read) != await {
-		t.Errorf("data mismatch: awaited\n\t%s\n%v != got\n\t%s\n%v",
-			await, []byte(await), string(read), read)
+		t.Errorf("data mismatch: awaited\n\t%s\n%v [%d] != got\n\t%s\n%v [%d]",
+			await, []byte(await), len(await),
+			string(read), read, len(read))
 	}
 	t.Logf("cids: %s", cids)
 }
