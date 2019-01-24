@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2019 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -63,6 +63,8 @@ func textToHTML(r io.Reader) io.Reader {
 func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	Log := getLogger(ctx).Log
 	Log("msg", "converting image", "ct", contentType, "dest", destfn)
+
+	Log("stack", log.Caller(3)())
 	imgtyp := contentType[strings.Index(contentType, "/")+1:]
 	if strings.HasSuffix(destfn, ".pdf") {
 		destfn = destfn[:len(destfn)-4]
@@ -471,29 +473,26 @@ const (
 
 // GetConverter gets converter for the content-type
 func GetConverter(contentType string, mediaType map[string]string) (converter Converter) {
-	converter = nil
 	switch contentType {
 	case applicationPDF:
-		converter = PdfToPdf
+		return PdfToPdf
 	case "application/rtf":
-		converter = OfficeToPdf
+		return OfficeToPdf
 	case textPlain:
 		if mediaType != nil {
 			if cs, ok := mediaType["charset"]; ok && cs != "" {
-				converter = NewTextConverter(cs)
+				return NewTextConverter(cs)
 			}
 		}
-		if converter == nil {
-			converter = TextToPdf
-		}
+		return TextToPdf
 	case textHtml:
-		converter = HTMLToPdf
+		return HTMLToPdf
 	case messageRFC822:
-		converter = MailToPdfZip
+		return MailToPdfZip
 	case "multipart/related":
-		converter = MPRelatedToPdf
+		return MPRelatedToPdf
 	case "application/x-pkcs7-signature":
-		converter = Skip
+		return Skip
 	default:
 		// from http://www.openoffice.org/framework/documentation/mimetypes/mimetypes.html
 		if strings.HasPrefix(contentType, "application/vnd.oasis.") ||
@@ -510,18 +509,18 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 			strings.HasPrefix(contentType, "application/x-star.") ||
 			//Word
 			contentType == "application/msword" {
-			converter = OfficeToPdf
-			break
+
+			return OfficeToPdf
 		}
 		i := strings.Index(contentType, "/")
 		if i > 0 {
 			switch contentType[:i] {
 			case "image":
-				converter = ImageToPdf
+				return ImageToPdf
 			case "text":
-				converter = TextToPdf
+				return TextToPdf
 			case "audio", "video":
-				converter = nil
+				return nil
 			}
 		}
 	}
