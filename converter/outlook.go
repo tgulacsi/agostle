@@ -45,7 +45,7 @@ func NewOLEStorageReader(ctx context.Context, r io.Reader) (io.ReadCloser, error
 		}
 	}
 	if !strings.Contains(err.Error(), "Can't locate Email/Outlook/Message.pm in @INC") {
-		return rc, errors.Wrap(err, "Can't locate Email/Outlook/Message.pm in @INC")
+		return rc, errors.Wrapf(err, "Can't locate Email/Outlook/Message.pm in @INC", nil)
 	}
 	rc.Close()
 	Log("msg", "Email::Outlook::Message is not installed, trying with docker")
