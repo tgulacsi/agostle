@@ -393,6 +393,7 @@ func SetupFilters(
 	if len(Filters) == 0 {
 		return inch
 	}
+	ctx = context.WithValue(ctx, "seen", make(map[string]int, 32))
 
 	in := inch
 	var out chan i18nmail.MailPart
@@ -440,7 +441,6 @@ func MailToPdfFiles(ctx context.Context, r io.Reader) (files []ArchFileItem, err
 	worker := func() {
 		defer workWg.Done()
 		for mp := range partch {
-			Log("convertPart", mp)
 			if err = convertPart(ctx, mp, resultch); err != nil {
 				errch <- err
 			}
@@ -785,42 +785,37 @@ var Filters = make([]FilterFunc, 0, 6)
 
 func init() {
 	Filters = append(Filters, ExtractingFilter)
-	Filters = append(Filters, NewDupFilter(nil))
+	Filters = append(Filters, DupFilter)
 	Filters = append(Filters, TextDecodeFilter)
 	Filters = append(Filters, SaveOriHTMLFilter)
 	Filters = append(Filters, PrependHeaderFilter)
 	Filters = append(Filters, HTMLPartFilter)
-	//Filters = append(Filters, DupFilter)
+	Filters = append(Filters, DupFilter)
 }
 
-func NewDupFilter(seen map[string]int) FilterFunc {
+func DupFilter(ctx context.Context,
+	inch <-chan i18nmail.MailPart, outch chan<- i18nmail.MailPart,
+	files chan<- ArchFileItem, errch chan<- error,
+) {
+	Log := getLogger(ctx).Log
+	defer func() {
+		close(outch)
+	}()
+	seen := ctx.Value("seen").(map[string]int)
 	if seen == nil {
 		seen = make(map[string]int, 32)
 	}
-
-	return func(ctx context.Context,
-		inch <-chan i18nmail.MailPart, outch chan<- i18nmail.MailPart,
-		files chan<- ArchFileItem, errch chan<- error,
-	) {
-		Log := getLogger(ctx).Log
-		defer func() {
-			close(outch)
-		}()
-		if seen == nil {
-			seen = make(map[string]int, 32)
-		}
-		for part := range inch {
-			if hsh := part.Header.Get("X-Hash"); hsh != "" {
-				cnt := seen[hsh]
-				cnt++
-				seen[hsh] = cnt
-				if cnt > 10 {
-					Log("msg", "DupFilter DROPs", "hash", hsh)
-					continue
-				}
+	for part := range inch {
+		if hsh := part.Header.Get("X-Hash"); hsh != "" {
+			cnt := seen[hsh]
+			cnt++
+			seen[hsh] = cnt
+			if cnt > 10 {
+				Log("msg", "DupFilter DROPs", "hash", hsh)
+				continue
 			}
-			outch <- part
 		}
+		outch <- part
 	}
 }
 
