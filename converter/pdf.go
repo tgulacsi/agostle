@@ -166,8 +166,9 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 		if !strings.HasSuffix(fn, ".pdf") {
 			continue
 		}
-		Log("fn", fn, "prefix", prefix, "?", strings.HasPrefix(fn, prefix))
-		if strings.HasPrefix(fn, prefix) {
+		if !strings.HasPrefix(fn, prefix) {
+			Log("msg", "mismatch", "fn", fn, "prefix", prefix)
+		} else {
 			names = append(names, fn)
 		}
 	}
