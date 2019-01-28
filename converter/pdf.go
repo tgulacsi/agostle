@@ -128,23 +128,23 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 			return
 		}
 	}
-	var prefix string
-	if err = pdf.Split(ctx, destdir, srcfn); err == nil {
-		prefix = filepath.Base(srcfn) + "_"
+	prefix := strings.TrimSuffix(filepath.Base(srcfn), ".pdf")
+	if err = pdf.Split(ctx, destdir, srcfn); err != nil {
+		Log("msg", "pdf.Split", "error", err)
 	} else {
-		prefix = strings.Replace(filepath.Base(srcfn), "%", "!P!", -1) + "-"
+		prefix = strings.Replace(prefix, "%", "!P!", -1)
 
 		if popplerOk["pdfseparate"] != "" {
 			if err = callAt(ctx, popplerOk["pdfseparate"],
 				destdir,
 				srcfn,
-				filepath.Join(destdir, prefix+"%d.pdf"),
+				filepath.Join(destdir, prefix+"-%d.pdf"),
 			); err != nil {
 				err = errors.Wrapf(err, "executing %s", popplerOk["pdfseparate"])
 				return
 			}
 		} else {
-			if err = callAt(ctx, *ConfPdftk, destdir, srcfn, "burst", "output", prefix+"%03d.pdf"); err != nil {
+			if err = callAt(ctx, *ConfPdftk, destdir, srcfn, "burst", "output", prefix+"-%03d.pdf"); err != nil {
 				err = errors.Wrapf(err, "executing %s", *ConfPdftk)
 				return
 			}
@@ -161,25 +161,20 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 		return
 	}
 	//log.Printf("ls %s: %s", destdir, filenames)
-	var (
-		i  int
-		fn string
-	)
-	for i = len(filenames) - 1; i >= 0; i-- {
-		fn = filenames[i]
-		//log.Printf("fn=%s prefix?%b suffix?%b", fn, strings.HasPrefix(fn, prefix),
-		//strings.HasSuffix(fn, ".pdf"))
-		if !(strings.HasPrefix(fn, prefix) && strings.HasSuffix(fn, ".pdf")) {
-			if i >= len(filenames)-1 {
-				filenames = filenames[:i]
-			} else {
-				filenames = append(filenames[:i], filenames[i+1:]...)
-			}
+	names := make([]string, 0, len(filenames))
+	for _, fn := range filenames {
+		if !strings.HasSuffix(fn, ".pdf") {
+			continue
+		}
+		Log("fn", fn, "prefix", prefix, "?", strings.HasPrefix(fn, prefix))
+		if strings.HasPrefix(fn, prefix) {
+			names = append(names, fn)
 		}
 	}
-	//log.Printf("splitted filenames: %s", filenames)
+	filenames = names
 	sort.Strings(filenames)
-	for i, fn = range filenames {
+	Log("msg", "splitted", "names", filenames)
+	for i, fn := range filenames {
 		filenames[i] = filepath.Join(destdir, fn)
 	}
 	return filenames, nil
