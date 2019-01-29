@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2019 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -244,7 +244,11 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 		}
 	}
 	if *ConfWkhtmltopdf != "" {
-		return wkhtmltopdf(ctx, destfn, inpfn)
+		err := wkhtmltopdf(ctx, destfn, inpfn)
+		if err == nil {
+			return nil
+		}
+		Log("msg", "wkhtmltopdf", "error", err)
 	}
 
 	dn := filepath.Dir(destfn)
@@ -323,14 +327,13 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 	Log := getLogger(ctx).Log
 	args := []string{
-		"--quiet",
 		inpfn,
 		"--allow", "images",
 		"--encoding", "utf-8",
 		"--load-error-handling", "ignore",
 		"--load-media-error-handling", "ignore",
 		"--images",
-		"--disable-local-file-access",
+		"--enable-local-file-access",
 		"--no-background",
 		outfn}
 	var buf bytes.Buffer
