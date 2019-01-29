@@ -21,11 +21,11 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/log"
+	"github.com/h2non/filetype"
+	"github.com/h2non/filetype/types"
 	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/iohlp"
 	"golang.org/x/net/html"
-	"gopkg.in/h2non/filetype.v1"
-	"gopkg.in/h2non/filetype.v1/types"
 )
 
 var ErrSkip = errors.New("skip this part")
