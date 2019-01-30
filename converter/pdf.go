@@ -128,23 +128,24 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 			return
 		}
 	}
-	prefix := strings.TrimSuffix(filepath.Base(srcfn), ".pdf")
+	prefix := strings.TrimSuffix(filepath.Base(srcfn), ".pdf") + "_"
 	if err = pdf.Split(ctx, destdir, srcfn); err != nil {
-		Log("msg", "pdf.Split", "error", err)
-	} else {
+		Log("msg", "pdf.Split", "src", srcfn, "dest", destdir, "error", err)
 		prefix = strings.Replace(prefix, "%", "!P!", -1)
 
-		if popplerOk["pdfseparate"] != "" {
-			if err = callAt(ctx, popplerOk["pdfseparate"],
+		if pdfsep := popplerOk["pdfseparate"]; pdfsep != "" {
+			Log("msg", pdfsep, "src", srcfn, "dest", destdir)
+			if err = callAt(ctx, pdfsep,
 				destdir,
 				srcfn,
-				filepath.Join(destdir, prefix+"-%d.pdf"),
+				filepath.Join(destdir, prefix+"%d.pdf"),
 			); err != nil {
-				err = errors.Wrapf(err, "executing %s", popplerOk["pdfseparate"])
+				err = errors.Wrapf(err, "executing %s", pdfsep)
 				return
 			}
 		} else {
-			if err = callAt(ctx, *ConfPdftk, destdir, srcfn, "burst", "output", prefix+"-%03d.pdf"); err != nil {
+			Log("msg", *ConfPdftk, "src", srcfn, "dest", destdir)
+			if err = callAt(ctx, *ConfPdftk, destdir, srcfn, "burst", "output", prefix+"%03d.pdf"); err != nil {
 				err = errors.Wrapf(err, "executing %s", *ConfPdftk)
 				return
 			}
