@@ -216,9 +216,10 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 				// delete height, modify width
 				for i := 0; i < len(img.Attr); i++ {
 					switch strings.ToLower(img.Attr[i].Key) {
-					case "height":
+					case "height", "style":
 						img.Attr[i] = img.Attr[0]
 						img.Attr = img.Attr[1:]
+						i--
 					case "width":
 						if len(img.Attr[i].Val) > 3 {
 							img.Attr[i].Val = "100%"
