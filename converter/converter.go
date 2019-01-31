@@ -290,7 +290,8 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 		lofficePortLock.Lock()
 		defer lofficePortLock.Unlock()
 	}
-	cmd := exec.CommandContext(ctx, *ConfLoffice, args...)
+	subCtx, subCancel := context.WithTimeout(ctx, *ConfLofficeTimeout)
+	cmd := exec.CommandContext(subCtx, *ConfLoffice, args...)
 	cmd.Dir = filepath.Dir(inpfn)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = cmd.Stderr
@@ -314,7 +315,9 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 		}
 	}
 
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	subCancel()
+	if err != nil {
 		return errors.Wrapf(err, "%q", cmd.Args)
 	}
 	outfn := filepath.Join(outDir, filepath.Base(nakeFilename(inpfn))+".pdf")

@@ -153,6 +153,7 @@ github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1 h1:PJPDf8OUfOK1bb/
 github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1/go.mod h1:1NbS8ALrpOvjt0rHPNLyCIeMtbizbir8U//inJ+zuB8=
 github.com/kardianos/service v0.0.0-20180823001510-8f267d80f2eb h1:2lmKB0a4p/+PnlaRaWHOCh/wQTUHY/FfWZ4b/LqAaoo=
 github.com/kardianos/service v0.0.0-20180823001510-8f267d80f2eb/go.mod h1:10UU/bEkzh2iEN6aYzbevY7J6p03KO5siTxQWXMEerg=
+github.com/kardianos/service v0.0.0-20181115005516-4c239ee84e7b h1:vfiqKno48aUndBMjTeWFpCExNnTf2Xnd6d228L4EfTQ=
 github.com/kardianos/service v0.0.0-20181115005516-4c239ee84e7b/go.mod h1:10UU/bEkzh2iEN6aYzbevY7J6p03KO5siTxQWXMEerg=
 github.com/kisielk/gotool v0.0.0-20161130080628-0de1eaf82fa3/go.mod h1:jxZFDH7ILpTPQTk+E2s+z4CUas9lVNjIuKR4c5/zKgM=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
