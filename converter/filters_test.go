@@ -40,7 +40,7 @@ func TestFixXMLCharset(t *testing.T) {
 		`<?xml version="1.0" charset="iso-8859-2" ?><!DOCTYPE html><p>` + string([]rune{225}) + "</p></html>",
 	} {
 		subCtx, subCancel := context.WithTimeout(ctx, 10*time.Second)
-		b, err := ioutil.ReadAll(fixXMLCharset(subCtx, strings.NewReader(elt)))
+		b, err := iohlp.ReadAll(fixXMLCharset(subCtx, strings.NewReader(elt)), 1<<20)
 		subCancel()
 		if err != nil {
 			t.Errorf("%d. read: %v", i, err)
