@@ -6,8 +6,9 @@ package converter
 
 import (
 	"bytes"
-	"io/ioutil"
 	"testing"
+
+	"github.com/tgulacsi/go/iohlp"
 )
 
 func min(x ...int) int {
@@ -41,7 +42,7 @@ wBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXw-`,
 func TestB64QuoPriDecoder(t *testing.T) {
 	for i, tf := range deBorkTests {
 		r := NewB64QuoPriDecoder(bytes.NewReader([]byte(tf[0])))
-		out, err := ioutil.ReadAll(r)
+		out, err := iohlp.ReadAll(r, 1<<20)
 		if err != nil {
 			t.Errorf("error with reading: %s", err)
 		}
@@ -77,7 +78,7 @@ func findDiff(a, b []byte) int {
 func TestEqsignStripper(t *testing.T) {
 	data := []byte("abraka=dabraka=\r\nprix=\nprax=prux\nquix\r\npux")
 	await := "abraka=dabrakaprixprax=prux\nquix\r\npux"
-	read, err := ioutil.ReadAll(NewEqsignStripper(bytes.NewBuffer(data)))
+	read, err := iohlp.ReadAll(NewEqsignStripper(bytes.NewBuffer(data)), 1<<20)
 	if err != nil {
 		t.Errorf("error with stripper: %s", err)
 	}
@@ -92,7 +93,7 @@ func TestCidMapper(t *testing.T) {
 	data := []byte("<html><body><a\nsrc=\"cid:<image.png@ewee>\"\n>b</a></body></html>")
 	await := "<html><body><a\nsrc=\"images/image.png@ewee\"\n>b</a></body></html>"
 	cids := make(map[string]string, 1)
-	read, err := ioutil.ReadAll(NewCidMapper(cids, "images", bytes.NewBuffer(data)))
+	read, err := iohlp.ReadAll(NewCidMapper(cids, "images", bytes.NewBuffer(data)), 1<<20)
 	if err != nil {
 		t.Errorf("error with stripper: %s", err)
 	}

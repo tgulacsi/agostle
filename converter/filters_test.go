@@ -5,12 +5,12 @@
 package converter
 
 import (
-	"io/ioutil"
+	"context"
 	"strings"
 	"testing"
 	"time"
 
-	"context"
+	"github.com/tgulacsi/go/iohlp"
 )
 
 func TestFixXMLHeader(t *testing.T) {
@@ -19,7 +19,7 @@ func TestFixXMLHeader(t *testing.T) {
 		want,
 		strings.Replace(want, "charset", "encoding", 1),
 	} {
-		b, err := ioutil.ReadAll(fixXMLHeader(strings.NewReader(elt)))
+		b, err := iohlp.ReadAll(fixXMLHeader(strings.NewReader(elt)), 1<<20)
 		if err != nil {
 			t.Errorf("%d. read: %v", i, err)
 			continue

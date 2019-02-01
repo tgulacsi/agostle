@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"net/mail"
 	"net/textproto"
 	"os"
@@ -23,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/byteutil"
 	"github.com/tgulacsi/go/i18nmail"
+	"github.com/tgulacsi/go/iohlp"
 )
 
 // PrependHeaderFilter writes Subject, From... headers at the beginning of the html/plain parts.
@@ -85,7 +85,7 @@ func PrependHeaderFilter(ctx context.Context,
 
 		part.Body = decodeHTML(ctx, part.Body, *ConfWkhtmltopdf == "")
 		if *ConfWkhtmltopdf == "" {
-			b, err := ioutil.ReadAll(part.Body)
+			b, err := iohlp.ReadAll(part.Body, 1<<20)
 			if err != nil {
 				Log("msg", "cannot read", "body", part.Body, "error", err)
 			}

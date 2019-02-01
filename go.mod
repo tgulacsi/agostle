@@ -2,6 +2,8 @@ module github.com/tgulacsi/agostle
 
 require (
 	bitbucket.org/zombiezen/gopdf v0.0.0-20150317163809-1c63dc69751b
+	github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc // indirect
+	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/coreos/go-systemd v0.0.0-20181031085051-9002847aa142
 	github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76 // indirect
@@ -15,11 +17,12 @@ require (
 	github.com/nwaples/rardecode v1.0.0 // indirect
 	github.com/oklog/ulid v1.3.1
 	github.com/pelletier/go-toml v1.2.0 // indirect
+	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.2
 	github.com/stvp/go-toml-config v0.0.0-20170523163211-314328849d78
 	github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 // indirect
-	github.com/tgulacsi/go v0.2.17
+	github.com/tgulacsi/go v0.2.20
 	github.com/ulikunitz/xz v0.5.5 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	golang.org/x/image v0.0.0-20190118043309-183bebdce1b2

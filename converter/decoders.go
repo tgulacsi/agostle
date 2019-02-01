@@ -11,11 +11,11 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"io/ioutil"
 	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/i18nmail"
+	"github.com/tgulacsi/go/iohlp"
 )
 
 type htmlEscaper struct {
@@ -38,7 +38,7 @@ func regulateCid(text []byte, subDir string) []byte {
 // GetCidMap returns the cid-filename mapping
 func GetCidMap(text []byte, subDir string) ([]byte, map[string]string, error) {
 	cids := make(map[string]string, 4)
-	out, err := ioutil.ReadAll(NewCidMapper(cids, subDir, bytes.NewBuffer(text)))
+	out, err := iohlp.ReadAll(NewCidMapper(cids, subDir, bytes.NewBuffer(text)), 1<<20)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -69,7 +69,7 @@ func ScanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 
 // NewCidMapper remaps Content-Id urls to ContentDir/filename and returns the map
 func NewCidMapper(cids map[string]string, subDir string, r io.Reader) io.Reader {
-	data, _ := ioutil.ReadAll(r)
+	data, _ := iohlp.ReadAll(r, 1<<20)
 	start := []byte(`src="cid:`)
 	var offset int
 	result := make([]byte, 0, 2*len(data))
