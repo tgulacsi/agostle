@@ -216,9 +216,10 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 				// delete height, modify width
 				for i := 0; i < len(img.Attr); i++ {
 					switch strings.ToLower(img.Attr[i].Key) {
-					case "height":
+					case "height", "style":
 						img.Attr[i] = img.Attr[0]
 						img.Attr = img.Attr[1:]
+						i--
 					case "width":
 						if len(img.Attr[i].Val) > 3 {
 							img.Attr[i].Val = "100%"
@@ -262,6 +263,15 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 	return nil
 }
 
+func OutlookToEML(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	rc, err := NewOLEStorageReader(ctx, r)
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+	return MailToPdfZip(ctx, destfn, rc, messageRFC822)
+}
+
 var reHtmlImg = regexp.MustCompile(`(?i)(<img[^>]*/?>)`)
 
 // Skip skips the conversion
@@ -289,7 +299,8 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 		lofficePortLock.Lock()
 		defer lofficePortLock.Unlock()
 	}
-	cmd := exec.CommandContext(ctx, *ConfLoffice, args...)
+	subCtx, subCancel := context.WithTimeout(ctx, *ConfLofficeTimeout)
+	cmd := exec.CommandContext(subCtx, *ConfLoffice, args...)
 	cmd.Dir = filepath.Dir(inpfn)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = cmd.Stderr
@@ -313,7 +324,9 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 		}
 	}
 
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	subCancel()
+	if err != nil {
 		return errors.Wrapf(err, "%q", cmd.Args)
 	}
 	outfn := filepath.Join(outDir, filepath.Base(nakeFilename(inpfn))+".pdf")
@@ -389,7 +402,7 @@ var ExtContentType = map[string]string{
 	"odi": "application/vnd.oasis.image",
 
 	"txt": textPlain,
-	"msg": "application/x-ole-storage",
+	"msg": "application/vnd.ms-outlook",
 
 	"jpg":  "image/jpeg",
 	"jpeg": "image/jpeg",
@@ -493,6 +506,8 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 		converter = HTMLToPdf
 	case messageRFC822:
 		converter = MailToPdfZip
+	case "application/vnd.ms-outlook":
+		converter = OutlookToEML
 	case "multipart/related":
 		converter = MPRelatedToPdf
 	case "application/x-pkcs7-signature":

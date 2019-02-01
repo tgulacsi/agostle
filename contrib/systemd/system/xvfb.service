@@ -1,0 +1,11 @@
+[Unit]
+Description=Xvfb
+
+[Service]
+Type=simple
+User=nobody
+ExecStart=/usr/bin/Xvfb :99
+
+[Install]
+WantedBy=default.target
+

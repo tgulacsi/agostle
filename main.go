@@ -46,7 +46,7 @@ var (
 )
 
 func init() {
-	logger = log.With(logger, "t", log.DefaultTimestamp, "caller", log.DefaultCaller())
+	logger = log.With(logger, "t", log.DefaultTimestamp, "caller", log.DefaultCaller)
 	swLogger.Swap(log.NewLogfmtLogger(os.Stderr))
 	stdlog.SetFlags(0)
 	stdlog.SetOutput(log.NewStdlibAdapter(logger))

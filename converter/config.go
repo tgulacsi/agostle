@@ -57,7 +57,10 @@ var (
 	ConfSortBeforeMerge = config.Bool("sortBeforeMerge", false)
 
 	// ConfChildTimeout is the time before the child gets killed
-	ConfChildTimeout = config.Duration("childTimeout", 1*time.Hour)
+	ConfChildTimeout = config.Duration("childTimeout", 10*time.Minute)
+
+	// ConfLofficeTimeout is the time before LibreOffice gets killed.
+	ConfLofficeTimeout = config.Duration("lofficeTimeout", time.Minute)
 
 	// ConcLimit limits the concurrently running child processes
 	ConcLimit = NewRateLimiter(Concurrency)

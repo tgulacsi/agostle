@@ -677,7 +677,7 @@ func ExtractingFilter(ctx context.Context,
 			archRowCount int
 		)
 		body := part.Body
-		if part.ContentType == "application/x-ole-storage" {
+		if part.ContentType == "application/x-ole-storage" || part.ContentType == "application/vnd.ms-outlook" {
 			r, oleErr := NewOLEStorageReader(ctx, body)
 			if oleErr != nil {
 				err = oleErr
