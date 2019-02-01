@@ -263,6 +263,15 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 	return nil
 }
 
+func OutlookToEML(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	rc, err := NewOLEStorageReader(ctx, r)
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+	return MailToPdfZip(ctx, destfn, rc, messageRFC822)
+}
+
 var reHtmlImg = regexp.MustCompile(`(?i)(<img[^>]*/?>)`)
 
 // Skip skips the conversion
@@ -393,7 +402,7 @@ var ExtContentType = map[string]string{
 	"odi": "application/vnd.oasis.image",
 
 	"txt": textPlain,
-	"msg": "application/x-ole-storage",
+	"msg": "application/vnd.ms-outlook",
 
 	"jpg":  "image/jpeg",
 	"jpeg": "image/jpeg",
@@ -497,6 +506,8 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 		converter = HTMLToPdf
 	case messageRFC822:
 		converter = MailToPdfZip
+	case "application/vnd.ms-outlook":
+		converter = OutlookToEML
 	case "multipart/related":
 		converter = MPRelatedToPdf
 	case "application/x-pkcs7-signature":
