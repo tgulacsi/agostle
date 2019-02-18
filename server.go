@@ -64,6 +64,7 @@ func newHTTPServer(address string, saveReq bool) *graceful.Server {
 	}
 	H("/pdf/merge", pdfMergeServer.ServeHTTP)
 	H("/email/convert", emailConvertServer.ServeHTTP)
+	H("/convert", emailConvertServer.ServeHTTP)
 	H("/outlook", outlookToEmailServer.ServeHTTP)
 	mux.Handle("/_admin/stop", http.HandlerFunc(adminStopHandler))
 	mux.Handle("/", http.HandlerFunc(statusPage))
@@ -160,7 +161,8 @@ type reqFile struct {
 func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 	f := reqFile{ReadCloser: r.Body}
 	contentType := r.Header.Get("Content-Type")
-	getLogger(ctx).Log("msg", "readRequestOneFile", "content-type", contentType)
+	Log := getLogger(ctx).Log
+	Log("msg", "readRequestOneFile", "content-type", contentType)
 	if !strings.HasPrefix(contentType, "multipart/") {
 		f.FileHeader.Header = textproto.MIMEHeader(r.Header)
 		return f, nil
@@ -179,6 +181,7 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 			if f.ReadCloser, err = fileHeader.Open(); err != nil {
 				return f, fmt.Errorf("error opening part %q: %s", fileHeader.Filename, err)
 			}
+			Log("fileHeader", fileHeader, "f.FileHeader", f.FileHeader)
 			if fileHeader != nil {
 				f.FileHeader = *fileHeader
 				return f, nil

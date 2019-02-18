@@ -6,7 +6,6 @@ require (
 	github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/coreos/go-systemd v0.0.0-20181031085051-9002847aa142
-	github.com/disintegration/gift v1.2.0 // indirect
 	github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76 // indirect
 	github.com/flynn/go-tuf v0.0.0-20170108035750-a98aea1463c9
 	github.com/go-kit/kit v0.8.0
@@ -14,8 +13,6 @@ require (
 	github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1
 	github.com/kardianos/service v0.0.0-20181115005516-4c239ee84e7b
 	github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348
-	github.com/mattn/go-colorable v0.0.9 // indirect
-	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/nwaples/rardecode v1.0.0 // indirect
 	github.com/oklog/ulid v1.3.1
@@ -32,6 +29,5 @@ require (
 	golang.org/x/net v0.0.0-20190125091013-d26f9f9a57f3
 	golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
-	gopkg.in/inconshreveable/log15.v2 v2.0.0-20180818164646-67afb5ed74ec // indirect
 	gopkg.in/tylerb/graceful.v1 v1.2.15
 )
