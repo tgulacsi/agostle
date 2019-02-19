@@ -7,6 +7,7 @@ package converter
 import (
 	"errors"
 	"net/http"
+	"sync"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/h2non/filetype"
@@ -48,23 +49,47 @@ func (d HTTPMIMEDetector) Match(b []byte) (string, error) {
 
 type MultiMIMEDetector struct {
 	Detectors []MIMEDetector
+	Parallel  bool
 }
 
 func (d MultiMIMEDetector) Match(b []byte) (string, error) {
+	type result struct {
+		Type string
+		Err  error
+	}
+	results := make([]result, len(d.Detectors))
+	if !d.Parallel {
+		for i, detector := range d.Detectors {
+			typ, err := detector.Match(b)
+			results[i] = result{Type: typ, Err: err}
+		}
+	} else {
+		var wg sync.WaitGroup
+		for i, d := range d.Detectors {
+			wg.Add(1)
+			i, d := i, d
+			go func() {
+				typ, err := d.Match(b)
+				results[i] = result{Type: typ, Err: err}
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+	}
 	var res string
 	var lastErr = errors.New("not found")
-	for _, detector := range d.Detectors {
-		candidate, err := detector.Match(b)
-		if err == nil {
-			lastErr = nil
-			if len(res) < len(candidate) {
-				res = candidate
+	for _, r := range results {
+		if r.Err != nil {
+			if lastErr != nil {
+				lastErr = r.Err
 			}
 			continue
 		}
-		if lastErr != nil {
-			lastErr = err
+		lastErr = nil
+		if len(res) < len(r.Type) {
+			res = r.Type
 		}
+		continue
 	}
 	return res, lastErr
 }
