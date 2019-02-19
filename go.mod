@@ -8,6 +8,7 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20181031085051-9002847aa142
 	github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76 // indirect
 	github.com/flynn/go-tuf v0.0.0-20170108035750-a98aea1463c9
+	github.com/gabriel-vasile/mimetype v0.1.0
 	github.com/go-kit/kit v0.8.0
 	github.com/h2non/filetype v1.0.6
 	github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1
