@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -165,6 +166,9 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 	Log("msg", "readRequestOneFile", "content-type", contentType)
 	if !strings.HasPrefix(contentType, "multipart/") {
 		f.FileHeader.Header = textproto.MIMEHeader(r.Header)
+		_, params, _ := mime.ParseMediaType(r.Header.Get("Content-Disposition"))
+		Log("content-disposition", r.Header.Get("Content-Disposition"), "params", params)
+		f.FileHeader.Filename = params["filename"]
 		return f, nil
 	}
 	defer func() { _ = r.Body.Close() }()

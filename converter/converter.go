@@ -21,8 +21,6 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/log"
-	"github.com/h2non/filetype"
-	"github.com/h2non/filetype/types"
 	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/iohlp"
 	"golang.org/x/net/html"
@@ -436,7 +434,7 @@ func fixCT(contentType, fileName string) (ct string) {
 }
 
 // FixContentType ensures proper content-type
-// (uses filetype.v1 for "" and application/octet-stream)
+// (uses magic for "" and application/octet-stream)
 func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	defer func() {
 		if contentType != ct {
@@ -447,19 +445,15 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	contentType = fixCT(contentType, fileName)
 	if ext := strings.ToLower(filepath.Ext(fileName)); strings.HasPrefix(ext, ".") {
 		if want, ok := ExtContentType[ext[1:]]; ok && contentType != want {
-			if !filetype.IsType(body, types.Type{MIME: types.NewMIME(contentType)}) {
-				if typ, err := filetype.Match(body); err == nil && typ.MIME.Type != "" {
-					return fixCT(typ.MIME.Type+"/"+typ.MIME.Subtype, fileName)
-				}
+			if typ, err := MIMEMatch(body); err == nil && typ != "" && typ != contentType {
+				return fixCT(typ, fileName)
 			}
 		}
 	}
 	c := GetConverter(contentType, nil)
 	if c == nil { // no converter for this
-		if filetype.IsType(body, types.Type{MIME: types.NewMIME(contentType)}) {
-			if typ, err := filetype.Match(body); err == nil && typ.MIME.Type != "" {
-				return fixCT(typ.MIME.Type+"/"+typ.MIME.Subtype, fileName)
-			}
+		if typ, err := MIMEMatch(body); err == nil && typ != "" && typ != contentType {
+			return fixCT(typ, fileName)
 		}
 	}
 	if fileName != "" &&

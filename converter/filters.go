@@ -22,8 +22,6 @@ import (
 
 	"context"
 
-	"github.com/h2non/filetype"
-	filetypes "github.com/h2non/filetype/types"
 	"github.com/pkg/errors" // MailToPdfZip converts mail to ZIP of PDFs
 	"github.com/tgulacsi/go/i18nmail"
 	"github.com/tgulacsi/go/iohlp"
@@ -344,10 +342,10 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	if b, err := br.Peek(512); err != nil {
 		errch <- err
 		return
-	} else if typ, _ := filetype.Match(b); typ != filetypes.Unknown && !bytes.Contains(b, []byte("Delivered-To:")) && !bytes.Contains(b, []byte("Received:")) {
+	} else if typ, _ := MIMEMatch(b); typ != "" && !bytes.Contains(b, []byte("Delivered-To:")) && !bytes.Contains(b, []byte("Received:")) {
 		Log("msg", "not email!", "typ", typ, "ct", contentType)
 		if contentType == "" || contentType == "message/rfc822" {
-			contentType = typ.MIME.Type + "/" + typ.MIME.Subtype
+			contentType = typ
 		}
 		contentType = FixContentType(b, contentType, "")
 		Log("msg", "fixed", "contentType", contentType)
