@@ -185,7 +185,6 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 			if f.ReadCloser, err = fileHeader.Open(); err != nil {
 				return f, fmt.Errorf("error opening part %q: %s", fileHeader.Filename, err)
 			}
-			Log("fileHeader", fileHeader, "f.FileHeader", f.FileHeader)
 			if fileHeader != nil {
 				f.FileHeader = *fileHeader
 				return f, nil

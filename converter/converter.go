@@ -420,7 +420,7 @@ func fixCT(contentType, fileName string) (ct string) {
 		if ext := filepath.Ext(fileName); len(ext) > 3 {
 			// http://www.iana.org/assignments/media-types/media-types.xhtml#application
 			switch ext {
-			case ".docx", ".xlsx", ".pptx":
+			case ".docx", ".xlsx", ".pptx", ".ods", ".odt", ".odp":
 				return ExtContentType[ext[1:]]
 			}
 		}
@@ -436,14 +436,15 @@ func fixCT(contentType, fileName string) (ct string) {
 // FixContentType ensures proper content-type
 // (uses magic for "" and application/octet-stream)
 func FixContentType(body []byte, contentType, fileName string) (ct string) {
+	ext := strings.ToLower(filepath.Ext(fileName))
 	defer func() {
 		if contentType != ct {
-			Log("msg", "FixContentType", "ct", contentType, "fn", fileName, "result", ct)
+			Log("msg", "FixContentType", "ct", contentType, "fn", fileName, "ext", ext, "result", ct)
 		}
 	}()
 
 	contentType = fixCT(contentType, fileName)
-	if ext := strings.ToLower(filepath.Ext(fileName)); strings.HasPrefix(ext, ".") {
+	if strings.HasPrefix(ext, ".") {
 		if want, ok := ExtContentType[ext[1:]]; ok && contentType != want {
 			if typ, err := MIMEMatch(body); err == nil && typ != "" && typ != contentType {
 				return fixCT(typ, fileName)
@@ -458,7 +459,7 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	}
 	if fileName != "" &&
 		(contentType == "" || contentType == "application/octet-stream" || c == nil) {
-		if ext := filepath.Ext(fileName); len(ext) > 3 {
+		if len(ext) > 3 {
 			if nct, ok := ExtContentType[ext[1:]]; ok {
 				return fixCT(nct, fileName)
 			}
