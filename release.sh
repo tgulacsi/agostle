@@ -3,8 +3,9 @@ set -e
 set -x
 fn=$(pwd)/tuf.pwd
 cd "$(dirname "$0")"
+DEST="${GOBIN:-"$(go env GOBIN)"}"
 GOOS=linux GOARCH=amd64 go install &
-GOOS=windows GOARCH=386 go install &
+GOOS=windows GOARCH=386 go build -o $DEST/agostle.exe &
 (which tuf || go get -u github.com/flynn/go-tuf/cmd/tuf)
 wait
 FLAVORS="$*"
@@ -19,15 +20,14 @@ TUF=${TUF:-$HOME/projects/TUF}
 
 #rsync -avz --delete-before web:/var/www/www.unosoft.hu/agostle/ ./public/ || echo $?
 mkdir -p "$TUF/staged/targets/agostle"
-GOBIN="${GOBIN:-"$(go env GOBIN)"}"
 for flavor in $FLAVORS; do
 	EXT=
 	if echo "$flavor" | grep -Fq windows; then
 		EXT=.exe
 	fi
-	exe=$GOBIN/agostle${EXT}
-	if [ -e "$GOBIN/$flavor" ]; then
-		exe=$GOBIN/$flavor/agostle${EXT}
+	exe=$DEST/agostle${EXT}
+	if [ -e "$DEST/$flavor" ]; then
+		exe=$DEST/$flavor/agostle${EXT}
 	fi
 	rsync -avz "${exe}" "$TUF/staged/targets/agostle/${flavor}"
 	(cd "$TUF" && tuf -d "$TUF" add "agostle/$flavor")
