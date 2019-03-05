@@ -90,7 +90,11 @@ func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, erro
 	getLogger(ctx).Log("input", req.Input)
 	contentType := req.Input.Header.Get("Content-Type")
 	if contentType == "" || contentType == "application/octet-stream" {
-		contentType = "message/rfc822"
+		if strings.HasPrefix(r.URL.Path, "/convert") {
+			contentType = ""
+		} else {
+			contentType = "message/rfc822"
+		}
 	}
 	req.Params.ContentType = contentType
 
