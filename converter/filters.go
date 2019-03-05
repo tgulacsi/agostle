@@ -26,7 +26,6 @@ import (
 	filetypes "github.com/h2non/filetype/types"
 	"github.com/pkg/errors" // MailToPdfZip converts mail to ZIP of PDFs
 	"github.com/tgulacsi/go/i18nmail"
-	"github.com/tgulacsi/go/iohlp"
 	"github.com/tgulacsi/go/temp"
 	//"github.com/tgulacsi/go/uncompr"
 	"github.com/mholt/archiver"
@@ -759,7 +758,7 @@ func ExtractingFilter(ctx context.Context,
 				break
 			}
 			archRowCount++
-			chunk, cErr := iohlp.ReadAll(z, 1<<20)
+			chunk, cErr := ioutil.ReadAll(z)
 			_ = z.Close()
 			Log("msg", "read zip element", "i", archRowCount, "fi", z.Name(), "error", err)
 			if cErr != nil {

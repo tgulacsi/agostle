@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2019 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"io/ioutil"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -36,13 +37,13 @@ func regulateCid(text []byte, subDir string) []byte {
 }
 
 // GetCidMap returns the cid-filename mapping
-func GetCidMap(text []byte, subDir string) ([]byte, map[string]string, error) {
+func GetCidMap(text []byte, subDir string) ([]byte, io.Closer, map[string]string, error) {
 	cids := make(map[string]string, 4)
-	out, err := iohlp.ReadAll(NewCidMapper(cids, subDir, bytes.NewBuffer(text)), 1<<20)
+	out, closer, err := iohlp.ReadAll(NewCidMapper(cids, subDir, bytes.NewBuffer(text)), 1<<20)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return out, cids, nil
+	return out, closer, cids, nil
 }
 
 // ScanLines is a split function for a Scanner that returns each line of
@@ -69,7 +70,7 @@ func ScanLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
 
 // NewCidMapper remaps Content-Id urls to ContentDir/filename and returns the map
 func NewCidMapper(cids map[string]string, subDir string, r io.Reader) io.Reader {
-	data, _ := iohlp.ReadAll(r, 1<<20)
+	data, _ := ioutil.ReadAll(r)
 	start := []byte(`src="cid:`)
 	var offset int
 	result := make([]byte, 0, 2*len(data))
