@@ -16,7 +16,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/i18nmail"
-	"github.com/tgulacsi/go/iohlp"
 )
 
 type htmlEscaper struct {
@@ -34,16 +33,6 @@ func regulateCid(text []byte, subDir string) []byte {
 	//nfn = nfn[:k]
 	//}
 	return []byte(subDir + "/" + filepath.Base(string(nfn)))
-}
-
-// GetCidMap returns the cid-filename mapping
-func GetCidMap(text []byte, subDir string) ([]byte, io.Closer, map[string]string, error) {
-	cids := make(map[string]string, 4)
-	out, closer, err := iohlp.ReadAll(NewCidMapper(cids, subDir, bytes.NewBuffer(text)), 1<<20)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-	return out, closer, cids, nil
 }
 
 // ScanLines is a split function for a Scanner that returns each line of

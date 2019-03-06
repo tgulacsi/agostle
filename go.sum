@@ -244,6 +244,8 @@ github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 h1:iGnD/q91
 github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613/go.mod h1:g6AnIpDSYMcphz193otpSIzN+11Rs+AAIIC6rm1enug=
 github.com/tgulacsi/go v0.3.1 h1:17sgeM3ysleFI1OcLtv5S1TmOj037Dl2bsZtsRgZM4k=
 github.com/tgulacsi/go v0.3.1/go.mod h1:bors48VRVUf3e19uJy8LJz3k+x7JUj7KXPCdTsts2wk=
+github.com/tgulacsi/go v0.3.2 h1:aGCJYeZtdNQFvtB/GP73IHJZU4K7LGhxP5Fg6Pf0SQ4=
+github.com/tgulacsi/go v0.3.2/go.mod h1:bors48VRVUf3e19uJy8LJz3k+x7JUj7KXPCdTsts2wk=
 github.com/tgulacsi/go/dbcsv v0.0.0-20181013081122-9263c87e522b/go.mod h1:Ydu+vpl4I24KcihJihehn+2WqjUJyyn9KD2R/ijaK6U=
 github.com/tgulacsi/go/dbcsv/csvload v0.0.0-20190201131341-e440493e22f6/go.mod h1:KpTSgZpQ/r/7+cAFDgAxviNlx9UBEdNe4Afe5e8RAW8=
 github.com/tgulacsi/picago v0.0.0-20171229130838-9e1ac2306c70/go.mod h1:YOW4MCz1GRh0aqedyC48A1CRXSHngOB/O/4+1rUjDQg=

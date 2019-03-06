@@ -26,7 +26,7 @@ require (
 	github.com/prometheus/client_golang v0.9.2
 	github.com/stvp/go-toml-config v0.0.0-20170523163211-314328849d78
 	github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 // indirect
-	github.com/tgulacsi/go v0.3.1
+	github.com/tgulacsi/go v0.3.2
 	github.com/ulikunitz/xz v0.5.5 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	golang.org/x/image v0.0.0-20190118043309-183bebdce1b2
