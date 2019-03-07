@@ -79,6 +79,9 @@ var (
 
 	// ConfLogFile specifies the file to log - instead of command line.
 	ConfLogFile = config.String("logfile", "")
+
+	// ConfKeepRemoteImage specifiec whether to keep the remote sources of images (mg src="http://mailtrack...").
+	ConfKeepRemoteImage = config.Bool("keepRemoteImage", false)
 )
 
 // LoadConfig loads TOML config file

@@ -222,6 +222,14 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 						if len(img.Attr[i].Val) > 3 {
 							img.Attr[i].Val = "100%"
 						}
+					case "src":
+						if !*ConfKeepRemoteImage {
+							if s := img.Attr[i].Val; strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "http://") {
+								img.Attr[i] = img.Attr[0]
+								img.Attr = img.Attr[1:]
+								i--
+							}
+						}
 					}
 				}
 				buf.Reset()
