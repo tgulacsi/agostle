@@ -8,9 +8,10 @@ require (
 	github.com/coreos/go-systemd v0.0.0-20181031085051-9002847aa142
 	github.com/disintegration/gift v1.2.0
 	github.com/dsnet/compress v0.0.0-20171208185109-cc9eb1d7ad76 // indirect
-	github.com/flynn/go-tuf v0.0.0-20170108035750-a98aea1463c9
+	github.com/flynn/go-tuf v0.0.0-20190425212541-cf1ac7de1ebf
 	github.com/gabriel-vasile/mimetype v0.1.0
 	github.com/go-kit/kit v0.8.0
+	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/h2non/filetype v1.0.6
 	github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1
 	github.com/kardianos/service v0.0.0-20181115005516-4c239ee84e7b
@@ -25,14 +26,18 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.2
 	github.com/stvp/go-toml-config v0.0.0-20170523163211-314328849d78
-	github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 // indirect
 	github.com/tgulacsi/go v0.3.2
-	github.com/ulikunitz/xz v0.5.5 // indirect
+	github.com/ulikunitz/xz v0.5.6 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
-	golang.org/x/image v0.0.0-20190118043309-183bebdce1b2
-	golang.org/x/net v0.0.0-20190125091013-d26f9f9a57f3
-	golang.org/x/text v0.3.1-0.20180807135948-17ff2d5776d2
+	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8 // indirect
+	golang.org/x/image v0.0.0-20190523035834-f03afa92d3ff
+	golang.org/x/net v0.0.0-20190613194153-d28f0bde5980
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
+	golang.org/x/sys v0.0.0-20190614160838-b47fdc937951 // indirect
+	golang.org/x/text v0.3.2
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/inconshreveable/log15.v2 v2.0.0-20180818164646-67afb5ed74ec
 	gopkg.in/tylerb/graceful.v1 v1.2.15
 )
+
+go 1.13
