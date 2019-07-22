@@ -27,7 +27,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.2
 	github.com/stvp/go-toml-config v0.0.0-20170523163211-314328849d78
-	github.com/tgulacsi/go v0.4.13
+	github.com/tgulacsi/go v0.5.0
 	github.com/ulikunitz/xz v0.5.6 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8 // indirect
