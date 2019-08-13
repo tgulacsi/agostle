@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -251,9 +252,27 @@ func (resp *emailConvertResponse) mergeIfRequested(params convertParams, logger 
 		return err
 	}
 	defer os.RemoveAll(tempDir)
-	if err = archiver.Unarchive(resp.outFn, tempDir); err != nil {
+
+	// archiver.Unarchive
+	uaIface, err := archiver.ByExtension(resp.outFn)
+	if err != nil {
+		return err
+	}
+	u, ok := uaIface.(archiver.Unarchiver)
+	if !ok {
+		return fmt.Errorf("format specified by source filename is not an archive format: %s (%T)", resp.outFn, uaIface)
+	}
+	ru := reflect.ValueOf(u).Elem()
+	if f := ru.FieldByName("MkdirAll"); f.IsValid() {
+		f.SetBool(true)
+	}
+	if f := ru.FieldByName("OverwriteExisting"); f.IsValid() {
+		f.SetBool(true)
+	}
+	if err = u.Unarchive(resp.outFn, tempDir); err != nil {
 		return errors.Wrapf(err, "unarchive %q to %q", resp.outFn, tempDir)
 	}
+
 	dh, err := os.Open(tempDir)
 	if err != nil {
 		return errors.Wrap(err, tempDir)

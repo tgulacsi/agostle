@@ -171,7 +171,7 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 		f.FileHeader.Filename = params["filename"]
 		return f, nil
 	}
-	defer func() { _ = r.Body.Close() }()
+	defer r.Body.Close()
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
 		return f, errors.New("error parsing request as multipart-form: " + err.Error())
 	}
