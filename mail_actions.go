@@ -12,8 +12,8 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/log"
-	"github.com/pkg/errors"
 	"github.com/tgulacsi/agostle/converter"
+	errors "golang.org/x/xerrors"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -100,18 +100,20 @@ Examples:
 		mailToPdfZipCmd.Flag("outimg", "output image format").StringVar(&outimg)
 		mailToPdfZipCmd.Flag("imgsize", "image size").Default("640x480").StringVar(&imgsize)
 		commands[mailToPdfZipCmd.FullCommand()] = func(ctx context.Context) error {
-			return errors.WithMessage(
-				mailToPdfZip(ctx, out, inp, split, outimg, imgsize),
-				"mailToPdfZip out="+out)
+			if err := mailToPdfZip(ctx, out, inp, split, outimg, imgsize); err != nil {
+				return errors.Errorf("mailToPdfZip out=%s: %w", out, err)
+			}
+			return nil
 		}
 	}
 
 	mailToTreeCmd := app.Command("mail2tree", "extract mail tree to a directory")
 	withOutFlag(mailToTreeCmd)
 	commands[mailToTreeCmd.FullCommand()] = func(ctx context.Context) error {
-		return errors.WithMessage(
-			mailToTree(ctx, out, inp),
-			"mailToTree out="+out)
+		if err := mailToTree(ctx, out, inp); err != nil {
+			return errors.Errorf("mailToTree out=%s: %w", out, err)
+		}
+		return nil
 	}
 
 	outlookToEmailCmd := app.Command("outlook2email", `convert outlook .msg to standard .eml
@@ -119,8 +121,9 @@ Examples:
 uses libemail-outlook-message-perl if installed, or docker to install && run that script`).Alias("msg2eml")
 	withOutFlag(outlookToEmailCmd)
 	commands[outlookToEmailCmd.FullCommand()] = func(ctx context.Context) error {
-		return errors.WithMessage(
-			outlookToEmail(ctx, out, inp),
-			"outlookToEmail out="+out)
+		if err := outlookToEmail(ctx, out, inp); err != nil {
+			return errors.Errorf("outlookToEmail out=%s: %w", out, err)
+		}
+		return nil
 	}
 }

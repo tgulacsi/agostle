@@ -8,8 +8,8 @@ package main
 //  /pdf/merge Accept: application/zip
 
 import (
+	"context"
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -26,13 +26,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"context"
-
 	"github.com/oklog/ulid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/temp"
+	errors "golang.org/x/xerrors"
 
 	"github.com/go-kit/kit/log"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -58,9 +57,20 @@ func newHTTPServer(address string, saveReq bool) *graceful.Server {
 	//mux.Handle("/debug/pprof", pprof.Handler)
 	mux.Handle("/metrics", promhttp.Handler())
 
+	duration := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "request_duration_seconds",
+			Help:    "A histogram of latencies for requests.",
+			Buckets: []float64{.25, .5, 1, 2.5, 5, 10},
+		},
+		[]string{"handler", "method"},
+	)
+	prometheus.MustRegister(duration)
+
 	H := func(path string, handleFunc http.HandlerFunc) {
 		mux.HandleFunc(path,
-			prometheus.InstrumentHandler(strings.Replace(path[1:], "/", "_", -1),
+			promhttp.InstrumentHandlerDuration(duration.MustCurryWith(
+				prometheus.Labels{"handler": strings.Replace(path[1:], "/", "_", -1)}),
 				handleFunc))
 	}
 	H("/pdf/merge", pdfMergeServer.ServeHTTP)
@@ -173,7 +183,7 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 	}
 	defer r.Body.Close()
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
-		return f, errors.New("error parsing request as multipart-form: " + err.Error())
+		return f, errors.Errorf("error parsing request as multipart-form: %w", err)
 	}
 	if r.MultipartForm == nil || len(r.MultipartForm.File) == 0 {
 		return f, errors.New("no files?")
@@ -201,7 +211,7 @@ func getRequestFiles(r *http.Request) ([]reqFile, error) {
 	}
 	err := r.ParseMultipartForm(1 << 20)
 	if err != nil {
-		return nil, errors.New("cannot parse request as multipart-form: " + err.Error())
+		return nil, errors.Errorf("cannot parse request as multipart-form: %w", err)
 	}
 	if r.MultipartForm == nil || len(r.MultipartForm.File) == 0 {
 		return nil, errors.New("no files?")

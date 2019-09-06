@@ -21,9 +21,9 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/log"
-	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/iohlp"
 	"golang.org/x/net/html"
+	errors "golang.org/x/xerrors"
 )
 
 var ErrSkip = errors.New("skip this part")
@@ -71,7 +71,7 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 		inpfn := destfn + "." + imgtyp
 		ifh, err = os.Create(inpfn)
 		if err != nil {
-			return errors.Wrapf(err, "create temp image file "+inpfn)
+			return errors.Errorf("create temp image file %s: %w", inpfn, err)
 		}
 		if _, err = io.Copy(ifh, r); err != nil {
 			Log("msg", "ImageToPdf reading", "file", ifh.Name(), "error", err)
@@ -80,7 +80,7 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 			Log("msg", "ImageToPdf writing", "dest", ifh.Name(), "error", err)
 		}
 		if ifh, err = os.Open(inpfn); err != nil {
-			return errors.Wrapf(err, "open inp "+inpfn)
+			return errors.Errorf("open inp %s: %w", inpfn, err)
 		}
 		defer func() { _ = ifh.Close() }()
 		if !LeaveTempFiles {
@@ -93,7 +93,7 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 	}
 	if !fileExists(ifh.Name()) {
 		Log("msg", "Input file not exist!", "file", ifh.Name())
-		return errors.New("input file " + ifh.Name() + " not exists")
+		return errors.Errorf("input file %s not exists", ifh.Name())
 	}
 	w, err := os.Create(destfn)
 	if err != nil {
@@ -154,7 +154,7 @@ func MPRelatedToPdf(ctx context.Context, destfn string, r io.Reader, contentType
 	)
 	contentType, params, err = mime.ParseMediaType(contentType)
 	if err != nil {
-		err = errors.Wrapf(err, "parse Content-Type %s", contentType)
+		err = errors.Errorf("parse Content-Type %s: %w", contentType, err)
 		return err
 	}
 
@@ -246,7 +246,7 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 			}
 
 			if err = ioutil.WriteFile(inpfn, b, 0644); err != nil {
-				return errors.Wrap(err, "overwrite inpfn")
+				return errors.Errorf("overwrite %s: %w", inpfn, err)
 			}
 		}
 	}
@@ -333,11 +333,11 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 	err := cmd.Run()
 	subCancel()
 	if err != nil {
-		return errors.Wrapf(err, "%q", cmd.Args)
+		return errors.Errorf("%q: %w", cmd.Args, err)
 	}
 	outfn := filepath.Join(outDir, filepath.Base(nakeFilename(inpfn))+".pdf")
 	if _, err := os.Stat(outfn); err != nil {
-		return errors.Wrapf(err, "loffice no output for %s", filepath.Base(inpfn))
+		return errors.Errorf("loffice no output for %s: %w", filepath.Base(inpfn), err)
 	}
 	return nil
 }
@@ -362,19 +362,19 @@ func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 	cmd.Stdout = os.Stdout
 	Log("start", "wkhtmltopdf", "args", cmd.Args)
 	if err := cmd.Run(); err != nil {
-		err = errors.Wrapf(err, "%q", cmd.Args)
+		err = errors.Errorf("%q: %w", cmd.Args, err)
 		if bytes.HasSuffix(buf.Bytes(), []byte("ContentNotFoundError\n")) ||
 			bytes.HasSuffix(buf.Bytes(), []byte("ProtocolUnknownError\n")) ||
 			bytes.HasSuffix(buf.Bytes(), []byte("HostNotFoundError\n")) { // K-MT11422:99503
 			Log("msg", buf.String())
 		} else {
-			return errors.Wrapf(err, buf.String())
+			return errors.Errorf("%s: %w", buf.String(), err)
 		}
 	}
 	if fi, err := os.Stat(outfn); err != nil {
-		return errors.Wrapf(err, "wkhtmltopdf no output for %s", filepath.Base(inpfn))
+		return errors.Errorf("wkhtmltopdf no output for %s: %w", filepath.Base(inpfn), err)
 	} else if fi.Size() == 0 {
-		return errors.New("wkhtmltopdf empty output for " + filepath.Base(inpfn))
+		return errors.Errorf("wkhtmltopdf empty output for %s", filepath.Base(inpfn))
 	}
 	return nil
 }

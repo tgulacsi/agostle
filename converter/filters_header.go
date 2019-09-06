@@ -20,9 +20,9 @@ import (
 	"golang.org/x/text/encoding/htmlindex"
 	"golang.org/x/text/transform"
 
-	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/byteutil"
 	"github.com/tgulacsi/go/i18nmail"
+	errors "golang.org/x/xerrors"
 )
 
 // PrependHeaderFilter writes Subject, From... headers at the beginning of the html/plain parts.
@@ -244,7 +244,7 @@ var PrependHeaders = []string{"From", "To", "Cc", "Subject", "Date"}
 func writeToFile(ctx context.Context, fn string, r io.Reader, contentType string /*, mailHeader mail.Header*/) error {
 	fh, err := os.Create(fn)
 	if err != nil {
-		return errors.Wrapf(err, "create file %s", fn)
+		return errors.Errorf("create file %s: %w", fn, err)
 	}
 	br := bufio.NewReader(r)
 
@@ -252,7 +252,7 @@ func writeToFile(ctx context.Context, fn string, r io.Reader, contentType string
 	Log("msg", "writeToPdfFile", "file", fn, "ct", contentType)
 	if _, err = io.Copy(fh, br); err != nil {
 		_ = fh.Close()
-		return errors.Wrapf(err, "save to %s", fn)
+		return errors.Errorf("save to %s: %w", fn, err)
 	}
 	return fh.Close()
 }

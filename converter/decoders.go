@@ -8,14 +8,13 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
-	"fmt"
 	"html"
 	"io"
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/tgulacsi/go/i18nmail"
+	errors "golang.org/x/xerrors"
 )
 
 type htmlEscaper struct {
@@ -140,7 +139,7 @@ func fromHex(b byte) (byte, error) {
 	case b >= 'A' && b <= 'F':
 		return b - 'A' + 10, nil
 	}
-	return 0, errors.New(fmt.Sprintf("decoders: invalid quoted-printable hex byte 0x%02x", b))
+	return 0, errors.Errorf("decoders: invalid quoted-printable hex byte 0x%02x", b)
 }
 
 func readHexByte(v []byte) (b byte, err error) {

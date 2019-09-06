@@ -15,9 +15,9 @@ import (
 
 	"context"
 
-	"github.com/pkg/errors"
 	"golang.org/x/text/encoding/htmlindex"
 	"golang.org/x/text/transform"
+	errors "golang.org/x/xerrors"
 
 	"github.com/tgulacsi/go/i18nmail"
 )
@@ -71,10 +71,10 @@ func HTMLPartFilter(ctx context.Context,
 		destfn := filepath.Join(wd, filepath.Base(fn)+".pdf")
 		fh, err := os.Open(fn)
 		if err != nil {
-			err = errors.Wrapf(err, "open html %s", fn)
+			err = errors.Errorf("open html %s: %w", fn, err)
 		} else {
 			if err = converter(ctx, destfn, fh, textHtml); err != nil {
-				err = errors.Wrapf(err, "converting %s to %s", fn, destfn)
+				err = errors.Errorf("converting %s to %s: %w", fn, destfn, err)
 			}
 		}
 		if err != nil {
@@ -82,10 +82,10 @@ func HTMLPartFilter(ctx context.Context,
 			if alter != "" && aConverter != nil {
 				Log("msg", "html2pdf using alternative content "+alter)
 				if fh, err = os.Open(alter); err != nil {
-					err = errors.Wrapf(err, "open txt %s", alter)
+					err = errors.Errorf("open txt %s: %w", alter, err)
 				} else {
 					if err = aConverter(ctx, destfn, fh, textPlain); err != nil {
-						err = errors.Wrapf(err, "converting %s to %s", alter, destfn)
+						err = errors.Errorf("converting %s to %s: %w", alter, destfn, err)
 					}
 				}
 				alter, aConverter = "", nil

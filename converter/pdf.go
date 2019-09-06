@@ -24,7 +24,7 @@ import (
 
 	"context"
 
-	"github.com/pkg/errors"
+	errors "golang.org/x/xerrors"
 
 	"github.com/tgulacsi/go/pdf"
 	"github.com/tgulacsi/go/temp"
@@ -74,7 +74,7 @@ func pdfPageNum(ctx context.Context, srcfn string) (numberofpages int, encrypted
 	}
 	out, e := cmd.CombinedOutput()
 	err = e
-	if 0 == len(out) {
+	if len(out) == 0 {
 		return
 	}
 
@@ -106,7 +106,7 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 		return nil, err
 	}
 	if n, e := PdfPageNum(ctx, srcfn); err != nil {
-		err = errors.Wrapf(e, "cannot determine page number of %s", srcfn)
+		err = errors.Errorf("cannot determine page number of %s: %w", srcfn, e)
 		return
 	} else if n == 0 {
 		err = errors.New("0 pages in " + srcfn)
@@ -140,25 +140,25 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 				srcfn,
 				filepath.Join(destdir, prefix+"%d.pdf"),
 			); err != nil {
-				err = errors.Wrapf(err, "executing %s", pdfsep)
+				err = errors.Errorf("executing %s: %w", pdfsep, err)
 				return
 			}
 		} else {
 			Log("msg", *ConfPdftk, "src", srcfn, "dest", destdir)
 			if err = callAt(ctx, *ConfPdftk, destdir, srcfn, "burst", "output", prefix+"%03d.pdf"); err != nil {
-				err = errors.Wrapf(err, "executing %s", *ConfPdftk)
+				err = errors.Errorf("executing %s: %w", *ConfPdftk, err)
 				return
 			}
 		}
 	}
 	dh, e := os.Open(destdir)
 	if e != nil {
-		err = errors.Wrapf(e, "opening destdir %s", destdir)
+		err = errors.Errorf("opening destdir %s: %w", destdir, e)
 		return
 	}
 	defer func() { _ = dh.Close() }()
 	if filenames, err = dh.Readdirnames(-1); err != nil {
-		err = errors.Wrapf(err, "listing %s", dh.Name())
+		err = errors.Errorf("listing %s: %w", dh.Name(), err)
 		return
 	}
 	//log.Printf("ls %s: %s", destdir, filenames)
@@ -206,7 +206,7 @@ func PdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 		if err == nil {
 			return nil
 		}
-		err = errors.Wrapf(err, "%q", cmd.Args)
+		err = errors.Errorf("%q: %w", cmd.Args, err)
 		Log("msg", "WARN pdfunite failed", "error", err, "errTxt", buf.String())
 	}
 	args := append(append(make([]string, 0, len(filenames)+3), filenames...),
@@ -215,8 +215,8 @@ func PdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 	cmd.Stdout = io.MultiWriter(&buf, os.Stdout)
 	cmd.Stderr = io.MultiWriter(&buf, os.Stderr)
 	if err := cmd.Run(); err != nil {
-		err = errors.Wrapf(err, "%q", cmd.Args)
-		return errors.Wrapf(err, buf.String())
+		err = errors.Errorf("%q: %w", cmd.Args, err)
+		return errors.Errorf("%s: %w", buf.String(), err)
 	}
 	return nil
 }
@@ -310,7 +310,7 @@ func PdfClean(ctx context.Context, fn string) (err error) {
 			err = call(ctx, cleaner, "clean", "-ggg", fn, fn+"-cleaned.pdf")
 		}
 		if err != nil {
-			return errors.Wrapf(err, "clean with "+cleaner)
+			return errors.Errorf("clean with %s: %w", cleaner, err)
 		}
 		cleaned = true
 		_, encrypted, _ = pdfPageNum(ctx, fn+"-cleaned.pdf")
@@ -361,7 +361,7 @@ func execute(cmd *exec.Cmd) error {
 	cmd.Stderr = errout
 	cmd.Stdout = cmd.Stderr
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "%#v while converting %s", cmd, errout.Bytes())
+		return errors.Errorf("%#v while converting %s: %w", cmd, errout.Bytes(), err)
 	}
 	if len(errout.Bytes()) > 0 {
 		Log("msg", "WARN executes", "cmd", cmd, "error", errout.String())
@@ -385,8 +385,8 @@ func xToX(ctx context.Context, destfn, srcfn string, tops bool) (err error) {
 	}
 
 	if err = call(ctx, *ConfGs, gsOpts...); err != nil {
-		return errors.Wrapf(err, "converting %s to %s with %s",
-			srcfn, destfn, *ConfGs)
+		return errors.Errorf("converting %s to %s with %s: %w",
+			srcfn, destfn, *ConfGs, err)
 	}
 	return nil
 }
@@ -446,7 +446,7 @@ func PdfDumpFields(ctx context.Context, inpfn string) ([]string, error) {
 	err := cmd.Run()
 	if err != nil {
 		pw.CloseWithError(err)
-		return fields, errors.Wrapf(err, "pdftk generate_fdf")
+		return fields, errors.Errorf("pdftk generate_fdf: %w", err)
 	}
 	pw.Close()
 	wg.Wait()
@@ -456,7 +456,7 @@ func PdfDumpFields(ctx context.Context, inpfn string) ([]string, error) {
 // PdfDumpFdf dumps the FDF from the given PDF.
 func PdfDumpFdf(ctx context.Context, destfn, inpfn string) error {
 	if err := call(ctx, *ConfPdftk, inpfn, "generate_fdf", "output", destfn); err != nil {
-		return errors.Wrapf(err, "pdftk generate_fdf")
+		return errors.Errorf("pdftk generate_fdf: %w", err)
 	}
 	return nil
 }
@@ -589,7 +589,7 @@ func (fp fieldParts) WriteTo(w io.Writer) (n int64, err error) {
 func (fp fieldParts) Set(key, value string) error {
 	if _, ok := fp.Values[key]; !ok {
 		Log("msg", "unknown field", "field", fp.Fields)
-		return errors.New("field " + key + " not exist")
+		return errors.Errorf("field %s not exist", key)
 	}
 	fp.Values[key] = value
 	return nil

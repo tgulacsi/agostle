@@ -13,8 +13,8 @@ import (
 
 	"context"
 
-	"github.com/pkg/errors"
 	"github.com/tgulacsi/agostle/converter"
+	errors "golang.org/x/xerrors"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -39,9 +39,10 @@ func init() {
 					(*mergeInp)[i] = "-"
 				}
 			}
-			return errors.WithMessage(
-				mergePdf(out, *mergeInp, sort),
-				fmt.Sprintf("mergePDF out=%q sort=%v inp=%v", out, sort, mergeInp))
+			if err := mergePdf(out, *mergeInp, sort); err != nil {
+				return errors.Errorf("mergePDF out=%q sort=%v inp=%v: %w", out, sort, mergeInp, err)
+			}
+			return nil
 		}
 	}
 
@@ -53,18 +54,20 @@ func init() {
 		if *splitInp == "" {
 			*splitInp = "-"
 		}
-		return errors.WithMessage(
-			splitPdfZip(ctx, out, *splitInp),
-			fmt.Sprintf("splitPdfZip out=%q inp=%q", out, *splitInp))
+		if err := splitPdfZip(ctx, out, *splitInp); err != nil {
+			return errors.Errorf("splitPdfZip out=%q inp=%q: %w", out, *splitInp, err)
+		}
+		return nil
 	}
 
 	countCmd := pdfCmd.Command("count", "prints the number of pages in the given pdf").
 		Alias("pdf_count").Alias("pagecount").Alias("pageno")
 	countInp := countCmd.Arg("inp", "input file").String()
 	commands[countCmd.FullCommand()] = func(ctx context.Context) error {
-		return errors.WithMessage(
-			countPdf(ctx, *countInp),
-			"countPdf inp="+*countInp)
+		if err := countPdf(ctx, *countInp); err != nil {
+			return errors.Errorf("countPdf inp=%s: %w", *countInp, err)
+		}
+		return nil
 	}
 
 	cleanCmd := pdfCmd.Command("clean", "clean PDF from encryption").
@@ -72,9 +75,10 @@ func init() {
 	withOutFlag(cleanCmd)
 	cleanInp := cleanCmd.Arg("inp", "input file").String()
 	commands[cleanCmd.FullCommand()] = func(ctx context.Context) error {
-		return errors.WithMessage(
-			cleanPdf(ctx, out, *cleanInp),
-			fmt.Sprintf("cleanPdf out=%q inp=%q", out, *cleanInp))
+		if err := cleanPdf(ctx, out, *cleanInp); err != nil {
+			return errors.Errorf("cleanPdf out=%q inp=%q: %w", out, *cleanInp, err)
+		}
+		return nil
 	}
 
 	{
@@ -84,9 +88,10 @@ func init() {
 		topdfCmd.Flag("mime", "input mimetype").Default("application/octet-stream").StringVar(&mime)
 		topdfInp := topdfCmd.Arg("inp", "input file").String()
 		commands[topdfCmd.FullCommand()] = func(ctx context.Context) error {
-			return errors.WithMessage(
-				toPdf(out, *topdfInp, mime),
-				fmt.Sprintf("topdf out=%q inp=%q mime=%q", out, *topdfInp, mime))
+			if err := toPdf(out, *topdfInp, mime); err != nil {
+				return errors.Errorf("topdf out=%q inp=%q mime=%q: %w", out, *topdfInp, mime, err)
+			}
+			return nil
 		}
 	}
 
@@ -97,9 +102,10 @@ input.pdf key1=value1 key2=value2...`).
 	fillInp := fillPdfCmd.Arg("inp", "input file").String()
 	fillKeyvals := fillPdfCmd.Arg("keyvals", "key1=val1, key2=val2...").Strings()
 	commands[fillPdfCmd.FullCommand()] = func(ctx context.Context) error {
-		return errors.WithMessage(
-			fillFdf(ctx, out, *fillInp, *fillKeyvals...),
-			fmt.Sprintf("fillPdf out=%q inp=%q keyvals=%q", out, *fillInp, *fillKeyvals))
+		if err := fillFdf(ctx, out, *fillInp, *fillKeyvals...); err != nil {
+			return errors.Errorf("fillPdf out=%q inp=%q keyvals=%q: %w", out, *fillInp, *fillKeyvals, err)
+		}
+		return nil
 	}
 }
 

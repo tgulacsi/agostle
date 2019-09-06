@@ -5,13 +5,13 @@
 package converter
 
 import (
-	"errors"
 	"net/http"
 	"sync"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/h2non/filetype"
 	filetypes "github.com/h2non/filetype/types"
+	errors "golang.org/x/xerrors"
 )
 
 type H2nonMIMEDetector struct{}
