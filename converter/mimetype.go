@@ -5,8 +5,12 @@
 package converter
 
 import (
+	"bytes"
+	"context"
 	"net/http"
+	"os/exec"
 	"sync"
+	"time"
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/h2non/filetype"
@@ -21,7 +25,9 @@ type MIMEDetector interface {
 	Match([]byte) (string, error)
 }
 
-var DefaultMIMEDetector = MIMEDetector(MultiMIMEDetector{Detectors: []MIMEDetector{HTTPMIMEDetector{}, VasileMIMEDetector{}, H2nonMIMEDetector{}}})
+var DefaultMIMEDetector = MIMEDetector(MultiMIMEDetector{Detectors: []MIMEDetector{
+	FileMIMEDetector{}, HTTPMIMEDetector{}, VasileMIMEDetector{}, H2nonMIMEDetector{},
+}})
 
 func MIMEMatch(b []byte) (string, error) { return DefaultMIMEDetector.Match(b) }
 
@@ -45,6 +51,17 @@ func (d HTTPMIMEDetector) Match(b []byte) (string, error) {
 		return "", nil
 	}
 	return typ, nil
+}
+
+type FileMIMEDetector struct{}
+
+func (d FileMIMEDetector) Match(b []byte) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "file", "-E", "-b", "--mime-type", "-")
+	cmd.Stdin = bytes.NewReader(b)
+	b, err := cmd.Output()
+	return string(bytes.TrimSpace(b)), err
 }
 
 type MultiMIMEDetector struct {
@@ -79,6 +96,7 @@ func (d MultiMIMEDetector) Match(b []byte) (string, error) {
 	var res string
 	var lastErr = errors.New("not found")
 	for _, r := range results {
+		//fmt.Println(i, r)
 		if r.Err != nil {
 			if lastErr != nil {
 				lastErr = r.Err
@@ -86,10 +104,11 @@ func (d MultiMIMEDetector) Match(b []byte) (string, error) {
 			continue
 		}
 		lastErr = nil
-		if len(res) < len(r.Type) {
+		if res == "" {
 			res = r.Type
 		}
 		continue
 	}
+	//fmt.Println("result:", res, lastErr)
 	return res, lastErr
 }

@@ -271,6 +271,7 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 
 func OutlookToEML(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	rc, err := NewOLEStorageReader(ctx, r)
+	Log("msg", "OutlookToEML", "ct", contentType, "error", err)
 	if err != nil {
 		return err
 	}
@@ -424,6 +425,8 @@ func fixCT(contentType, fileName string) (ct string) {
 	//}()
 
 	switch contentType {
+	case "application/CDFV2":
+		return "application/vnd.ms-outlook"
 	case applicationZIP, "application/x-zip-compressed":
 		if ext := filepath.Ext(fileName); len(ext) > 3 {
 			// http://www.iana.org/assignments/media-types/media-types.xhtml#application
@@ -444,10 +447,11 @@ func fixCT(contentType, fileName string) (ct string) {
 // FixContentType ensures proper content-type
 // (uses magic for "" and application/octet-stream)
 func FixContentType(body []byte, contentType, fileName string) (ct string) {
+	where := "0"
 	ext := strings.ToLower(filepath.Ext(fileName))
 	defer func() {
 		if contentType != ct {
-			Log("msg", "FixContentType", "ct", contentType, "fn", fileName, "ext", ext, "result", ct)
+			Log("msg", "FixContentType", "ct", contentType, "fn", fileName, "ext", ext, "result", ct, "where", where)
 		}
 	}()
 
@@ -455,6 +459,7 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	if strings.HasPrefix(ext, ".") {
 		if want, ok := ExtContentType[ext[1:]]; ok && contentType != want {
 			if typ, err := MIMEMatch(body); err == nil && typ != "" && typ != contentType {
+				where = "A"
 				return fixCT(typ, fileName)
 			}
 		}
@@ -462,6 +467,7 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	c := GetConverter(contentType, nil)
 	if c == nil { // no converter for this
 		if typ, err := MIMEMatch(body); err == nil && typ != "" && typ != contentType {
+			where = "B"
 			return fixCT(typ, fileName)
 		}
 	}
@@ -469,14 +475,17 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 		(contentType == "" || contentType == "application/octet-stream" || c == nil) {
 		if len(ext) > 3 {
 			if nct, ok := ExtContentType[ext[1:]]; ok {
+				where = "C"
 				return fixCT(nct, fileName)
 			}
 			if nct := mime.TypeByExtension(ext); nct != "" {
+				where = "D"
 				return fixCT(nct, fileName)
 			}
 		}
 	}
 	//log.Printf("ct=%s ==> %s", ct, contentType)
+	where = "E"
 	return contentType
 }
 
@@ -509,7 +518,7 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 		converter = HTMLToPdf
 	case messageRFC822:
 		converter = MailToPdfZip
-	case "application/vnd.ms-outlook":
+	case "application/vnd.ms-outlook", "aplication/CDFV2":
 		converter = OutlookToEML
 	case "multipart/related":
 		converter = MPRelatedToPdf

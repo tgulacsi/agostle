@@ -334,14 +334,14 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 // SlurpMail splits mail to parts, returns parts and/or error on the given channels
 func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<- error, body io.Reader, contentType string) {
 	Log := getLogger(ctx).Log
-	var head [1024]byte
+	var head [4096]byte
 
 	Log("SlurpMail", contentType)
 	br := bufio.NewReader(body)
-	if b, err := br.Peek(512); err != nil {
+	if b, err := br.Peek(2048); err != nil && len(b) == 0 {
 		errch <- err
 		return
-	} else if typ, _ := MIMEMatch(b); typ != "" && !bytes.Contains(b, []byte("Delivered-To:")) && !bytes.Contains(b, []byte("Received:")) {
+	} else if typ, _ := MIMEMatch(b); typ != "" && !bytes.Contains(b, []byte("\nTo:")) && !bytes.Contains(b, []byte("\nReceived:")) && !bytes.Contains(b, []byte("\nFrom: ")) {
 		Log("msg", "not email!", "typ", typ, "ct", contentType)
 		if contentType == "" || contentType == "message/rfc822" {
 			contentType = typ

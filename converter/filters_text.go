@@ -50,7 +50,11 @@ func TextDecodeFilter(ctx context.Context,
 
 			if part.ContentType == textPlain {
 				part.Body = NewTextReader(ctx, part.Body, part.MediaType["charset"])
-				part.MediaType["charset"] = "utf-8"
+				if part.MediaType == nil {
+					part.MediaType = map[string]string{"charset": "utf-8"}
+				} else {
+					part.MediaType["charset"] = "utf-8"
+				}
 			}
 		}
 

@@ -114,7 +114,7 @@ func HTMLPartFilter(ctx context.Context,
 		}
 		if part.ContentType == textPlain || part.ContentType == textHtml {
 			//if part.Parent.ContentType != "multipart/alternative" || part.Parent.ContentType != "multipart/related" {
-			if part.ContentType == textPlain && part.Parent.ContentType != "multipart/alternative" {
+			if part.ContentType == textPlain && part.Parent != nil && part.Parent.ContentType != "multipart/alternative" {
 				goto Skip
 			}
 			if grandpa != nil {
