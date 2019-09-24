@@ -102,6 +102,7 @@ func HTMLPartFilter(ctx context.Context,
 		fn, dn, cid     string
 		parent, grandpa *i18nmail.MailPart
 	)
+	seen := make(map[string]struct{})
 	last = -1
 	for part := range inch {
 
@@ -136,9 +137,16 @@ func HTMLPartFilter(ctx context.Context,
 				dn = wd
 			}
 			_ = os.Mkdir(dn, 0755) //ignore errors
+			fn = ""
 			if parent != nil {
 				fn = fmt.Sprintf("%02d#%03d.index", parent.Level, parent.Seq)
-			} else {
+				if _, ok := seen[fn]; ok {
+					fn = ""
+				} else {
+					seen[fn] = struct{}{}
+				}
+			}
+			if fn == "" {
 				fn = fmt.Sprintf("%02d#%03d.index", part.Level, part.Seq)
 			}
 
