@@ -427,6 +427,8 @@ func fixCT(contentType, fileName string) (ct string) {
 	switch contentType {
 	case "application/CDFV2":
 		return "application/vnd.ms-outlook"
+	case "application/msword":
+		return "application/vnd.ms-word"
 	case applicationZIP, "application/x-zip-compressed":
 		if ext := filepath.Ext(fileName); len(ext) > 3 {
 			// http://www.iana.org/assignments/media-types/media-types.xhtml#application
