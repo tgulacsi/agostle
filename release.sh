@@ -1,5 +1,9 @@
 #!/bin/sh
 set -e
+for nm in snapshot targets timestamp; do
+	export "TUF_$(echo "$nm" | tr '[[:lower:]]' '[[:upper:]]')_PASSPHRASE=$(pass show U/UNOSOFT/TUF/${nm} | head -n1)"
+done
+
 set -x
 fn=$(pwd)/tuf.pwd
 cd "$(dirname "$0")"
