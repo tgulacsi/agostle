@@ -26,9 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/VictoriaMetrics/metrics"
 	"github.com/oklog/ulid"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/temp"
 	errors "golang.org/x/xerrors"
@@ -55,23 +54,29 @@ func newHTTPServer(address string, saveReq bool) *graceful.Server {
 
 	mux := http.DefaultServeMux
 	//mux.Handle("/debug/pprof", pprof.Handler)
-	mux.Handle("/metrics", promhttp.Handler())
-
-	duration := prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "request_duration_seconds",
-			Help:    "A histogram of latencies for requests.",
-			Buckets: []float64{.25, .5, 1, 2.5, 5, 10},
-		},
-		[]string{"handler", "method"},
-	)
-	prometheus.MustRegister(duration)
+	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) { metrics.WritePrometheus(w, true) })
 
 	H := func(path string, handleFunc http.HandlerFunc) {
-		mux.HandleFunc(path,
-			promhttp.InstrumentHandlerDuration(duration.MustCurryWith(
-				prometheus.Labels{"handler": strings.Replace(path[1:], "/", "_", -1)}),
-				handleFunc))
+		mName := fmt.Sprintf("request_duration_seconds{method=%%q,handler=%q}", strings.Replace(path[1:], "/", "_", -1))
+		mGet := metrics.GetOrCreateHistogram(fmt.Sprintf(mName, "GET"))
+		mPost := metrics.GetOrCreateHistogram(fmt.Sprintf(mName, "POST"))
+		mux.HandleFunc(
+			path,
+			func(w http.ResponseWriter, r *http.Request) {
+				var mDur *metrics.Histogram
+				switch r.Method {
+				case "GET":
+					mDur = mGet
+				case "POST":
+					mDur = mPost
+				default:
+					mDur = metrics.GetOrCreateHistogram(fmt.Sprintf(mName, r.Method))
+				}
+				start := time.Now()
+				handleFunc.ServeHTTP(w, r)
+				mDur.UpdateDuration(start)
+			},
+		)
 	}
 	H("/pdf/merge", pdfMergeServer.ServeHTTP)
 	H("/email/convert", emailConvertServer.ServeHTTP)
