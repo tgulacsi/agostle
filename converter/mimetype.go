@@ -39,8 +39,8 @@ func (d H2nonMIMEDetector) Match(b []byte) (string, error) {
 	return typ.MIME.Type + "/" + typ.MIME.Subtype, err
 }
 func (d VasileMIMEDetector) Match(b []byte) (string, error) {
-	typ, _ := mimetype.Detect(b)
-	return typ, nil
+	typ := mimetype.Detect(b)
+	return typ.String(), nil
 }
 
 type HTTPMIMEDetector struct{}
