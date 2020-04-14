@@ -9,10 +9,17 @@ package main
 import (
 	"net"
 
-	"github.com/coreos/go-systemd/activation"
+	"github.com/coreos/go-systemd/v22/activation"
 )
 
 func getListeners() []net.Listener {
 	listeners, _ := activation.Listeners()
+	for i := range listeners {
+		if listeners[i] == nil {
+			listeners[i] = listeners[0]
+			listeners = listeners[1:]
+			i--
+		}
+	}
 	return listeners
 }

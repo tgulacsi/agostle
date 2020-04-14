@@ -6,7 +6,7 @@ require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
-	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
+	github.com/coreos/go-systemd/v22 v22.0.0
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/flynn/go-tuf v0.0.0-20191104165506-890a6cb82044
 	github.com/frankban/quicktest v1.5.0 // indirect
