@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	stdlog "log"
 	"math/rand"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -249,22 +250,35 @@ func Main() error {
 		}
 		logger.Log("listeners", listeners, "listenAddr", listenAddr)
 
-		s := newHTTPServer(listenAddr, savereq)
-		grp, _ := errgroup.WithContext(ctx)
+		grp, grpCtx := errgroup.WithContext(ctx)
+		srvs := make([]*http.Server, 0, len(listeners)+1)
 		if listenAddr != "" {
 			grp.Go(func() error {
 				Log("msg", "listening", "address", listenAddr)
+				s := newHTTPServer(listenAddr, savereq)
+				srvs = append(srvs, s)
 				return s.ListenAndServe()
 			})
 		}
 		for _, l := range listeners {
 			grp.Go(func() error {
 				Log("msg", "listening", "listener", l)
+				s := newHTTPServer("", savereq)
+				srvs = append(srvs, s)
 				return s.Serve(l)
 			})
 		}
+		<-grpCtx.Done()
+		for _, l := range listeners {
+			l.Close()
+		}
+		for _, s := range srvs {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			s.Shutdown(ctx)
+			cancel()
+			s.Close()
+		}
 		return grp.Wait()
-
 	}
 	f, ok := commands[todo]
 	if !ok {

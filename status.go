@@ -63,6 +63,8 @@ func onStart() {
 	topCmd[i] = topCmd[i] + uname
 
 	stats.startedAt = time.Now().Format(time.RFC3339)
+
+	http.DefaultServeMux.Handle("/", http.HandlerFunc(statusPage))
 }
 
 // getTopOut returns the output of the topCmd - shall be protected with a mutex

@@ -50,7 +50,7 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 		defaultBeforeFuncs = append(defaultBeforeFuncs, dumpRequest)
 	}
 
-	mux := http.DefaultServeMux
+	var mux http.ServeMux
 	//mux.Handle("/debug/pprof", pprof.Handler)
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) { metrics.WritePrometheus(w, true) })
 
@@ -81,13 +81,13 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 	H("/convert", emailConvertServer.ServeHTTP)
 	H("/outlook", outlookToEmailServer.ServeHTTP)
 	mux.Handle("/_admin/stop", http.HandlerFunc(adminStopHandler))
-	mux.Handle("/", http.HandlerFunc(statusPage))
+	mux.Handle("/", http.DefaultServeMux)
 
 	return &http.Server{
 		Addr:         address,
 		ReadTimeout:  300 * time.Second,
 		WriteTimeout: 1800 * time.Second,
-		Handler:      mux,
+		Handler:      &mux,
 	}
 }
 
