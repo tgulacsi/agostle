@@ -155,7 +155,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	}
 
 	resp := emailConvertResponse{
-		r: ctx.Value("http.Request").(*http.Request),
+		r: ctx.Value(ctxKeyHTTPRequest).(*http.Request),
 	}
 
 	for _, hsh := range req.IfNoneMatch {

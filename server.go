@@ -34,8 +34,6 @@ import (
 
 	"github.com/go-kit/kit/log"
 	kithttp "github.com/go-kit/kit/transport/http"
-
-	"gopkg.in/tylerb/graceful.v1"
 )
 
 var (
@@ -45,7 +43,7 @@ var (
 )
 
 // newHTTPServer returns a new, stoppable HTTP server
-func newHTTPServer(address string, saveReq bool) *graceful.Server {
+func newHTTPServer(address string, saveReq bool) *http.Server {
 	onceOnStart.Do(onStart)
 
 	if saveReq {
@@ -85,16 +83,12 @@ func newHTTPServer(address string, saveReq bool) *graceful.Server {
 	mux.Handle("/_admin/stop", http.HandlerFunc(adminStopHandler))
 	mux.Handle("/", http.HandlerFunc(statusPage))
 
-	s := &graceful.Server{
-		Server: &http.Server{
-			Addr:         address,
-			ReadTimeout:  300 * time.Second,
-			WriteTimeout: 1800 * time.Second,
-			Handler:      mux,
-		},
-		Timeout: 5 * time.Minute,
+	return &http.Server{
+		Addr:         address,
+		ReadTimeout:  300 * time.Second,
+		WriteTimeout: 1800 * time.Second,
+		Handler:      mux,
 	}
-	return s
 }
 
 type ctxKey string
@@ -148,6 +142,9 @@ func prepareContext(ctx context.Context, r *http.Request) context.Context {
 }
 
 func dumpRequest(ctx context.Context, req *http.Request) context.Context {
+	if req == nil {
+		return ctx
+	}
 	prefix := filepath.Join(converter.Workdir, time.Now().Format("20060102_150405")+"-")
 	var reqSeq uint64
 	b, err := httputil.DumpRequest(req, true)
@@ -183,6 +180,9 @@ type reqFile struct {
 // getOneRequestFile reads the first file from the request (if multipart/),
 // or returns the body if not
 func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
+	if r == nil {
+		return reqFile{}, errors.New("empty request")
+	}
 	f := reqFile{ReadCloser: r.Body}
 	contentType := r.Header.Get("Content-Type")
 	Log := getLogger(ctx).Log
@@ -214,7 +214,7 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 			}
 		}
 	}
-	return reqFile{}, nil
+	return f, nil
 }
 
 // getRequestFiles reads the files from the request, and calls readerToFile on them
@@ -279,6 +279,10 @@ func tempFilename(prefix string) (filename string, err error) {
 }
 
 func logAccept(ctx context.Context, r *http.Request) {
+	if r == nil {
+		getLogger(ctx).Log("msg", "EMPTY REQUEST")
+		return
+	}
 	getLogger(ctx).Log("msg", "ACCEPT", "method", r.Method, "uri", r.RequestURI, "remote", r.RemoteAddr)
 }
 

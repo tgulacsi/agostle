@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	stdlog "log"
 	"math/rand"
-	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -31,6 +30,7 @@ import (
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/i18nmail"
 	"github.com/tgulacsi/go/loghlp/kitloghlp"
+	"golang.org/x/sync/errgroup"
 
 	errors "golang.org/x/xerrors"
 )
@@ -243,27 +243,27 @@ func Main() error {
 		return nil
 
 	case serveCmd.FullCommand():
-		var listeners []net.Listener
-		if listenAddr == "" {
-			listeners = getListeners()
-			logger.Log("listeners", listeners)
-			if len(listeners) == 0 {
-				listenAddr = *converter.ConfListenAddr
-			}
+		listeners := getListeners()
+		if listenAddr == "" && len(listeners) == 0 {
+			listenAddr = *converter.ConfListenAddr
 		}
+		logger.Log("listeners", listeners, "listenAddr", listenAddr)
 
-		logger.Log("listenAddr", listenAddr)
 		s := newHTTPServer(listenAddr, savereq)
-		if listenAddr == "" {
-			err = s.Serve(listeners[0])
-		} else {
-			err = s.ListenAndServe()
+		grp, _ := errgroup.WithContext(ctx)
+		if listenAddr != "" {
+			grp.Go(func() error {
+				Log("msg", "listening", "address", listenAddr)
+				return s.ListenAndServe()
+			})
 		}
-
-		if err != nil {
-			return errors.Errorf("%s: %w", listenAddr, err)
+		for _, l := range listeners {
+			grp.Go(func() error {
+				Log("msg", "listening", "listener", l)
+				return s.Serve(l)
+			})
 		}
-		return nil
+		return grp.Wait()
 
 	}
 	f, ok := commands[todo]
