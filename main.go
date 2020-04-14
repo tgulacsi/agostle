@@ -260,7 +260,10 @@ func Main() error {
 			err = s.ListenAndServe()
 		}
 
-		return errors.Errorf("%s: %w", listenAddr, err)
+		if err != nil {
+			return errors.Errorf("%s: %w", listenAddr, err)
+		}
+		return nil
 
 	}
 	f, ok := commands[todo]

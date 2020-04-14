@@ -238,8 +238,12 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 	return nil
 }
 
+const (
+	ctxKeyHTTPRequest = ctxKey("http.Request")
+)
+
 func SaveRequest(ctx context.Context, r *http.Request) context.Context {
-	return context.WithValue(ctx, "http.Request", r)
+	return context.WithValue(ctx, ctxKeyHTTPRequest, r)
 }
 
 func (resp *emailConvertResponse) mergeIfRequested(params convertParams, logger log.Logger) error {

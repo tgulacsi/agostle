@@ -97,16 +97,24 @@ func newHTTPServer(address string, saveReq bool) *graceful.Server {
 	return s
 }
 
-func SetRequestID(ctx context.Context, name string) context.Context {
+type ctxKey string
+
+const (
+	ctxKeyReqID  = ctxKey("reqid")
+	ctxKeyCancel = ctxKey("cancel")
+	ctxKeyLogger = ctxKey("logger")
+)
+
+func SetRequestID(ctx context.Context, name ctxKey) context.Context {
 	if name == "" {
-		name = "reqid"
+		name = ctxKeyReqID
 	}
 	if ctx.Value(name) != nil {
 		return ctx
 	}
 	return context.WithValue(ctx, name, NewULID().String())
 }
-func GetRequestID(ctx context.Context, name string) string {
+func GetRequestID(ctx context.Context, name ctxKey) string {
 	if v, ok := ctx.Value(name).(string); ok && v != "" {
 		return v
 	}
@@ -123,7 +131,7 @@ var defaultBeforeFuncs = []kithttp.RequestFunc{
 
 func prepareContext(ctx context.Context, r *http.Request) context.Context {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
-	ctx = context.WithValue(ctx, "cancel", cancel)
+	ctx = context.WithValue(ctx, ctxKeyCancel, cancel)
 	ctx = SetRequestID(ctx, "")
 	lgr := getLogger(ctx)
 	lgr = log.With(lgr,
@@ -134,7 +142,7 @@ func prepareContext(ctx context.Context, r *http.Request) context.Context {
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		lgr = log.With(lgr, "ip", host)
 	}
-	ctx = context.WithValue(ctx, "logger", lgr)
+	ctx = context.WithValue(ctx, ctxKeyLogger, lgr)
 	logAccept(ctx, r)
 	return ctx
 }
@@ -288,7 +296,7 @@ func getLogger(ctx context.Context) log.Logger {
 	if ctx == nil {
 		return logger
 	}
-	if lgr, ok := ctx.Value("logger").(log.Logger); ok {
+	if lgr, ok := ctx.Value(ctxKeyLogger).(log.Logger); ok {
 		return lgr
 	}
 	return logger
