@@ -92,13 +92,25 @@ func pdfPageNum(ctx context.Context, srcfn string) (numberofpages int, encrypted
 
 	if pdfinfo {
 		encrypted = getLine(out, "Encrypted:") == "yes"
-		numberofpages, err = strconv.Atoi(getLine(out, "Pages:"))
+		s := getLine(out, "Pages:")
+		if s == "" {
+			err = ErrBadPDF
+		} else {
+			numberofpages, err = strconv.Atoi(s)
+		}
 	} else {
 		encrypted = bytes.Contains(out, []byte(" password "))
-		numberofpages, err = strconv.Atoi(getLine(out, "NumberOfPages:"))
+		s := getLine(out, "NumberOfPages:")
+		if s == "" {
+			err = ErrBadPDF
+		} else {
+			numberofpages, err = strconv.Atoi(s)
+		}
 	}
 	return
 }
+
+var ErrBadPDF = errors.New("bad pdf")
 
 // PdfSplit splits pdf to pages, returns those filenames
 func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error) {
@@ -190,6 +202,27 @@ func PdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 		os.Remove(destfn)
 		return temp.LinkOrCopy(filenames[0], destfn)
 	}
+	if err := pdfMerge(ctx, destfn, filenames...); err == nil {
+		return err
+	}
+
+	// filter out bad PDFs
+	fns := make([]string, 0, len(filenames))
+	for _, fn := range filenames {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if n, err := PdfPageNum(ctx, fn); n > 0 && err == nil {
+			fns = append(fns, fn)
+		} else {
+			Log("msg", "merge SKIP", "file", fn, "pages", n, "error", err)
+		}
+	}
+
+	return pdfMerge(ctx, destfn, fns...)
+}
+
+func pdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 	if err := pdf.MergeFiles(destfn, filenames...); err == nil {
 		return nil
 	}
