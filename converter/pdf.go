@@ -150,7 +150,7 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 			if err = callAt(ctx, pdfsep,
 				destdir,
 				srcfn,
-				filepath.Join(destdir, prefix+"%d.pdf"),
+				filepath.Join(destdir, prefix+"%03d.pdf"),
 			); err != nil {
 				err = errors.Errorf("executing %s: %w", pdfsep, err)
 				return
