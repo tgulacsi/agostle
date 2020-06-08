@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2020 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -130,8 +130,10 @@ var Workdir = os.TempDir()
 // LeaveTempFiles should be true only for debugging purposes (leaves temp files)
 var LeaveTempFiles = false
 
+type ctxKey string
+
 func prepareContext(ctx context.Context, subdir string) (context.Context, string) {
-	const wdKey = "workdir"
+	const wdKey = ctxKey("workdir")
 	odir, _ := ctx.Value(wdKey).(string)
 	if odir != "" {
 		if subdir != "" {

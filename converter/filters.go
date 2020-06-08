@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2020 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -400,6 +400,8 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	//close(errch)
 }
 
+const ctxSeen = ctxKey("seen")
+
 // SetupFilters applies filters on parts received on inch, and returns them on outch
 func SetupFilters(
 	ctx context.Context,
@@ -410,7 +412,7 @@ func SetupFilters(
 	if len(Filters) == 0 {
 		return inch
 	}
-	ctx = context.WithValue(ctx, "seen", make(map[string]int, 32))
+	ctx = context.WithValue(ctx, ctxSeen, make(map[string]int, 32))
 
 	in := inch
 	var out chan i18nmail.MailPart
@@ -818,7 +820,7 @@ func DupFilter(ctx context.Context,
 	defer func() {
 		close(outch)
 	}()
-	seen := ctx.Value("seen").(map[string]int)
+	seen := ctx.Value(ctxSeen).(map[string]int)
 	if seen == nil {
 		seen = make(map[string]int, 32)
 	}

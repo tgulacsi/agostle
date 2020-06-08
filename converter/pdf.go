@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2020 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -10,6 +10,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/gob"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -175,15 +176,36 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 	}
 	//log.Printf("ls %s: %s", destdir, filenames)
 	names := make([]string, 0, len(filenames))
+	format := "%d"
+	if n := len(filenames); n > 9999 {
+		format = "%05d"
+	} else if n > 999 {
+		format = "%04d"
+	} else if n > 99 {
+		format = "%03d"
+	} else if n > 9 {
+		format = "%02d"
+	}
 	for _, fn := range filenames {
 		if !strings.HasSuffix(fn, ".pdf") {
 			continue
 		}
 		if !strings.HasPrefix(fn, prefix) {
 			Log("msg", "mismatch", "fn", fn, "prefix", prefix)
-		} else {
-			names = append(names, fn)
+			continue
 		}
+		n, iErr := strconv.Atoi(fn[len(prefix) : len(fn)-4])
+		if iErr != nil {
+			err = errors.Errorf("%q: %w", fn, iErr)
+			return
+		}
+		nfn := fn[:len(prefix)] + fmt.Sprintf(format, n) + ".pdf"
+		if nfn != fn {
+			if err = os.Rename(filepath.Join(dh.Name(), fn), filepath.Join(dh.Name(), nfn)); err != nil {
+				return
+			}
+		}
+		names = append(names, nfn)
 	}
 	filenames = names
 	sort.Strings(filenames)
