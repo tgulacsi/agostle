@@ -25,6 +25,7 @@ import (
 	"github.com/tgulacsi/go/i18nmail"
 	"github.com/tgulacsi/go/temp"
 	errors "golang.org/x/xerrors" // MailToPdfZip converts mail to ZIP of PDFs
+
 	//"github.com/tgulacsi/go/uncompr"
 	"github.com/mholt/archiver"
 )
@@ -766,7 +767,7 @@ func ExtractingFilter(ctx context.Context,
 			child := part.Spawn()
 			child.ContentType = FixContentType(chunk, "application/octet-stream",
 				z.Name())
-			child.Body = bytes.NewBuffer(chunk)
+			child.Body = bytes.NewReader(chunk)
 			child.Header = textproto.MIMEHeader(make(map[string][]string, 1))
 			child.Header.Add("X-FileName", safeFn(z.Name(), true))
 			wg.Add(1)
