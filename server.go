@@ -26,6 +26,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/UNO-SOFT/otel"
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/oklog/ulid"
 	"github.com/tgulacsi/agostle/converter"
@@ -83,11 +84,17 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 	mux.Handle("/_admin/stop", http.HandlerFunc(adminStopHandler))
 	mux.Handle("/", http.DefaultServeMux)
 
+	tp, err := otel.LogTraceProvider(logger.Log, nil)
+	if err != nil {
+		panic(err)
+	}
+	otel.SetGlobalTraceProvider(tp)
+
 	return &http.Server{
 		Addr:         address,
 		ReadTimeout:  300 * time.Second,
 		WriteTimeout: 1800 * time.Second,
-		Handler:      &mux,
+		Handler:      otel.HTTPMiddleware(otel.GlobalTracer("unosoft.hu/aodb"), &mux),
 	}
 }
 
