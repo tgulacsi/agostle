@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -24,7 +25,6 @@ import (
 
 	"github.com/tgulacsi/go/i18nmail"
 	"github.com/tgulacsi/go/temp"
-	errors "golang.org/x/xerrors" // MailToPdfZip converts mail to ZIP of PDFs
 
 	//"github.com/tgulacsi/go/uncompr"
 	"github.com/mholt/archiver"
@@ -116,7 +116,7 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 
 	destfh, err := openOut(destfn)
 	if err != nil {
-		return errors.Errorf("open out %s: %w", destfn, err)
+		return fmt.Errorf("open out %s: %w", destfn, err)
 	}
 	ze := ZipFiles(destfh, true, true, []ArchFileItem(ArchItems(tbz).Sort())...)
 	if err = destfh.Close(); err != nil && ze == nil {
@@ -309,7 +309,7 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 		rfh, e := os.Open(sfn)
 		if e != nil {
 			Log("msg", "open PDF for reading", "file", sfn, "error", e)
-			errch <- errors.Errorf("open pdf file %s for reading: %w", sfn, e)
+			errch <- fmt.Errorf("open pdf file %s for reading: %w", sfn, e)
 			continue
 		}
 		//tbz = append(tbz, sfn)
@@ -318,7 +318,7 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 		if e != nil {
 			_ = rfh.Close()
 			Log("msg", "create image file", "file", sfn, "error", e)
-			errch <- errors.Errorf("create image file %s: %w", ifn, e)
+			errch <- fmt.Errorf("create image file %s: %w", ifn, e)
 			continue
 		}
 		workch <- pdfToImageArgs{w: ifh, r: rfh, mime: imgmime, size: imgsize, name: ifn}
@@ -363,7 +363,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 			}
 			tfh, e := temp.NewReadSeeker(mp.Body)
 			if e != nil {
-				return errors.Errorf("SlurpMail: %w", e)
+				return fmt.Errorf("SlurpMail: %w", e)
 			}
 			mp.Body = tfh
 			fn := headerGetFileName(mp.Header)
@@ -434,7 +434,7 @@ func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files
 	hsh := sha1.New()
 	br, e := temp.NewReadSeeker(io.TeeReader(r, hsh))
 	if e != nil {
-		err = errors.Errorf("MailToPdfFiles: %w", e)
+		err = fmt.Errorf("MailToPdfFiles: %w", e)
 		return
 	}
 	defer func() { _ = br.Close() }()
@@ -523,7 +523,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 	)
 
 	if fn, err = savePart(ctx, &mp); err != nil {
-		err = errors.Errorf("convertPart(%02d): %w", mp.Seq, err)
+		err = fmt.Errorf("convertPart(%02d): %w", mp.Seq, err)
 		return
 	}
 
@@ -533,7 +533,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 		plus, e := MailToPdfFiles(ctx, mp.Body, mp.ContentType)
 		if e != nil {
 			Log("msg", "MailToPdfFiles", "seq", mp.Seq, "error", e)
-			err = errors.Errorf("convertPart(%02d): %w", mp.Seq, e)
+			err = fmt.Errorf("convertPart(%02d): %w", mp.Seq, e)
 			return
 		}
 		for _, elt := range plus {
@@ -542,7 +542,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 		return nil
 	}
 	if converter == nil { // no converter for this!?
-		err = errors.Errorf("no converter for %s", mp.ContentType)
+		err = fmt.Errorf("no converter for %s", mp.ContentType)
 	} else {
 		err = converter(ctx, fn+".pdf", mp.Body, mp.ContentType)
 	}
@@ -587,7 +587,7 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 	}
 
 	if err = os.MkdirAll(outdir, 0750); err != nil {
-		return errors.Errorf("MailToTree(%q): %w", outdir, err)
+		return fmt.Errorf("MailToTree(%q): %w", outdir, err)
 	}
 	partch := make(chan i18nmail.MailPart)
 	errch := make(chan error, 128)
@@ -622,14 +622,14 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 
 		fn = filepath.Join(dn, fn)
 		if fh, err = os.Create(fn); err != nil {
-			return errors.Errorf("create %s: %w", fn, err)
+			return fmt.Errorf("create %s: %w", fn, err)
 		}
 		if _, err = io.Copy(fh, mp.Body); err != nil {
 			_ = fh.Close()
-			return errors.Errorf("read into%s: %w", fn, err)
+			return fmt.Errorf("read into%s: %w", fn, err)
 		}
 		if err = fh.Close(); err != nil {
-			return errors.Errorf("close %s: %w", fn, err)
+			return fmt.Errorf("close %s: %w", fn, err)
 		}
 	}
 	if err == nil {
@@ -639,7 +639,7 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 		}
 	}
 	if err != nil && err != io.EOF {
-		return errors.Errorf("MailToTree: %w", err)
+		return fmt.Errorf("MailToTree: %w", err)
 	}
 	return nil
 }
@@ -657,7 +657,7 @@ func MailToZip(ctx context.Context, destfn string, body io.Reader, contentType s
 	}
 	destfh, err := openOut(destfn)
 	if err != nil {
-		return errors.Errorf("open out %s: %w", destfn, err)
+		return fmt.Errorf("open out %s: %w", destfn, err)
 	}
 	if err = destfh.Close(); err != nil {
 		return err

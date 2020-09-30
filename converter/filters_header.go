@@ -7,6 +7,7 @@ package converter
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/tgulacsi/go/byteutil"
 	"github.com/tgulacsi/go/i18nmail"
-	errors "golang.org/x/xerrors"
 )
 
 // PrependHeaderFilter writes Subject, From... headers at the beginning of the html/plain parts.
@@ -244,7 +244,7 @@ var PrependHeaders = []string{"From", "To", "Cc", "Subject", "Date"}
 func writeToFile(ctx context.Context, fn string, r io.Reader, contentType string /*, mailHeader mail.Header*/) error {
 	fh, err := os.Create(fn)
 	if err != nil {
-		return errors.Errorf("create file %s: %w", fn, err)
+		return fmt.Errorf("create file %s: %w", fn, err)
 	}
 	br := bufio.NewReader(r)
 
@@ -252,7 +252,7 @@ func writeToFile(ctx context.Context, fn string, r io.Reader, contentType string
 	Log("msg", "writeToPdfFile", "file", fn, "ct", contentType)
 	if _, err = io.Copy(fh, br); err != nil {
 		_ = fh.Close()
-		return errors.Errorf("save to %s: %w", fn, err)
+		return fmt.Errorf("save to %s: %w", fn, err)
 	}
 	return fh.Close()
 }

@@ -7,6 +7,7 @@ package converter
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"os/exec"
 	"sync"
@@ -15,7 +16,6 @@ import (
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/h2non/filetype"
 	filetypes "github.com/h2non/filetype/types"
-	errors "golang.org/x/xerrors"
 )
 
 type H2nonMIMEDetector struct{}

@@ -17,8 +17,6 @@ import (
 
 	"github.com/go-kit/kit/log"
 	kithttp "github.com/go-kit/kit/transport/http"
-
-	errors "golang.org/x/xerrors"
 )
 
 var pdfMergeServer = kithttp.NewServer(
@@ -49,7 +47,7 @@ func pdfMergeDecode(ctx context.Context, r *http.Request) (interface{}, error) {
 func pdfMergeEP(ctx context.Context, request interface{}) (response interface{}, err error) {
 	req, ok := request.(pdfMergeRequest)
 	if !ok {
-		return nil, errors.Errorf("awaited pdfMergeRequest, got %T", request)
+		return nil, fmt.Errorf("awaited pdfMergeRequest, got %T", request)
 	}
 	defer func() {
 		for _, f := range req.Inputs {

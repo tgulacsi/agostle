@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,7 +15,6 @@ import (
 	"context"
 
 	"github.com/tgulacsi/agostle/converter"
-	errors "golang.org/x/xerrors"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -40,7 +40,7 @@ func init() {
 				}
 			}
 			if err := mergePdf(out, *mergeInp, sort); err != nil {
-				return errors.Errorf("mergePDF out=%q sort=%v inp=%v: %w", out, sort, mergeInp, err)
+				return fmt.Errorf("mergePDF out=%q sort=%v inp=%v: %w", out, sort, mergeInp, err)
 			}
 			return nil
 		}
@@ -55,7 +55,7 @@ func init() {
 			*splitInp = "-"
 		}
 		if err := splitPdfZip(ctx, out, *splitInp); err != nil {
-			return errors.Errorf("splitPdfZip out=%q inp=%q: %w", out, *splitInp, err)
+			return fmt.Errorf("splitPdfZip out=%q inp=%q: %w", out, *splitInp, err)
 		}
 		return nil
 	}
@@ -65,7 +65,7 @@ func init() {
 	countInp := countCmd.Arg("inp", "input file").String()
 	commands[countCmd.FullCommand()] = func(ctx context.Context) error {
 		if err := countPdf(ctx, *countInp); err != nil {
-			return errors.Errorf("countPdf inp=%s: %w", *countInp, err)
+			return fmt.Errorf("countPdf inp=%s: %w", *countInp, err)
 		}
 		return nil
 	}
@@ -76,7 +76,7 @@ func init() {
 	cleanInp := cleanCmd.Arg("inp", "input file").String()
 	commands[cleanCmd.FullCommand()] = func(ctx context.Context) error {
 		if err := cleanPdf(ctx, out, *cleanInp); err != nil {
-			return errors.Errorf("cleanPdf out=%q inp=%q: %w", out, *cleanInp, err)
+			return fmt.Errorf("cleanPdf out=%q inp=%q: %w", out, *cleanInp, err)
 		}
 		return nil
 	}
@@ -89,7 +89,7 @@ func init() {
 		topdfInp := topdfCmd.Arg("inp", "input file").String()
 		commands[topdfCmd.FullCommand()] = func(ctx context.Context) error {
 			if err := toPdf(out, *topdfInp, mime); err != nil {
-				return errors.Errorf("topdf out=%q inp=%q mime=%q: %w", out, *topdfInp, mime, err)
+				return fmt.Errorf("topdf out=%q inp=%q mime=%q: %w", out, *topdfInp, mime, err)
 			}
 			return nil
 		}
@@ -103,7 +103,7 @@ input.pdf key1=value1 key2=value2...`).
 	fillKeyvals := fillPdfCmd.Arg("keyvals", "key1=val1, key2=val2...").Strings()
 	commands[fillPdfCmd.FullCommand()] = func(ctx context.Context) error {
 		if err := fillFdf(ctx, out, *fillInp, *fillKeyvals...); err != nil {
-			return errors.Errorf("fillPdf out=%q inp=%q keyvals=%q: %w", out, *fillInp, *fillKeyvals, err)
+			return fmt.Errorf("fillPdf out=%q inp=%q keyvals=%q: %w", out, *fillInp, *fillKeyvals, err)
 		}
 		return nil
 	}

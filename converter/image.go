@@ -7,6 +7,7 @@ package converter
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -14,7 +15,6 @@ import (
 	"strings"
 
 	"github.com/tgulacsi/go/temp"
-	errors "golang.org/x/xerrors"
 )
 
 const png = "png"
@@ -41,8 +41,8 @@ func ImageToPdfGm(ctx context.Context, w io.Writer, r io.Reader, contentType str
 	errout := bytes.NewBuffer(nil)
 	cmd.Stderr = errout
 	if err := cmd.Run(); err != nil {
-		err = errors.Errorf("%q: %w", cmd.Args, err)
-		return errors.Errorf("gm convert converting %s: %s: %w", r, errout.Bytes(), err)
+		err = fmt.Errorf("%q: %w", cmd.Args, err)
+		return fmt.Errorf("gm convert converting %s: %s: %w", r, errout.Bytes(), err)
 	}
 	if len(errout.Bytes()) > 0 {
 		Log("msg", "WARN gm convert", "r", r, "error", errout.String())
@@ -107,7 +107,7 @@ func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType,
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err = cmd.Run(); err != nil {
-		return errors.Errorf("%q: %w", cmd.Args, err)
+		return fmt.Errorf("%q: %w", cmd.Args, err)
 	}
 	if tfh, err = os.Open(fn); err != nil {
 		Log("msg", "ERROR cannot open temp", "file", fn, "error", err)
@@ -153,7 +153,7 @@ func PdfToImageGm(ctx context.Context, w io.Writer, r io.Reader, contentType, si
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err = cmd.Run(); err != nil {
-		return errors.Errorf("%q: %w", cmd.Args, err)
+		return fmt.Errorf("%q: %w", cmd.Args, err)
 	}
 	fn := tfh.Name()
 	tfh.Close()

@@ -8,13 +8,12 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
-
-	errors "golang.org/x/xerrors"
 )
 
 // NewOLEStorageReader converts Outlook .msg files to .eml RFC822 email files.
@@ -45,7 +44,7 @@ func NewOLEStorageReader(ctx context.Context, r io.Reader) (io.ReadCloser, error
 		}
 	}
 	if !strings.Contains(err.Error(), "Can't locate Email/Outlook/Message.pm in @INC") {
-		return rc, errors.Errorf("%s: %w", "Can't locate Email/Outlook/Message.pm in @INC", err)
+		return rc, fmt.Errorf("%s: %w", "Can't locate Email/Outlook/Message.pm in @INC", err)
 	}
 	rc.Close()
 	Log("msg", "Email::Outlook::Message is not installed, trying with docker")
@@ -102,13 +101,13 @@ func newOLEStorageReaderDirect(ctx context.Context, r io.Reader) (io.ReadCloser,
 	cmd.Stderr = &errBuf
 	Log("msg", "OLEStorageReader", "args", cmd.Args)
 	if err = cmd.Start(); err != nil {
-		return nil, errors.Errorf("OLEStorageReader: %s: %w", errBuf.String(), err)
+		return nil, fmt.Errorf("OLEStorageReader: %s: %w", errBuf.String(), err)
 	}
 	go func() {
 		if err = cmd.Wait(); err != nil {
 			errTxt := errBuf.String()
 			Log("msg", "WARN OLEStorageReader", "args", cmd.Args, "errTxt", errTxt, "error", err)
-			err = errors.Errorf("%s: %w", errTxt, err)
+			err = fmt.Errorf("%s: %w", errTxt, err)
 		}
 		pw.CloseWithError(err)
 		if remove {
@@ -141,7 +140,7 @@ CMD ["/bin/sh", "-c", "cat ->/tmp/input.msg && perl -w -e 'use Email::Outlook::M
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
 		Log("msg", "ERROR docker build tgulacsi/agostle-outlook2email", "error", err, "errTxt", errBuf.String())
-		return nil, errors.Errorf("docker build: %w", err)
+		return nil, fmt.Errorf("docker build: %w", err)
 	}
 	cmd = exec.CommandContext(ctx, "docker", "run", "-i", "tgulacsi/agostle-outlook2email")
 	cmd.Stdin = r
@@ -151,14 +150,14 @@ CMD ["/bin/sh", "-c", "cat ->/tmp/input.msg && perl -w -e 'use Email::Outlook::M
 	cmd.Stdout = pw
 	if err := cmd.Start(); err != nil {
 		Log("msg", "ERROR docker run -i tgulacsi/agostle-outlook2email", "error", err)
-		return nil, errors.Errorf("docker run: %w", err)
+		return nil, fmt.Errorf("docker run: %w", err)
 	}
 	go func() {
 		var err error
 		if err = cmd.Wait(); err != nil {
 			errTxt := errBuf.String()
 			Log("msg", "OLEStorageReader", "args", cmd.Args, "stderr", errTxt, "error", err)
-			err = errors.Errorf("%s: %w", errTxt, err)
+			err = fmt.Errorf("%s: %w", errTxt, err)
 		}
 		pw.CloseWithError(err)
 		//if remove {

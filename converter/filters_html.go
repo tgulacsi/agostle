@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2020 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -6,6 +6,7 @@ package converter
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,7 +18,6 @@ import (
 
 	"golang.org/x/text/encoding/htmlindex"
 	"golang.org/x/text/transform"
-	errors "golang.org/x/xerrors"
 
 	"github.com/tgulacsi/go/i18nmail"
 )
@@ -65,16 +65,16 @@ func HTMLPartFilter(ctx context.Context,
 	html2pdf := func(fn string) (string, error) {
 		if fn == "" {
 			Log("msg", "empty filename!!!")
-			return "", errors.New("empty filename!")
+			return "", errors.New("empty filename")
 		}
 		tbd[fn] = struct{}{}
 		destfn := filepath.Join(wd, filepath.Base(fn)+".pdf")
 		fh, err := os.Open(fn)
 		if err != nil {
-			err = errors.Errorf("open html %s: %w", fn, err)
+			err = fmt.Errorf("open html %s: %w", fn, err)
 		} else {
 			if err = converter(ctx, destfn, fh, textHtml); err != nil {
-				err = errors.Errorf("converting %s to %s: %w", fn, destfn, err)
+				err = fmt.Errorf("converting %s to %s: %w", fn, destfn, err)
 			}
 		}
 		if err != nil {
@@ -82,10 +82,10 @@ func HTMLPartFilter(ctx context.Context,
 			if alter != "" && aConverter != nil {
 				Log("msg", "html2pdf using alternative content "+alter)
 				if fh, err = os.Open(alter); err != nil {
-					err = errors.Errorf("open txt %s: %w", alter, err)
+					err = fmt.Errorf("open txt %s: %w", alter, err)
 				} else {
 					if err = aConverter(ctx, destfn, fh, textPlain); err != nil {
-						err = errors.Errorf("converting %s to %s: %w", alter, destfn, err)
+						err = fmt.Errorf("converting %s to %s: %w", alter, destfn, err)
 					}
 				}
 				alter, aConverter = "", nil
@@ -195,7 +195,7 @@ func HTMLPartFilter(ctx context.Context,
 				}
 			}
 			if !found {
-				err = errors.New(fmt.Sprintf("WARN this=%d not in %v", part.Seq, groups))
+				err = fmt.Errorf("WARN this=%d not in %v", part.Seq, groups)
 				Log("msg", "SKIP not found", "error", err)
 				goto Skip
 			}

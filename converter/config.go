@@ -14,7 +14,7 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/log"
-	"github.com/stvp/go-toml-config"
+	config "github.com/stvp/go-toml-config"
 	"github.com/tgulacsi/go/osgroup"
 )
 

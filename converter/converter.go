@@ -1,4 +1,4 @@
-// Copyright 2019 The Agostle Authors. All rights reserved.
+// Copyright 2019, 2020 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -6,6 +6,8 @@ package converter
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -23,7 +25,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/tgulacsi/go/iohlp"
 	"golang.org/x/net/html"
-	errors "golang.org/x/xerrors"
 )
 
 var ErrSkip = errors.New("skip this part")
@@ -71,7 +72,7 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 		inpfn := destfn + "." + imgtyp
 		ifh, err = os.Create(inpfn)
 		if err != nil {
-			return errors.Errorf("create temp image file %s: %w", inpfn, err)
+			return fmt.Errorf("create temp image file %s: %w", inpfn, err)
 		}
 		if _, err = io.Copy(ifh, r); err != nil {
 			Log("msg", "ImageToPdf reading", "file", ifh.Name(), "error", err)
@@ -80,7 +81,7 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 			Log("msg", "ImageToPdf writing", "dest", ifh.Name(), "error", err)
 		}
 		if ifh, err = os.Open(inpfn); err != nil {
-			return errors.Errorf("open inp %s: %w", inpfn, err)
+			return fmt.Errorf("open inp %s: %w", inpfn, err)
 		}
 		defer func() { _ = ifh.Close() }()
 		if !LeaveTempFiles {
@@ -93,7 +94,7 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 	}
 	if !fileExists(ifh.Name()) {
 		Log("msg", "Input file not exist!", "file", ifh.Name())
-		return errors.Errorf("input file %s not exists", ifh.Name())
+		return fmt.Errorf("input file %s not exists", ifh.Name())
 	}
 	w, err := os.Create(destfn)
 	if err != nil {
@@ -154,7 +155,7 @@ func MPRelatedToPdf(ctx context.Context, destfn string, r io.Reader, contentType
 	)
 	contentType, params, err = mime.ParseMediaType(contentType)
 	if err != nil {
-		err = errors.Errorf("parse Content-Type %s: %w", contentType, err)
+		err = fmt.Errorf("parse Content-Type %s: %w", contentType, err)
 		return err
 	}
 
@@ -246,7 +247,7 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 			}
 
 			if err = ioutil.WriteFile(inpfn, b, 0644); err != nil {
-				return errors.Errorf("overwrite %s: %w", inpfn, err)
+				return fmt.Errorf("overwrite %s: %w", inpfn, err)
 			}
 		}
 	}
@@ -295,7 +296,7 @@ var (
 // in the input file's directory
 func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 	if outDir == "" {
-		return errors.New("outDir is required!")
+		return errors.New("outDir is required")
 	}
 	Log := getLogger(ctx).Log
 	args := []string{"--headless", "--convert-to", "pdf", "--outdir",
@@ -334,11 +335,11 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 	err := cmd.Run()
 	subCancel()
 	if err != nil {
-		return errors.Errorf("%q: %w", cmd.Args, err)
+		return fmt.Errorf("%q: %w", cmd.Args, err)
 	}
 	outfn := filepath.Join(outDir, filepath.Base(nakeFilename(inpfn))+".pdf")
 	if _, err := os.Stat(outfn); err != nil {
-		return errors.Errorf("loffice no output for %s: %w", filepath.Base(inpfn), err)
+		return fmt.Errorf("loffice no output for %s: %w", filepath.Base(inpfn), err)
 	}
 	return nil
 }
@@ -363,19 +364,19 @@ func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 	cmd.Stdout = os.Stdout
 	Log("start", "wkhtmltopdf", "args", cmd.Args)
 	if err := cmd.Run(); err != nil {
-		err = errors.Errorf("%q: %w", cmd.Args, err)
+		err = fmt.Errorf("%q: %w", cmd.Args, err)
 		if bytes.HasSuffix(buf.Bytes(), []byte("ContentNotFoundError\n")) ||
 			bytes.HasSuffix(buf.Bytes(), []byte("ProtocolUnknownError\n")) ||
 			bytes.HasSuffix(buf.Bytes(), []byte("HostNotFoundError\n")) { // K-MT11422:99503
 			Log("msg", buf.String())
 		} else {
-			return errors.Errorf("%s: %w", buf.String(), err)
+			return fmt.Errorf("%s: %w", buf.String(), err)
 		}
 	}
 	if fi, err := os.Stat(outfn); err != nil {
-		return errors.Errorf("wkhtmltopdf no output for %s: %w", filepath.Base(inpfn), err)
+		return fmt.Errorf("wkhtmltopdf no output for %s: %w", filepath.Base(inpfn), err)
 	} else if fi.Size() == 0 {
-		return errors.Errorf("wkhtmltopdf empty output for %s", filepath.Base(inpfn))
+		return fmt.Errorf("wkhtmltopdf empty output for %s", filepath.Base(inpfn))
 	}
 	return nil
 }

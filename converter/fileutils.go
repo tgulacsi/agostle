@@ -1,4 +1,4 @@
-// Copyright 2019 The Agostle Authors. All rights reserved.
+// Copyright 2019, 2020 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -8,6 +8,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -21,7 +22,6 @@ import (
 	"time"
 
 	"github.com/tgulacsi/go/temp"
-	errors "golang.org/x/xerrors"
 )
 
 func fileExists(fn string) bool {
@@ -53,15 +53,15 @@ func copyFile(from, to string) error {
 	}
 	ifh, err := os.Open(from)
 	if err != nil {
-		return errors.Errorf("copy cannot open %s for reading: %w", from, err)
+		return fmt.Errorf("copy cannot open %s for reading: %w", from, err)
 	}
 	defer func() { _ = ifh.Close() }()
 	ofh, err := os.Create(to)
 	if err != nil {
-		return errors.Errorf("copy cannot open %s for writing: %w", to, err)
+		return fmt.Errorf("copy cannot open %s for writing: %w", to, err)
 	}
 	if _, err = io.Copy(ofh, ifh); err != nil {
-		return errors.Errorf("error copying from %s to %s: %w", from, to, err)
+		return fmt.Errorf("error copying from %s to %s: %w", from, to, err)
 	}
 	return nil
 }
@@ -256,7 +256,7 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 			}
 			openedHere = true
 			if item.File, err = os.Open(item.Filename); err != nil {
-				err = errors.Errorf("Zip cannot open %q: %w", item.Filename, err)
+				err = fmt.Errorf("zip cannot open %q: %w", item.Filename, err)
 				if !skipOnError {
 					return err
 				}
@@ -268,9 +268,9 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 			if openedHere {
 				_ = item.File.Close()
 			}
-			err = errors.Errorf("error stating %s: %w", item.File, err)
+			err = fmt.Errorf("error stating %s: %w", item.File, err)
 		} else if fi == nil {
-			err = errors.New(fmt.Sprintf("nil stat of %#v", item.File))
+			err = fmt.Errorf("nil stat of %#v", item.File)
 		}
 		if err != nil {
 			if !skipOnError {
@@ -283,7 +283,7 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 			if openedHere {
 				_ = item.File.Close()
 			}
-			err = errors.Errorf("convert stat %s to header: %w", item.File, err)
+			err = fmt.Errorf("convert stat %s to header: %w", item.File, err)
 			if !skipOnError {
 				return err
 			}
@@ -299,7 +299,7 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 			if openedHere {
 				_ = item.File.Close()
 			}
-			err = errors.Errorf("creating header for %q: %w", zi.Name, err)
+			err = fmt.Errorf("creating header for %q: %w", zi.Name, err)
 			if !skipOnError {
 				return err
 			}
@@ -311,7 +311,7 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 			_ = item.File.Close()
 		}
 		if err != nil {
-			err = errors.Errorf("writing %s to zipfile: %w", item.File, err)
+			err = fmt.Errorf("writing %s to zipfile: %w", item.File, err)
 			Log("msg", "ERROR write to zip", "error", err)
 			if !skipOnError {
 				return err

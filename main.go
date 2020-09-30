@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2020 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -32,8 +32,6 @@ import (
 	"github.com/tgulacsi/go/i18nmail"
 	"github.com/tgulacsi/go/loghlp/kitloghlp"
 	"golang.org/x/sync/errgroup"
-
-	errors "golang.org/x/xerrors"
 )
 
 // go:generate sh -c "overseer-bindiff printkeys --go-out agostle-keyring.gpg >overseer_keyring.go"
@@ -199,11 +197,11 @@ func Main() error {
 		}
 		tc := tufclient.NewClient(tufclient.MemoryLocalStore(), remote)
 		if err := tc.Init(rootKeys, len(rootKeys)); err != nil {
-			return errors.Errorf("Init: %w", err)
+			return fmt.Errorf("init: %w", err)
 		}
 		targets, err := tc.Update()
 		if err != nil {
-			return errors.Errorf("Update: %w", err)
+			return fmt.Errorf("update: %w", err)
 		}
 		for f := range targets {
 			logger.Log("target", f)
@@ -225,7 +223,7 @@ func Main() error {
 				"{{GOARCH}}", runtime.GOARCH, -1),
 			dest,
 		); err != nil {
-			return errors.Errorf("Download: %w", err)
+			return fmt.Errorf("download: %w", err)
 		}
 		_ = os.Chmod(destFh.Name(), 0775)
 
@@ -282,7 +280,7 @@ func Main() error {
 	}
 	f, ok := commands[todo]
 	if !ok {
-		return errors.Errorf("unknown command %s", todo)
+		return fmt.Errorf("unknown command %s", todo)
 	}
 	return f(ctx)
 }
@@ -296,7 +294,7 @@ func logToFile(fn string) (func() error, error) {
 	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
 	if err != nil {
 		logger.Log("error", err)
-		return nil, errors.Errorf("%s: %w", fn, err)
+		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
 	logger.Log("msg", "Will log to", "file", fh.Name())
 	swLogger.Swap(log.NewLogfmtLogger(io.MultiWriter(os.Stderr, fh)))
@@ -341,7 +339,7 @@ func openInOut(fn string, out bool) (*os.File, error) {
 		f, err = os.Open(fn)
 	}
 	if err != nil {
-		return nil, errors.Errorf("file=%s: %w", fn, err)
+		return nil, fmt.Errorf("file=%s: %w", fn, err)
 	}
 	return f, nil
 }

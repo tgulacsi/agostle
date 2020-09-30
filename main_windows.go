@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"strings"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/kardianos/service"
 	"github.com/tgulacsi/agostle/converter"
-	errors "golang.org/x/xerrors"
 )
 
 //gvi.sh: goversioninfo -product-version=$(git log --format=oneline -n 1 HEAD | cut -d\   -f1)
@@ -97,11 +97,11 @@ func doServiceWindows(todo string, args []string) error {
 		WorkingDirectory: converter.Workdir,
 	})
 	if err != nil {
-		return errors.Errorf("start service %s: %w", name, err)
+		return fmt.Errorf("start service %s: %w", name, err)
 	}
 	errs := make(chan error, 5)
 	if p.Logger, err = s.Logger(errs); err != nil {
-		return errors.Errorf("get logger: %w", err)
+		return fmt.Errorf("get logger: %w", err)
 	}
 	go func() {
 		for err := range errs {
@@ -115,18 +115,18 @@ func doServiceWindows(todo string, args []string) error {
 	switch todo {
 	case "install":
 		if err = s.Install(); err != nil {
-			return errors.Errorf("install: %w", err)
+			return fmt.Errorf("install: %w", err)
 		}
 		logger.Log("msg", "Service "+name+" installed.")
 	case "remove":
 		if err = s.Uninstall(); err != nil {
-			return errors.Errorf("remove: %w", err)
+			return fmt.Errorf("remove: %w", err)
 		}
 		logger.Log("msg", "Service "+name+" removed.")
 	case "run":
 		logger.Log("msg", "running", "service", name)
 		if err = s.Run(); err != nil {
-			err = errors.Errorf("run %s: %w", name, err)
+			err = fmt.Errorf("run %s: %w", name, err)
 			if p.Logger != nil {
 				_ = p.Logger.Error(name + " failed: " + err.Error())
 			}
@@ -134,16 +134,16 @@ func doServiceWindows(todo string, args []string) error {
 		}
 	case "start":
 		if err = s.Start(); err != nil {
-			return errors.Errorf("start %s: %w", name, err)
+			return fmt.Errorf("start %s: %w", name, err)
 		}
 		logger.Log("msg", "Service "+name+" started.")
 	case "stop":
 		if err = s.Stop(); err != nil {
-			return errors.Errorf("stop %s: %w", name, err)
+			return fmt.Errorf("stop %s: %w", name, err)
 		}
 		logger.Log("msg", "Service "+name+" stopped.")
 	default:
-		return errors.Errorf("unknown service %s", todo)
+		return fmt.Errorf("unknown service %s", todo)
 	}
 	return nil
 }

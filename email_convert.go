@@ -28,7 +28,6 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/mholt/archiver"
 	"github.com/tgulacsi/agostle/converter"
-	errors "golang.org/x/xerrors"
 
 	kithttp "github.com/go-kit/kit/transport/http"
 )
@@ -274,12 +273,12 @@ func (resp *emailConvertResponse) mergeIfRequested(params convertParams, logger 
 		f.SetBool(true)
 	}
 	if err = u.Unarchive(resp.outFn, tempDir); err != nil {
-		return errors.Errorf("unarchive %q to %q: %w", resp.outFn, tempDir, err)
+		return fmt.Errorf("unarchive %q to %q: %w", resp.outFn, tempDir, err)
 	}
 
 	dh, err := os.Open(tempDir)
 	if err != nil {
-		return errors.Errorf("%s: %w", tempDir, err)
+		return fmt.Errorf("%s: %w", tempDir, err)
 	}
 	names, _ := dh.Readdirnames(-1)
 	dh.Close()
@@ -298,7 +297,7 @@ func (resp *emailConvertResponse) mergeIfRequested(params convertParams, logger 
 	}
 	f, err := pdfMergeEP(ctx, mr)
 	if err != nil {
-		return errors.Errorf("merge %v: %w", mr.Inputs, err)
+		return fmt.Errorf("merge %v: %w", mr.Inputs, err)
 	}
 	resp.content = f.(readSeekCloser)
 	return nil

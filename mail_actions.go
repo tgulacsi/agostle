@@ -5,6 +5,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/tgulacsi/agostle/converter"
-	errors "golang.org/x/xerrors"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -101,7 +101,7 @@ Examples:
 		mailToPdfZipCmd.Flag("imgsize", "image size").Default("640x480").StringVar(&imgsize)
 		commands[mailToPdfZipCmd.FullCommand()] = func(ctx context.Context) error {
 			if err := mailToPdfZip(ctx, out, inp, split, outimg, imgsize); err != nil {
-				return errors.Errorf("mailToPdfZip out=%s: %w", out, err)
+				return fmt.Errorf("mailToPdfZip out=%s: %w", out, err)
 			}
 			return nil
 		}
@@ -111,7 +111,7 @@ Examples:
 	withOutFlag(mailToTreeCmd)
 	commands[mailToTreeCmd.FullCommand()] = func(ctx context.Context) error {
 		if err := mailToTree(ctx, out, inp); err != nil {
-			return errors.Errorf("mailToTree out=%s: %w", out, err)
+			return fmt.Errorf("mailToTree out=%s: %w", out, err)
 		}
 		return nil
 	}
@@ -122,7 +122,7 @@ uses libemail-outlook-message-perl if installed, or docker to install && run tha
 	withOutFlag(outlookToEmailCmd)
 	commands[outlookToEmailCmd.FullCommand()] = func(ctx context.Context) error {
 		if err := outlookToEmail(ctx, out, inp); err != nil {
-			return errors.Errorf("outlookToEmail out=%s: %w", out, err)
+			return fmt.Errorf("outlookToEmail out=%s: %w", out, err)
 		}
 		return nil
 	}

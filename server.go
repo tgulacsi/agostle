@@ -10,6 +10,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -31,7 +32,6 @@ import (
 	"github.com/oklog/ulid"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/temp"
-	errors "golang.org/x/xerrors"
 
 	"github.com/go-kit/kit/log"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -203,7 +203,7 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 	}
 	defer r.Body.Close()
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
-		return f, errors.Errorf("error parsing request as multipart-form: %w", err)
+		return f, fmt.Errorf("error parsing request as multipart-form: %w", err)
 	}
 	if r.MultipartForm == nil || len(r.MultipartForm.File) == 0 {
 		return f, errors.New("no files?")
@@ -231,7 +231,7 @@ func getRequestFiles(r *http.Request) ([]reqFile, error) {
 	}
 	err := r.ParseMultipartForm(1 << 20)
 	if err != nil {
-		return nil, errors.Errorf("cannot parse request as multipart-form: %w", err)
+		return nil, fmt.Errorf("cannot parse request as multipart-form: %w", err)
 	}
 	if r.MultipartForm == nil || len(r.MultipartForm.File) == 0 {
 		return nil, errors.New("no files?")
