@@ -5,6 +5,7 @@
 package converter
 
 import (
+	"archive/zip"
 	"bufio"
 	"bytes"
 	"crypto/sha1"
@@ -757,6 +758,15 @@ func ExtractingFilter(ctx context.Context,
 				Log("msg", "read archive", "error", err)
 				break
 			}
+			if z.Name() == "__MACOSX" {
+				Log("msg", "skip", "item", z.Name())
+				continue
+			}
+			if zfh, ok := z.Header.(zip.FileHeader); ok && strings.HasPrefix(zfh.Name, "__MACOSX/") {
+				Log("msg", "skip", "item", zfh.Name)
+				continue
+			}
+
 			archRowCount++
 			chunk, cErr := ioutil.ReadAll(z)
 			_ = z.Close()
