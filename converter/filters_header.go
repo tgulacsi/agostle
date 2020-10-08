@@ -110,10 +110,11 @@ func PrependHeaderFilter(ctx context.Context,
 					b = append([]byte(htmlPrefix), b[i:]...)
 				}
 			}
-			bodyPos, _ := tagIndex(b, "body")
-			// even more garbage
-			b = append(append(b[:bodyPos], []byte("<!-- ------ -->")...),
-				b[bodyPos:]...)
+			if bodyPos, _ := tagIndex(b, "body"); bodyPos >= 0 {
+				// even more garbage
+				b = append(append(b[:bodyPos], []byte("<!-- ------ -->")...),
+					b[bodyPos:]...)
+			}
 
 			if i := bytes.LastIndex(b, []byte("</body>")); i >= 0 {
 				b = append(b[:i+7], []byte("</html>")...)
