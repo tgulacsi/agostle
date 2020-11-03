@@ -3,6 +3,7 @@ module github.com/tgulacsi/agostle
 require (
 	bitbucket.org/zombiezen/gopdf v0.0.0-20190421151423-ab3d04824694
 	github.com/UNO-SOFT/otel v0.0.4
+	github.com/UNO-SOFT/ulog v1.1.3
 	github.com/VictoriaMetrics/metrics v1.12.3
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect

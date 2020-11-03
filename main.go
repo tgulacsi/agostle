@@ -22,6 +22,7 @@ import (
 
 	"context"
 
+	"github.com/UNO-SOFT/ulog"
 	tufclient "github.com/flynn/go-tuf/client"
 	tufdata "github.com/flynn/go-tuf/data"
 	"github.com/go-kit/kit/log"
@@ -30,7 +31,6 @@ import (
 	"github.com/kardianos/osext"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/i18nmail"
-	"github.com/tgulacsi/go/loghlp/kitloghlp"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -40,12 +40,11 @@ const defaultUpdateURL = "https://www.unosoft.hu/tuf"
 
 var (
 	swLogger = &log.SwapLogger{}
-	logger   = log.Logger(kitloghlp.Stringify{Logger: swLogger})
+	logger   = ulog.New()
 	ctx      = context.Background()
 )
 
 func init() {
-	logger = log.With(logger, "t", log.DefaultTimestamp, "caller", log.DefaultCaller)
 	swLogger.Swap(log.NewLogfmtLogger(os.Stderr))
 	stdlog.SetFlags(0)
 	stdlog.SetOutput(log.NewStdlibAdapter(logger))
