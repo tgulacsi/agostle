@@ -10,7 +10,7 @@ cd "$(dirname "$0")"
 DEST="${GOBIN:-"$(go env GOBIN)"}"
 GOOS=linux GOARCH=amd64 go install &
 GOOS=windows GOARCH=386 go build -o $DEST/agostle.exe &
-(which tuf || go get -u github.com/flynn/go-tuf/cmd/tuf)
+(which tuf || go get -u github.com/theupdateframework/go-tuf/cmd/tuf)
 wait
 FLAVORS="$*"
 if [ -z "$FLAVORS" ]; then

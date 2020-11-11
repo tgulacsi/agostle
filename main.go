@@ -23,9 +23,9 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/ulog"
-	tufclient "github.com/flynn/go-tuf/client"
-	tufdata "github.com/flynn/go-tuf/data"
 	"github.com/go-kit/kit/log"
+	tufclient "github.com/theupdateframework/go-tuf/client"
+	tufdata "github.com/theupdateframework/go-tuf/data"
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/kardianos/osext"
@@ -177,7 +177,7 @@ func Main() error {
 			return err
 		}
 		logger.Log("msg", "update", "from", updateURL)
-		remote, err := tufclient.HTTPRemoteStore(updateURL, nil)
+		remote, err := tufclient.HTTPRemoteStore(updateURL, nil, nil)
 		if err != nil {
 			return err
 		}
