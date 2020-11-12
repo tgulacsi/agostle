@@ -30,7 +30,7 @@ require (
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/stvp/go-toml-config v0.0.0-20170523163211-314328849d78
-	github.com/tgulacsi/go v0.13.3
+	github.com/tgulacsi/go v0.13.4
 	github.com/theupdateframework/go-tuf v0.0.0-20200928180848-1353a38b9741
 	github.com/ulikunitz/xz v0.5.8 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
