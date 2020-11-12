@@ -5,16 +5,16 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 
 	"context"
 
 	"github.com/go-kit/kit/log"
+	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tgulacsi/agostle/converter"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func mailToPdfZip(ctx context.Context, outfn, inpfn string, splitted bool, outimg string, imgsize string) error {
@@ -70,10 +70,12 @@ func outlookToEmail(ctx context.Context, outfn, inpfn string) error {
 }
 
 func init() {
-	var inp, out string
-	withOutFlag := func(cmd *kingpin.CmdClause) {
-		cmd.Flag("out", "output file").Short('o').StringVar(&out)
-		cmd.Arg("inp", "input file").Default("-").StringVar(&inp)
+	inp := "-"
+	var out string
+	withOutFlag := func(name string) *flag.FlagSet {
+		fs := newFlagSet(name)
+		fs.StringVar(&out, "o", "", "output file")
+		return fs
 	}
 	{
 		var (
@@ -81,9 +83,14 @@ func init() {
 			outimg  string
 			imgsize = "640x640"
 		)
-		mailToPdfZipCmd := app.Command("mail", `convert mail to zip of PDFs
-
-reads a message/rfc822 email, converts all of it to PDF files
+		fs := withOutFlag("mail")
+		fs.BoolVar(&split, "split", false, "split PDF to pages")
+		fs.BoolVar(&converter.SaveOriginalHTML, "save-original-html", converter.SaveOriginalHTML, "save original html")
+		fs.StringVar(&outimg, "outimg", "", "output image format")
+		fs.StringVar(&imgsize, "imgsize", imgsize, "image size")
+		mailToPdfZipCmd := ffcli.Command{Name: "mail", ShortHelp: "convert mail to zip of PDFs",
+			ShortUsage: "mail2pdfzip [-split] [-outimg=image/gif] [-imgsize=640x640] mailfile.eml",
+			LongHelp: `reads a message/rfc822 email, converts all of it to PDF files
 (including attachments), and outputs a zip file containing these pdfs,
 optionally splits the PDFs to separate pages, and converts these pages to images.
 
@@ -92,38 +99,49 @@ Usage:
 
 Examples:
 	mail2pdfzip -split --outimg=image/gif --imgsize=800x800 -o=/tmp/email.pdf.zip email.eml
-`).Alias("mail2pdfzip").Alias("mailToPdfZip")
+`,
+			FlagSet: fs,
+			Exec: func(ctx context.Context, args []string) error {
+				if len(args) != 0 {
+					inp = args[0]
+				}
+				if err := mailToPdfZip(ctx, out, inp, split, outimg, imgsize); err != nil {
+					return fmt.Errorf("mailToPdfZip out=%s: %w", out, err)
+				}
+				return nil
+			},
+		}
+		subcommands = append(subcommands, &mailToPdfZipCmd)
+	}
 
-		withOutFlag(mailToPdfZipCmd)
-		mailToPdfZipCmd.Flag("split", "split PDF to pages").BoolVar(&split)
-		mailToPdfZipCmd.Flag("save-original-html", "save original html").Default(strconv.FormatBool(converter.SaveOriginalHTML)).BoolVar(&converter.SaveOriginalHTML)
-		mailToPdfZipCmd.Flag("outimg", "output image format").StringVar(&outimg)
-		mailToPdfZipCmd.Flag("imgsize", "image size").Default("640x480").StringVar(&imgsize)
-		commands[mailToPdfZipCmd.FullCommand()] = func(ctx context.Context) error {
-			if err := mailToPdfZip(ctx, out, inp, split, outimg, imgsize); err != nil {
-				return fmt.Errorf("mailToPdfZip out=%s: %w", out, err)
+	fs := withOutFlag("mail2tree")
+	mailToTreeCmd := ffcli.Command{Name: "mail2tree", ShortHelp: "extract mail tree to a directory",
+		FlagSet: fs,
+		Exec: func(ctx context.Context, args []string) error {
+			if len(args) != 0 {
+				inp = args[0]
+			}
+			if err := mailToTree(ctx, out, inp); err != nil {
+				return fmt.Errorf("mailToTree out=%s: %w", out, err)
 			}
 			return nil
-		}
+		},
 	}
+	subcommands = append(subcommands, &mailToTreeCmd)
 
-	mailToTreeCmd := app.Command("mail2tree", "extract mail tree to a directory")
-	withOutFlag(mailToTreeCmd)
-	commands[mailToTreeCmd.FullCommand()] = func(ctx context.Context) error {
-		if err := mailToTree(ctx, out, inp); err != nil {
-			return fmt.Errorf("mailToTree out=%s: %w", out, err)
-		}
-		return nil
+	fs = withOutFlag("outlook2email")
+	outlookToEmailCmd := ffcli.Command{Name: "outlook2email", ShortHelp: "convert outlook .msg to standard .eml",
+		LongHelp: "uses libemail-outlook-message-perl if installed, or docker to install && run that script",
+		FlagSet:  fs,
+		Exec: func(ctx context.Context, args []string) error {
+			if len(args) != 0 {
+				inp = args[0]
+			}
+			if err := outlookToEmail(ctx, out, inp); err != nil {
+				return fmt.Errorf("outlookToEmail out=%s: %w", out, err)
+			}
+			return nil
+		},
 	}
-
-	outlookToEmailCmd := app.Command("outlook2email", `convert outlook .msg to standard .eml
-
-uses libemail-outlook-message-perl if installed, or docker to install && run that script`).Alias("msg2eml")
-	withOutFlag(outlookToEmailCmd)
-	commands[outlookToEmailCmd.FullCommand()] = func(ctx context.Context) error {
-		if err := outlookToEmail(ctx, out, inp); err != nil {
-			return fmt.Errorf("outlookToEmail out=%s: %w", out, err)
-		}
-		return nil
-	}
+	subcommands = append(subcommands, &outlookToEmailCmd)
 }

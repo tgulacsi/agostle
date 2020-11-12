@@ -6,6 +6,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -14,99 +15,129 @@ import (
 
 	"context"
 
+	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tgulacsi/agostle/converter"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 func init() {
-
-	pdfCmd := app.Command("pdf", "pdf commands")
+	pdfCmd := &ffcli.Command{Name: "pdf", ShortHelp: "pdf commands"}
+	subcommands = append(subcommands, pdfCmd)
 
 	var out string
-	withOutFlag := func(cmd *kingpin.CmdClause) {
-		cmd.Flag("out", "output file").Short('o').StringVar(&out)
+	withOutFlag := func(name string) *flag.FlagSet {
+		fs := newFlagSet(name)
+		fs.StringVar(&out, "o", "", "output file")
+		return fs
 	}
 	{
 		var sort bool
-		mergeCmd := pdfCmd.Command("merge", "merges the given PDFs into one").
-			Alias("pdf_merge").Alias("pdfmerge")
-		withOutFlag(mergeCmd)
-		mergeCmd.Flag("sort", "shall we sort the files by name before merge?").BoolVar(&sort)
-		mergeInp := mergeCmd.Arg("inp", "input files").Strings()
-		commands[mergeCmd.FullCommand()] = func(ctx context.Context) error {
-			for i, s := range *mergeInp {
-				if s == "" {
-					(*mergeInp)[i] = "-"
+		fs := withOutFlag("merge")
+		fs.BoolVar(&sort, "sort", false, "shall we sort the files by name before merge?")
+		mergeCmd := ffcli.Command{Name: "merge", ShortHelp: "merges the given PDFs into one",
+			FlagSet: fs,
+			Exec: func(ctx context.Context, args []string) error {
+				for i, s := range args {
+					if s == "" {
+						args[i] = "-"
+					}
 				}
+				if err := mergePdf(out, args, sort); err != nil {
+					return fmt.Errorf("mergePDF out=%q sort=%v inp=%v: %w", out, sort, args, err)
+				}
+				return nil
+			},
+		}
+		pdfCmd.Subcommands = append(pdfCmd.Subcommands, &mergeCmd)
+	}
+
+	fs := withOutFlag("split")
+	splitCmd := ffcli.Command{Name: "split", ShortHelp: "splits the given PDF into one per page",
+		FlagSet: fs,
+		Exec: func(ctx context.Context, args []string) error {
+			var splitInp string
+			if len(args) != 0 {
+				splitInp = args[0]
 			}
-			if err := mergePdf(out, *mergeInp, sort); err != nil {
-				return fmt.Errorf("mergePDF out=%q sort=%v inp=%v: %w", out, sort, mergeInp, err)
+			if splitInp == "" {
+				splitInp = "-"
+			}
+			if err := splitPdfZip(ctx, out, splitInp); err != nil {
+				return fmt.Errorf("splitPdfZip out=%q inp=%q: %w", out, splitInp, err)
 			}
 			return nil
-		}
+		},
 	}
+	pdfCmd.Subcommands = append(pdfCmd.Subcommands, &splitCmd)
 
-	splitCmd := pdfCmd.Command("split", "splits the given PDF into one per page").
-		Alias("pdf_split")
-	withOutFlag(splitCmd)
-	splitInp := splitCmd.Arg("inp", "input file").Default("-").String()
-	commands[splitCmd.FullCommand()] = func(ctx context.Context) error {
-		if *splitInp == "" {
-			*splitInp = "-"
-		}
-		if err := splitPdfZip(ctx, out, *splitInp); err != nil {
-			return fmt.Errorf("splitPdfZip out=%q inp=%q: %w", out, *splitInp, err)
-		}
-		return nil
+	countCmd := ffcli.Command{Name: "count", ShortHelp: "prints the number of pages in the given pdf",
+		Exec: func(ctx context.Context, args []string) error {
+			var countInp string
+			if len(args) != 0 {
+				countInp = args[0]
+			}
+			if err := countPdf(ctx, countInp); err != nil {
+				return fmt.Errorf("countPdf inp=%s: %w", countInp, err)
+			}
+			return nil
+		},
 	}
+	pdfCmd.Subcommands = append(pdfCmd.Subcommands, &countCmd)
 
-	countCmd := pdfCmd.Command("count", "prints the number of pages in the given pdf").
-		Alias("pdf_count").Alias("pagecount").Alias("pageno")
-	countInp := countCmd.Arg("inp", "input file").String()
-	commands[countCmd.FullCommand()] = func(ctx context.Context) error {
-		if err := countPdf(ctx, *countInp); err != nil {
-			return fmt.Errorf("countPdf inp=%s: %w", *countInp, err)
-		}
-		return nil
+	fs = withOutFlag("clean")
+	cleanCmd := ffcli.Command{Name: "clean", ShortHelp: "clean PDF from encryption", FlagSet: fs,
+		Exec: func(ctx context.Context, args []string) error {
+			var cleanInp string
+			if len(args) != 0 {
+				cleanInp = args[0]
+			}
+			if err := cleanPdf(ctx, out, cleanInp); err != nil {
+				return fmt.Errorf("cleanPdf out=%q inp=%q: %w", out, cleanInp, err)
+			}
+			return nil
+		},
 	}
-
-	cleanCmd := pdfCmd.Command("clean", "clean PDF from encryption").
-		Alias("pdf_clean")
-	withOutFlag(cleanCmd)
-	cleanInp := cleanCmd.Arg("inp", "input file").String()
-	commands[cleanCmd.FullCommand()] = func(ctx context.Context) error {
-		if err := cleanPdf(ctx, out, *cleanInp); err != nil {
-			return fmt.Errorf("cleanPdf out=%q inp=%q: %w", out, *cleanInp, err)
-		}
-		return nil
-	}
+	pdfCmd.Subcommands = append(pdfCmd.Subcommands, &cleanCmd)
 
 	{
 		var mime string
-		topdfCmd := pdfCmd.Command("topdf", "tries to convert the given file (you can specify its mime-type) to PDF")
-		withOutFlag(topdfCmd)
-		topdfCmd.Flag("mime", "input mimetype").Default("application/octet-stream").StringVar(&mime)
-		topdfInp := topdfCmd.Arg("inp", "input file").String()
-		commands[topdfCmd.FullCommand()] = func(ctx context.Context) error {
-			if err := toPdf(out, *topdfInp, mime); err != nil {
-				return fmt.Errorf("topdf out=%q inp=%q mime=%q: %w", out, *topdfInp, mime, err)
-			}
-			return nil
+		fs = withOutFlag("topdf")
+		fs.StringVar(&mime, "mime", "application/octet-stream", "input mimetype")
+		topdfCmd := ffcli.Command{Name: "topdf",
+			ShortHelp: "tries to convert the given file (you can specify its mime-type) to PDF",
+			FlagSet:   fs,
+			Exec: func(ctx context.Context, args []string) error {
+				var topdfInp string
+				if len(args) != 0 {
+					topdfInp = args[0]
+				}
+				if err := toPdf(out, topdfInp, mime); err != nil {
+					return fmt.Errorf("topdf out=%q inp=%q mime=%q: %w", out, topdfInp, mime, err)
+				}
+				return nil
+			},
 		}
+		pdfCmd.Subcommands = append(pdfCmd.Subcommands, &topdfCmd)
 	}
 
-	fillPdfCmd := pdfCmd.Command("fill", `fill PDF form
-input.pdf key1=value1 key2=value2...`).
-		Alias("pdf_fill").Alias("fill_form").Alias("pdf_fill_form")
-	withOutFlag(fillPdfCmd)
-	fillInp := fillPdfCmd.Arg("inp", "input file").String()
-	fillKeyvals := fillPdfCmd.Arg("keyvals", "key1=val1, key2=val2...").Strings()
-	commands[fillPdfCmd.FullCommand()] = func(ctx context.Context) error {
-		if err := fillFdf(ctx, out, *fillInp, *fillKeyvals...); err != nil {
-			return fmt.Errorf("fillPdf out=%q inp=%q keyvals=%q: %w", out, *fillInp, *fillKeyvals, err)
-		}
-		return nil
+	fs = withOutFlag("fill")
+	fillPdfCmd := ffcli.Command{Name: "fill", ShortHelp: "fill PDF form",
+		ShortUsage: `fill PDF form
+input.pdf key1=value1 key2=value2...`,
+		FlagSet: fs,
+		Exec: func(ctx context.Context, args []string) error {
+			var fillInp string
+			var fillKeyvals []string
+			if len(args) != 0 {
+				fillInp = args[0]
+				fillKeyvals = args[1:]
+			}
+			if err := fillFdf(ctx, out, fillInp, fillKeyvals...); err != nil {
+				return fmt.Errorf("fillPdf out=%q inp=%q keyvals=%q: %w", out, fillInp, fillKeyvals, err)
+			}
+			return nil
+		},
 	}
+	pdfCmd.Subcommands = append(pdfCmd.Subcommands, &fillPdfCmd)
 }
 
 func splitPdfZip(ctx context.Context, outfn, inpfn string) error {

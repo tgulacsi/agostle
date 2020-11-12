@@ -177,7 +177,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	}
 	hsh := base64.URLEncoding.EncodeToString(h.Sum(nil))
 	if resp.outFn, err = getCachedFn(req.Params, hsh); err == nil {
-		err = resp.mergeIfRequested(req.Params, logger)
+		err = resp.mergeIfRequested(ctx, req.Params, logger)
 		return resp, err
 	}
 
@@ -189,7 +189,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	if !req.Params.Splitted && req.Params.OutImg == "" {
 		err = converter.MailToPdfZip(ctx, resp.outFn, input, req.Params.ContentType)
 		if err == nil {
-			err = resp.mergeIfRequested(req.Params, logger)
+			err = resp.mergeIfRequested(ctx, req.Params, logger)
 		}
 	} else {
 		err = converter.MailToSplittedPdfZip(ctx, resp.outFn, input, req.Params.ContentType,
@@ -245,7 +245,7 @@ func SaveRequest(ctx context.Context, r *http.Request) context.Context {
 	return context.WithValue(ctx, ctxKeyHTTPRequest, r)
 }
 
-func (resp *emailConvertResponse) mergeIfRequested(params convertParams, logger log.Logger) error {
+func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params convertParams, logger log.Logger) error {
 	if !params.Merged {
 		return nil
 	}
