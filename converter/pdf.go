@@ -285,10 +285,11 @@ func getHash(fn string) string {
 		return ""
 	}
 	hsh := sha1.New()
-	if _, err = io.Copy(hsh, fh); err != nil {
+	_, err = io.Copy(hsh, fh)
+	_ = fh.Close()
+	if err != nil {
 		Log("msg", "WARN getHash reading", "fn", fn, "error", err)
 	}
-	_ = fh.Close()
 	return base64.URLEncoding.EncodeToString(hsh.Sum(nil))
 }
 

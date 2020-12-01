@@ -113,6 +113,7 @@ func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType,
 		Log("msg", "ERROR cannot open temp", "file", fn, "error", err)
 		return err
 	}
+	defer tfh.Close()
 	_ = os.Remove(fn)
 
 	if imgtyp == png {

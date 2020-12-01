@@ -185,6 +185,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	if err != nil {
 		return nil, err
 	}
+	defer input.Close()
 
 	if !req.Params.Splitted && req.Params.OutImg == "" {
 		err = converter.MailToPdfZip(ctx, resp.outFn, input, req.Params.ContentType)
@@ -283,6 +284,14 @@ func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params c
 	names, _ := dh.Readdirnames(-1)
 	dh.Close()
 	mr := pdfMergeRequest{Inputs: make([]reqFile, 0, len(names))}
+	defer func() {
+		for _, inp := range mr.Inputs {
+			if rc := inp.ReadCloser; rc != nil {
+				rc.Close()
+			}
+		}
+	}()
+
 	logger.Log("tempDir", tempDir, "files", names)
 	for _, fn := range names {
 		if strings.HasSuffix(fn, ".pdf") {

@@ -73,7 +73,9 @@ func HTMLPartFilter(ctx context.Context,
 		if err != nil {
 			err = fmt.Errorf("open html %s: %w", fn, err)
 		} else {
-			if err = converter(ctx, destfn, fh, textHtml); err != nil {
+			err = converter(ctx, destfn, fh, textHtml)
+			fh.Close()
+			if err != nil {
 				err = fmt.Errorf("converting %s to %s: %w", fn, destfn, err)
 			}
 		}
@@ -84,7 +86,9 @@ func HTMLPartFilter(ctx context.Context,
 				if fh, err = os.Open(alter); err != nil {
 					err = fmt.Errorf("open txt %s: %w", alter, err)
 				} else {
-					if err = aConverter(ctx, destfn, fh, textPlain); err != nil {
+					err = aConverter(ctx, destfn, fh, textPlain)
+					fh.Close()
+					if err != nil {
 						err = fmt.Errorf("converting %s to %s: %w", alter, destfn, err)
 					}
 				}
