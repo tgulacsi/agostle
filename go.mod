@@ -3,7 +3,7 @@ module github.com/tgulacsi/agostle
 require (
 	bitbucket.org/zombiezen/gopdf v0.0.0-20190421151423-ab3d04824694
 	github.com/UNO-SOFT/otel v0.0.5
-	github.com/UNO-SOFT/ulog v1.1.5
+	github.com/UNO-SOFT/ulog v1.2.0
 	github.com/VictoriaMetrics/metrics v1.12.3
 	github.com/coreos/go-systemd/v22 v22.1.0
 	github.com/disintegration/gift v1.2.1
