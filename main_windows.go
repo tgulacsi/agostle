@@ -10,11 +10,12 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"gopkg.in/tylerb/graceful.v1"
+	"github.com/peterbourgon/ff/v3/ffcli"
 
 	"github.com/kardianos/service"
 	"github.com/tgulacsi/agostle/converter"
@@ -28,17 +29,15 @@ const exeName = "agostle.exe"
 func init() {
 	topCmd = []string{"tasklist", "/v", "/fi", "USERNAME eq " + os.Getenv("USER")}
 
-	serviceCmd := app.Command("service", "manage Windows service")
+	serviceCmd := ffcli.Command{Name: "service", ShortHelp: "manage Windows service"}
 
-	addcmd := func(todo string) {
-		cmd := serviceCmd.Command(todo, todo+" service")
-		args := cmd.Arg("args", "arguments").Strings()
-		commands[cmd.FullCommand()] = func(ctx context.Context) error {
-			return doServiceWindows(todo, *args)
-		}
-	}
 	for _, todo := range []string{"install", "remove", "run", "start", "stop"} {
-		addcmd(todo)
+		subCmd := ffcli.Command{Name: todo, ShortHelp: todo + " service",
+			Exec: func(ctx context.Context, args []string) error {
+				return doServiceWindows(ctx, todo, args)
+			},
+		}
+		serviceCmd.Subcommands = append(serviceCmd.Subcommands, &subCmd)
 	}
 }
 
@@ -46,7 +45,7 @@ var _ = service.Interface((*program)(nil))
 
 type program struct {
 	service.Logger
-	*graceful.Server
+	*http.Server
 }
 
 func (p *program) Start(S service.Service) error {
@@ -72,11 +71,13 @@ func (p *program) Stop(S service.Service) error {
 	if p.Logger != nil {
 		_ = p.Logger.Info("Stopping service")
 	}
-	p.Server.Stop(10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	p.Server.Shutdown(ctx)
+	cancel()
 	return nil
 }
 
-func doServiceWindows(todo string, args []string) error {
+func doServiceWindows(ctx context.Context, todo string, args []string) error {
 	if todo == "" {
 		todo = "run"
 	}

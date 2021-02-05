@@ -25,7 +25,7 @@ require (
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/pierrec/lz4 v2.6.0+incompatible // indirect
 	github.com/stvp/go-toml-config v0.0.0-20170523163211-314328849d78
-	github.com/tgulacsi/go v0.13.6
+	github.com/tgulacsi/go v0.13.7
 	github.com/theupdateframework/go-tuf v0.0.0-20201230183259-aee6270feb55
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
@@ -46,6 +46,14 @@ go 1.13
 exclude (
 	go.opentelemetry.io/otel v0.12.0
 	go.opentelemetry.io/otel v0.13.0
+	go.opentelemetry.io/otel v0.14.0
+	go.opentelemetry.io/otel v0.15.0
+	go.opentelemetry.io/otel v0.16.0
 	go.opentelemetry.io/otel/sdk v0.12.0
 	go.opentelemetry.io/otel/sdk v0.13.0
+	go.opentelemetry.io/otel/sdk v0.14.0
+	go.opentelemetry.io/otel/sdk v0.15.0
+	go.opentelemetry.io/otel/sdk v0.16.0
 )
+
+//replace github.com/tgulacsi/go => ../go
