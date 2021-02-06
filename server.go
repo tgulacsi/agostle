@@ -208,6 +208,7 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 	if r.MultipartForm == nil || len(r.MultipartForm.File) == 0 {
 		return f, errors.New("no files?")
 	}
+	defer r.MultipartForm.RemoveAll()
 
 	for _, fileHeaders := range r.MultipartForm.File {
 		for _, fileHeader := range fileHeaders {
@@ -236,6 +237,7 @@ func getRequestFiles(r *http.Request) ([]reqFile, error) {
 	if r.MultipartForm == nil || len(r.MultipartForm.File) == 0 {
 		return nil, errors.New("no files?")
 	}
+	defer r.MultipartForm.RemoveAll()
 
 	files := make([]reqFile, 0, len(r.MultipartForm.File))
 	for _, fileHeaders := range r.MultipartForm.File {

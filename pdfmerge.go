@@ -86,6 +86,7 @@ func pdfMergeEP(ctx context.Context, request interface{}) (response interface{},
 	if err != nil {
 		return nil, err
 	}
+	defer os.Remove(dst)
 	if err = converter.PdfMerge(ctx, dst, filenames...); err != nil {
 		Log("msg", "PdfMerge", "dst", dst, "filenames", filenames, "error", err)
 		return nil, err
@@ -94,7 +95,6 @@ func pdfMergeEP(ctx context.Context, request interface{}) (response interface{},
 	if err != nil {
 		return nil, err
 	}
-	_ = os.Remove(dst)
 	return f, nil
 }
 

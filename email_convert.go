@@ -67,6 +67,9 @@ type emailConvertRequest struct {
 
 func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, error) {
 	r.ParseForm()
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
 	req := emailConvertRequest{Params: convertParams{
 		Splitted: r.Form.Get("splitted") == "1",
 		OutImg:   r.Form.Get("outimg"),
