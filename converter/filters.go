@@ -36,8 +36,8 @@ func MailToPdfZip(ctx context.Context, destfn string, body io.Reader, contentTyp
 }
 
 type maybeArchItems struct {
-	Items []ArchFileItem
 	Error error
+	Items []ArchFileItem
 }
 
 // MailToSplittedPdfZip converts mail to ZIP of PDFs and images

@@ -213,9 +213,9 @@ type readSeekCloser interface {
 }
 
 type emailConvertResponse struct {
+	content     readSeekCloser
 	r           *http.Request
 	outFn, hsh  string
-	content     readSeekCloser
 	NotModified bool
 }
 

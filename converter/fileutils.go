@@ -146,9 +146,9 @@ func (fl ReadCloserFileLike) Stat() (os.FileInfo, error) {
 // ArchFileItem groups an archive item
 type ArchFileItem struct {
 	File     FileLike //opened file handle
+	Error    error    //error
 	Filename string   //name of the file
 	Archive  string   //name in the archive
-	Error    error    //error
 }
 
 // ArchiveName returns the archive name - Archive, Filename if set, otherwise File's name
@@ -402,10 +402,10 @@ func headerGetFileName(hdr map[string][]string) string {
 var _ = os.FileInfo(dummyFileInfo{})
 
 type dummyFileInfo struct {
+	time time.Time
 	name string
 	size int64
 	mode os.FileMode
-	time time.Time
 }
 
 func (fi dummyFileInfo) Name() string       { return fi.name }

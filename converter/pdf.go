@@ -602,9 +602,9 @@ type FieldSetter interface {
 var fieldPartV = []byte("\n<<\n/V ()\n")
 
 type fieldParts struct {
+	Values map[string]string
 	Parts  [][]byte
 	Fields []string
-	Values map[string]string
 }
 
 func (fp fieldParts) WriteTo(w io.Writer) (n int64, err error) {

@@ -71,8 +71,8 @@ type MultiMIMEDetector struct {
 
 func (d MultiMIMEDetector) Match(b []byte) (string, error) {
 	type result struct {
-		Type string
 		Err  error
+		Type string
 	}
 	results := make([]result, len(d.Detectors))
 	if !d.Parallel {

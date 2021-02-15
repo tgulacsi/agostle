@@ -180,8 +180,8 @@ func adminStopHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type reqFile struct {
-	multipart.FileHeader
 	io.ReadCloser
+	multipart.FileHeader
 }
 
 // getOneRequestFile reads the first file from the request (if multipart/),

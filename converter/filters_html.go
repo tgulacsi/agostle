@@ -23,8 +23,8 @@ import (
 )
 
 type cidGroup struct {
-	htmlFn string
 	cids   map[string]string
+	htmlFn string
 }
 
 // HTMLPartFilter reads multipart/alternative (text/plain + text/html), preferring the html

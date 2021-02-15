@@ -24,10 +24,10 @@ import (
 )
 
 type statInfo struct {
+	last               time.Time
 	mem                *runtime.MemStats
 	startedAt, version string
 	top                []byte
-	last               time.Time
 	mtx                sync.Mutex
 }
 

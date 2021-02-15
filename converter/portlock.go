@@ -12,8 +12,8 @@ import (
 
 // PortLock is a locker which locks by binding to a port on the loopback IPv4 interface
 type PortLock struct {
-	hostport string
 	ln       net.Listener
+	hostport string
 }
 
 // NewPortLock returns a lock for port

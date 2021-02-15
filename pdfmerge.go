@@ -119,8 +119,8 @@ func pdfMergeEncode(ctx context.Context, w http.ResponseWriter, response interfa
 }
 
 type pdfMergeRequest struct {
-	Sort   sortMode
 	Inputs []reqFile
+	Sort   sortMode
 }
 
 type sortMode uint8
