@@ -84,7 +84,7 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 	mux.Handle("/_admin/stop", http.HandlerFunc(adminStopHandler))
 	mux.Handle("/", http.DefaultServeMux)
 
-	tp, err := otel.LogTraceProvider(logger.Log, nil)
+	tp, err := otel.LogTraceProvider(logger.Log)
 	if err != nil {
 		panic(err)
 	}
