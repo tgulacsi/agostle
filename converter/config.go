@@ -165,11 +165,13 @@ var SaveOriginalHTML = false
 const ErrTextFn = "ZZZ-errors.txt"
 
 func getLogger(ctx context.Context) log.Logger {
-	if ctx == nil {
-		return Logger
+	if ctx != nil {
+		if logger, ok := ctx.Value("logger").(log.Logger); ok {
+			return logger
+		}
 	}
-	if logger, ok := ctx.Value("logger").(log.Logger); ok {
-		return logger
+	if Logger == nil {
+		return log.NewNopLogger()
 	}
 	return Logger
 }

@@ -609,9 +609,15 @@ type fieldParts struct {
 
 func (fp fieldParts) WriteTo(w io.Writer) (n int64, err error) {
 	length := len(fieldPartV)
+	if length == 0 {
+		return 0, io.EOF
+	}
 	fpv1, fpv2 := fieldPartV[:length-2], fieldPartV[length-2:]
 	cew := &countErrWriter{w: w}
 	length = len(fp.Parts) - 1
+	if length < 0 {
+		return 0, io.EOF
+	}
 	for i, part := range fp.Parts {
 		if i == length {
 			break
