@@ -42,9 +42,12 @@ wBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXw-`,
 func TestB64QuoPriDecoder(t *testing.T) {
 	for i, tf := range deBorkTests {
 		r := NewB64QuoPriDecoder(bytes.NewReader([]byte(tf[0])))
-		out, err := iohlp.ReadAll(r, 1<<20)
+		out, stp, err := iohlp.ReadAll(r, 1<<20)
 		if err != nil {
 			t.Errorf("error with reading: %s", err)
+		}
+		if stp != nil {
+			defer stp()
 		}
 		out = bytes.Replace(out, []byte{0}, nil, -1)
 		if string(out) != tf[1] {
@@ -78,7 +81,7 @@ func findDiff(a, b []byte) int {
 func TestEqsignStripper(t *testing.T) {
 	data := []byte("abraka=dabraka=\r\nprix=\nprax=prux\nquix\r\npux")
 	await := "abraka=dabrakaprixprax=prux\nquix\r\npux"
-	read, err := iohlp.ReadAll(NewEqsignStripper(bytes.NewBuffer(data)), 1<<20)
+	read, stp, err := iohlp.ReadAll(NewEqsignStripper(bytes.NewBuffer(data)), 1<<20)
 	if err != nil {
 		t.Errorf("error with stripper: %s", err)
 	}
@@ -87,13 +90,16 @@ func TestEqsignStripper(t *testing.T) {
 			findDiff(read, []byte(await)), await, len([]byte(await)),
 			len(read), string(read))
 	}
+	if stp != nil {
+		stp()
+	}
 }
 
 func TestCidMapper(t *testing.T) {
 	data := []byte("<html><body><a\nsrc=\"cid:<image.png@ewee>\"\n>b</a></body></html>")
 	await := "<html><body><a\nsrc=\"images/image.png@ewee\"\n>b</a></body></html>"
 	cids := make(map[string]string, 1)
-	read, err := iohlp.ReadAll(NewCidMapper(cids, "images", bytes.NewBuffer(data)), 1<<20)
+	read, stp, err := iohlp.ReadAll(NewCidMapper(cids, "images", bytes.NewBuffer(data)), 1<<20)
 	if err != nil {
 		t.Errorf("error with stripper: %s", err)
 	}
@@ -102,4 +108,7 @@ func TestCidMapper(t *testing.T) {
 			await, []byte(await), string(read), read)
 	}
 	t.Logf("cids: %s", cids)
+	if stp != nil {
+		stp()
+	}
 }

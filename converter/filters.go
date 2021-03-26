@@ -355,6 +355,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 		return
 	}
 	err := i18nmail.Walk(
+		ctx,
 		i18nmail.MailPart{ContentType: messageRFC822, Body: br},
 		func(mp i18nmail.MailPart) error {
 			select {

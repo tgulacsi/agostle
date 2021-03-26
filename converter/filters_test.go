@@ -19,7 +19,7 @@ func TestFixXMLHeader(t *testing.T) {
 		want,
 		strings.Replace(want, "charset", "encoding", 1),
 	} {
-		b, err := iohlp.ReadAll(fixXMLHeader(strings.NewReader(elt)), 1<<20)
+		b, stp, err := iohlp.ReadAll(fixXMLHeader(strings.NewReader(elt)), 1<<20)
 		if err != nil {
 			t.Errorf("%d. read: %v", i, err)
 			continue
@@ -27,6 +27,9 @@ func TestFixXMLHeader(t *testing.T) {
 		got := string(b)
 		if got != want {
 			t.Errorf("%d. got %q, want %q.", i, got, want)
+		}
+		if stp != nil {
+			stp()
 		}
 	}
 }
@@ -40,7 +43,7 @@ func TestFixXMLCharset(t *testing.T) {
 		`<?xml version="1.0" charset="iso-8859-2" ?><!DOCTYPE html><p>` + string([]rune{225}) + "</p></html>",
 	} {
 		subCtx, subCancel := context.WithTimeout(ctx, 10*time.Second)
-		b, err := iohlp.ReadAll(fixXMLCharset(subCtx, strings.NewReader(elt)), 1<<20)
+		b, stp, err := iohlp.ReadAll(fixXMLCharset(subCtx, strings.NewReader(elt)), 1<<20)
 		subCancel()
 		if err != nil {
 			t.Errorf("%d. read: %v", i, err)
@@ -49,6 +52,9 @@ func TestFixXMLCharset(t *testing.T) {
 		got := string(b)
 		if got != want {
 			t.Errorf("%d. got %q, want %q.", i, got, want)
+		}
+		if stp != nil {
+			stp()
 		}
 	}
 }
