@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2021 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -75,15 +75,15 @@ func PrependHeaderFilter(ctx context.Context,
 		//Log("msg", "headers written", "buf", headersBuf.String())
 
 		if part.ContentType != textHtml {
-			part.Body = io.MultiReader(bytes.NewReader(headersBuf.Bytes()), part.Body)
-			var buf bytes.Buffer
-			io.Copy(&buf, part.Body)
-			part.Body = bytes.NewReader(buf.Bytes())
-			//Log("msg", buf.String())
+			part.Body, _ = i18nmail.MakeSectionReader(
+				io.MultiReader(bytes.NewReader(headersBuf.Bytes()), part.Body),
+				bodyThreshold,
+			)
 			goto Skip
 		}
 
-		part.Body = decodeHTML(ctx, part.Body, *ConfWkhtmltopdf == "")
+		part.Body, _ = i18nmail.MakeSectionReader(
+			decodeHTML(ctx, part.Body, *ConfWkhtmltopdf == ""), bodyThreshold)
 		if *ConfWkhtmltopdf == "" {
 			b, err := ioutil.ReadAll(part.Body)
 			if err != nil {
@@ -126,39 +126,39 @@ func PrependHeaderFilter(ctx context.Context,
 				b = append(b, 'm', 'l', '>')
 			}
 			if _, j := tagIndex(b, "body"); j >= 0 {
-				part.Body = io.MultiReader(
+				part.Body, _ = i18nmail.MakeSectionReader(io.MultiReader(
 					bytes.NewReader(b[:j]),
 					bytes.NewReader(headersBuf.Bytes()),
 					bytes.NewReader(b[j:]),
-				)
+				), bodyThreshold)
 			} else {
-				part.Body = io.MultiReader(
+				part.Body, _ = i18nmail.MakeSectionReader(io.MultiReader(
 					bytes.NewReader(headersBuf.Bytes()),
 					bytes.NewReader(b),
-				)
+				), bodyThreshold)
 			}
 		} else {
 			b := make([]byte, 1<<20)
 			n, _ := io.ReadAtLeast(part.Body, b, len(b)/2)
 			b = b[:n]
 			if _, j := tagIndex(b, "body"); j >= 0 {
-				part.Body = io.MultiReader(
+				part.Body, _ = i18nmail.MakeSectionReader(io.MultiReader(
 					bytes.NewReader(b[:j]),
 					bytes.NewReader(headersBuf.Bytes()),
 					bytes.NewReader(b[j:]),
 					part.Body,
-				)
+				), bodyThreshold)
 			} else {
 				c := b
 				if len(c) > 4096 {
 					c = c[len(c)-4096:]
 				}
 				Log("msg", "no body in", "b", string(c))
-				part.Body = io.MultiReader(
+				part.Body, _ = i18nmail.MakeSectionReader(io.MultiReader(
 					bytes.NewReader(headersBuf.Bytes()),
 					bytes.NewReader(b),
 					part.Body,
-				)
+				), bodyThreshold)
 			}
 		}
 

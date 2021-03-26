@@ -1,4 +1,4 @@
-// Copyright 2017, 2020 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2021 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -6,7 +6,6 @@ package converter
 
 import (
 	"archive/zip"
-	"bufio"
 	"bytes"
 	"crypto/sha1"
 	"encoding/base64"
@@ -30,6 +29,8 @@ import (
 	//"github.com/tgulacsi/go/uncompr"
 	"github.com/mholt/archiver"
 )
+
+const bodyThreshold = 1 << 20
 
 func MailToPdfZip(ctx context.Context, destfn string, body io.Reader, contentType string) error {
 	return MailToSplittedPdfZip(ctx, destfn, body, contentType, false, "", "")
@@ -339,35 +340,35 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	var head [4096]byte
 
 	Log("SlurpMail", contentType)
-	br := bufio.NewReader(body)
-	if b, err := br.Peek(2048); err != nil && len(b) == 0 {
-		errch <- err
+	mp := i18nmail.MailPart{ContentType: contentType}
+	var err error
+	if mp.Body, err = i18nmail.MakeSectionReader(body, bodyThreshold); err != nil {
 		return
-	} else if typ, _ := MIMEMatch(b); typ != "" && !bytes.Contains(b, []byte("\nTo:")) && !bytes.Contains(b, []byte("\nReceived:")) && !bytes.Contains(b, []byte("\nFrom: ")) {
+	}
+	b := make([]byte, 2048)
+	n, _ := mp.Body.ReadAt(b, 0)
+	b = b[:n]
+	if typ, _ := MIMEMatch(b); typ != "" && !bytes.Contains(b, []byte("\nTo:")) && !bytes.Contains(b, []byte("\nReceived:")) && !bytes.Contains(b, []byte("\nFrom: ")) {
 		Log("msg", "not email!", "typ", typ, "ct", contentType)
 		if contentType == "" || contentType == "message/rfc822" {
 			contentType = typ
 		}
 		contentType = FixContentType(b, contentType, "")
 		Log("msg", "fixed", "contentType", contentType)
-		partch <- i18nmail.MailPart{ContentType: contentType, Body: br}
+		mp.ContentType = contentType
+		partch <- mp
 		close(partch)
 		return
 	}
-	err := i18nmail.Walk(
-		ctx,
-		i18nmail.MailPart{ContentType: messageRFC822, Body: br},
+	mp.ContentType = messageRFC822
+	err = i18nmail.Walk(
+		mp,
 		func(mp i18nmail.MailPart) error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
 			default:
 			}
-			tfh, e := temp.NewReadSeeker(mp.Body)
-			if e != nil {
-				return fmt.Errorf("SlurpMail: %w", e)
-			}
-			mp.Body = tfh
 			fn := headerGetFileName(mp.Header)
 			n, err := io.ReadAtLeast(mp.Body, head[:], 512)
 			if err != nil && (!errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) || n == 0) {
@@ -388,7 +389,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 				return nil // Skip
 			}
 			mp.ContentType = FixContentType(head[:n], mp.ContentType, fn)
-			if _, err := tfh.Seek(0, 0); err != nil {
+			if _, err := mp.Body.Seek(0, 0); err != nil {
 				Log("Seek back", "error", err)
 			}
 			partch <- mp
@@ -705,7 +706,10 @@ func ExtractingFilter(ctx context.Context,
 				goto Error
 			}
 			child := part.Spawn()
-			child.ContentType, child.Body = messageRFC822, r
+			child.ContentType = messageRFC822
+			if child.Body, err = i18nmail.MakeSectionReader(r, bodyThreshold); err != nil {
+				goto Error
+			}
 			fn := headerGetFileName(part.Header)
 			if fn == "" {
 				fn = ".eml"
@@ -778,7 +782,7 @@ func ExtractingFilter(ctx context.Context,
 			child := part.Spawn()
 			child.ContentType = FixContentType(chunk, "application/octet-stream",
 				z.Name())
-			child.Body = bytes.NewReader(chunk)
+			child.Body = io.NewSectionReader(bytes.NewReader(chunk), 0, int64(len(chunk)))
 			child.Header = textproto.MIMEHeader(make(map[string][]string, 1))
 			child.Header.Add("X-FileName", safeFn(z.Name(), true))
 			wg.Add(1)

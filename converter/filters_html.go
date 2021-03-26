@@ -158,9 +158,9 @@ func HTMLPartFilter(ctx context.Context,
 			if part.ContentType == textPlain {
 				fn = fn + ".txt"
 			} else {
-				part.Body = fixXMLCharset(ctx, fixXMLHeader(part.Body))
+				part.Body, _ = i18nmail.MakeSectionReader(fixXMLCharset(ctx, fixXMLHeader(part.Body)), bodyThreshold)
 				cids = make(map[string]string, 4)
-				part.Body = NewCidMapper(cids, "images", part.Body)
+				part.Body, _ = i18nmail.MakeSectionReader(NewCidMapper(cids, "images", part.Body), bodyThreshold)
 				fn = fmt.Sprintf("%s-%02d.html", fn, this)
 			}
 			fn = filepath.Join(dn, fn)
@@ -306,11 +306,18 @@ func SaveOriHTMLFilter(ctx context.Context,
 					Log("msg", "write ori to", "dest", orifh.Name(), "error", e)
 				}
 				orifh.Close()
-				if part.Body, e = os.Open(orifh.Name()); e != nil {
-					Log("msg", "reopen", "file", orifh.Name(), "error", e)
-					errch <- e
+				if fh, err := os.Open(orifh.Name()); e != nil {
+					Log("msg", "reopen", "file", orifh.Name(), "error", err)
+					errch <- err
 					continue
+				} else {
+					fi, err := fh.Stat()
+					if err != nil {
+						errch <- err
+					}
+					part.Body = io.NewSectionReader(fh, 0, fi.Size())
 				}
+
 			}
 		}
 		outch <- part

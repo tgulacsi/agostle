@@ -19,17 +19,16 @@ func TestFixXMLHeader(t *testing.T) {
 		want,
 		strings.Replace(want, "charset", "encoding", 1),
 	} {
-		b, stp, err := iohlp.ReadAll(fixXMLHeader(strings.NewReader(elt)), 1<<20)
+		sr, err := iohlp.MakeSectionReader(fixXMLHeader(strings.NewReader(elt)), 1<<20)
 		if err != nil {
 			t.Errorf("%d. read: %v", i, err)
 			continue
 		}
-		got := string(b)
+		b := make([]byte, len(elt))
+		n, _ := sr.ReadAt(b, 0)
+		got := string(b[:n])
 		if got != want {
 			t.Errorf("%d. got %q, want %q.", i, got, want)
-		}
-		if stp != nil {
-			stp()
 		}
 	}
 }
@@ -43,18 +42,17 @@ func TestFixXMLCharset(t *testing.T) {
 		`<?xml version="1.0" charset="iso-8859-2" ?><!DOCTYPE html><p>` + string([]rune{225}) + "</p></html>",
 	} {
 		subCtx, subCancel := context.WithTimeout(ctx, 10*time.Second)
-		b, stp, err := iohlp.ReadAll(fixXMLCharset(subCtx, strings.NewReader(elt)), 1<<20)
+		sr, err := iohlp.MakeSectionReader(fixXMLCharset(subCtx, strings.NewReader(elt)), 1<<20)
 		subCancel()
 		if err != nil {
 			t.Errorf("%d. read: %v", i, err)
 			continue
 		}
-		got := string(b)
+		b := make([]byte, len(elt))
+		n, _ := sr.ReadAt(b, 0)
+		got := string(b[:n])
 		if got != want {
 			t.Errorf("%d. got %q, want %q.", i, got, want)
-		}
-		if stp != nil {
-			stp()
 		}
 	}
 }

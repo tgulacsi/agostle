@@ -541,6 +541,8 @@ github.com/tgulacsi/go v0.13.7 h1:qJmW8AVptvmflIUszIQCqxN9Uk35neUt9WN2ylDMutU=
 github.com/tgulacsi/go v0.13.7/go.mod h1:iKZkLVX1QLNdac0O06rftEcN3yZ2zzkXLKI3pjQyuDE=
 github.com/tgulacsi/go v0.15.1 h1:cHQrle6e1CiSyrB4MAU467ER/vFENvPEgpGpGK2jy7g=
 github.com/tgulacsi/go v0.15.1/go.mod h1:xXaVSZHPgZgRte4A+UanInThJFtPpZfryUtGohGgFpY=
+github.com/tgulacsi/go v0.17.0 h1:OdG3r+Cd7PBOORQHdmgYw3Cmn9mkKI2SwcKyxEULU5E=
+github.com/tgulacsi/go v0.17.0/go.mod h1:IG8Tkn8TQuRMrd9fzqKNGCQHand4xUD78GPzuDRgFpA=
 github.com/tgulacsi/picago v0.0.0-20171229130838-9e1ac2306c70/go.mod h1:YOW4MCz1GRh0aqedyC48A1CRXSHngOB/O/4+1rUjDQg=
 github.com/tgulacsi/statik v0.1.3/go.mod h1:pVOIVRTX4bNYzBJsbhza+p+Wzhm+wk4WgL//X4Gntac=
 github.com/theupdateframework/go-tuf v0.0.0-20200928180848-1353a38b9741 h1:QHUJySXKXiguaNn8uMQBDK2/LUd1QCRKN8ipdj6gwmk=
@@ -646,6 +648,7 @@ golang.org/x/exp v0.0.0-20190829153037-c13cbed26979/go.mod h1:86+5VVa7VpoJ4kLfm0
 golang.org/x/exp v0.0.0-20191030013958-a1ab85dbe136/go.mod h1:JXzH8nQsPlswgeRAPE3MuO9GYsAcnJvJ4vnMwN/5qkY=
 golang.org/x/exp v0.0.0-20191129062945-2f5052295587/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
 golang.org/x/exp v0.0.0-20191227195350-da58074b4299/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
+golang.org/x/exp v0.0.0-20200207192155-f17229e696bd h1:zkO/Lhoka23X63N9OSzpSeROEUQ5ODw47tM3YWjygbs=
 golang.org/x/exp v0.0.0-20200207192155-f17229e696bd/go.mod h1:J/WKrq2StrnmMY6+EHIKF9dgMWnmCNThgcyBT1FY9mM=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190523035834-f03afa92d3ff h1:+2zgJKVDVAz/BWSsuniCmU1kLCjL88Z8/kv39xCI9NQ=

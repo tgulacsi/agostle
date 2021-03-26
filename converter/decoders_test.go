@@ -42,13 +42,13 @@ wBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXwBfAF8AXw-`,
 func TestB64QuoPriDecoder(t *testing.T) {
 	for i, tf := range deBorkTests {
 		r := NewB64QuoPriDecoder(bytes.NewReader([]byte(tf[0])))
-		out, stp, err := iohlp.ReadAll(r, 1<<20)
+		sr, err := iohlp.MakeSectionReader(r, 1<<20)
 		if err != nil {
 			t.Errorf("error with reading: %s", err)
 		}
-		if stp != nil {
-			defer stp()
-		}
+		out := make([]byte, len(tf[0]))
+		n, _ := sr.ReadAt(out, 0)
+		out = out[:n]
 		out = bytes.Replace(out, []byte{0}, nil, -1)
 		if string(out) != tf[1] {
 			awaited := []byte(tf[1])
@@ -81,17 +81,17 @@ func findDiff(a, b []byte) int {
 func TestEqsignStripper(t *testing.T) {
 	data := []byte("abraka=dabraka=\r\nprix=\nprax=prux\nquix\r\npux")
 	await := "abraka=dabrakaprixprax=prux\nquix\r\npux"
-	read, stp, err := iohlp.ReadAll(NewEqsignStripper(bytes.NewBuffer(data)), 1<<20)
+	sr, err := iohlp.MakeSectionReader(NewEqsignStripper(bytes.NewBuffer(data)), 1<<20)
 	if err != nil {
 		t.Errorf("error with stripper: %s", err)
 	}
+	read := make([]byte, len(data))
+	n, _ := sr.ReadAt(read, 0)
+	read = read[:n]
 	if string(read) != await {
 		t.Errorf("data mismatch @%d: \n\t%s [%d]!=[%d] \n\t%s",
 			findDiff(read, []byte(await)), await, len([]byte(await)),
 			len(read), string(read))
-	}
-	if stp != nil {
-		stp()
 	}
 }
 
@@ -99,16 +99,16 @@ func TestCidMapper(t *testing.T) {
 	data := []byte("<html><body><a\nsrc=\"cid:<image.png@ewee>\"\n>b</a></body></html>")
 	await := "<html><body><a\nsrc=\"images/image.png@ewee\"\n>b</a></body></html>"
 	cids := make(map[string]string, 1)
-	read, stp, err := iohlp.ReadAll(NewCidMapper(cids, "images", bytes.NewBuffer(data)), 1<<20)
+	sr, err := iohlp.MakeSectionReader(NewCidMapper(cids, "images", bytes.NewBuffer(data)), 1<<20)
 	if err != nil {
 		t.Errorf("error with stripper: %s", err)
 	}
+	read := make([]byte, 2*len(data))
+	n, _ := sr.ReadAt(read, 0)
+	read = read[:n]
 	if string(read) != await {
 		t.Errorf("data mismatch: awaited\n\t%s\n%v != got\n\t%s\n%v",
 			await, []byte(await), string(read), read)
 	}
 	t.Logf("cids: %s", cids)
-	if stp != nil {
-		stp()
-	}
 }

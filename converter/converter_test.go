@@ -17,10 +17,12 @@ func TestTextToHTML(t *testing.T) {
 	if _, err := io.Copy(&buf, r); err != nil {
 		t.Errorf("read: %v", err)
 	}
-	if !bytes.Equal(buf.Bytes(), []byte(`<!DOCTYPE html>
+	const wanted = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
-<body><pre>árvíztűrő &lt;em&gt;tükörfúrógép&lt;/em&gt;</pre></body></html>`)) {
-		t.Errorf("mismatch")
+<body><pre>árvíztűrő &lt;em&gt;tükörfúrógép&lt;/em&gt;
+</pre></body></html>`
+	if !bytes.Equal(buf.Bytes(), []byte(wanted)) {
+		t.Errorf("mismatch:\n\tgot\n%s\n\twanted\n%s", buf.String(), wanted)
 	}
 }
