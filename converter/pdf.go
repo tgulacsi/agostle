@@ -143,6 +143,11 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 	prefix := strings.TrimSuffix(filepath.Base(srcfn), ".pdf") + "_"
 	prefix = strings.Replace(prefix, "%", "!P!", -1)
 
+	srcFi, err := os.Stat(srcfn)
+	if err != nil {
+		return filenames, err
+	}
+
 	if pdfsep := popplerOk["pdfseparate"]; pdfsep != "" {
 		Log("msg", pdfsep, "src", srcfn, "dest", destdir)
 		if err = callAt(ctx, pdfsep,
@@ -190,6 +195,30 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 			Log("msg", "mismatch", "fn", fn, "prefix", prefix)
 			continue
 		}
+
+		if *ConfGm != "" {
+			nFi, err := os.Stat(filepath.Join(destdir, fn))
+			if err != nil {
+				Log("msg", "stat", "fn", fn, "error", err)
+				continue
+			}
+			if nFi.Size() > srcFi.Size()/2 {
+				gFn := fn + ".gm.pdf"
+				if err = callAt(ctx, *ConfGm, destdir,
+					"convert", fn, "-density", "300", gFn,
+				); err != nil {
+					Log("msg", "gm convert", "fn", fn, "error", err)
+				} else if gFi, err := os.Stat(filepath.Join(destdir, gFn)); err != nil {
+					Log("msg", "stat", "gFn", gFn, "error", err)
+				} else if gFi.Size() >= nFi.Size()/2 {
+					Log("msg", "not smaller", "fn", fn, "oSize", nFi.Size(), "nSize", gFi.Size())
+				} else {
+					Log("msg", "replace split pdf with gm convert'd", "fn", fn, "oSize", nFi.Size(), "nSize", gFi.Size())
+					os.Rename(filepath.Join(destdir, gFn), filepath.Join(destdir, fn))
+				}
+			}
+		}
+
 		n, iErr := strconv.Atoi(fn[len(prefix) : len(fn)-4])
 		if iErr != nil {
 			err = fmt.Errorf("%q: %w", fn, iErr)
