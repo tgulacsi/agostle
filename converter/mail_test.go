@@ -16,7 +16,7 @@ func TestMailAddress(t *testing.T) {
 	for i, str := range [][3]string{
 		{"=?iso-8859-2?Q?Bogl=E1rka_Tak=E1cs?= <tbogi77@gmail.com>",
 			"Boglárka Takács", "<tbogi77@gmail.com>"},
-		{"=?iso-8859-2?Q?Claim_Divison_=28claim=40example=2Ecom=29?= <claim@example.com>",
+		{"=?iso-8859-2?Q?Claim_Division_=28claim=40example=2Ecom=29?= <claim@example.com>",
 			"Claim_Division claim@example.com", "<claim@example.com>"},
 	} {
 		mh := make(map[string][]string, 1)

@@ -510,12 +510,12 @@ Collect:
 	return files, err
 }
 
-func savePart(ctx context.Context, mp *i18nmail.MailPart) (fn string, err error) {
+func savePart(ctx context.Context, mp *i18nmail.MailPart) string {
 	_, wd := prepareContext(ctx, "")
-	fn = filepath.Join(wd, fmt.Sprintf("%02d#%03d.%s.%s", mp.Level, mp.Seq,
-		strings.Replace(mp.ContentType, "/", "--", -1), fn))
-
-	return fn, nil
+	return filepath.Join(wd,
+		fmt.Sprintf("%02d#%03d.%s", mp.Level, mp.Seq,
+			strings.Replace(mp.ContentType, "/", "--", -1)),
+	)
 }
 
 func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- ArchFileItem) (err error) {
@@ -525,10 +525,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 		converter Converter
 	)
 
-	if fn, err = savePart(ctx, &mp); err != nil {
-		err = fmt.Errorf("convertPart(%02d): %w", mp.Seq, err)
-		return
-	}
+	fn = savePart(ctx, &mp)
 
 	if messageRFC822 != mp.ContentType {
 		converter = GetConverter(mp.ContentType, mp.MediaType)

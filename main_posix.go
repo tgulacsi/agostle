@@ -14,7 +14,7 @@ import (
 
 func getListeners() []net.Listener {
 	listeners, _ := activation.Listeners()
-	for i := 0; i<len( listeners);i++ {
+	for i := 0; i < len(listeners); i++ {
 		if listeners[i] == nil {
 			listeners[i] = listeners[0]
 			listeners = listeners[1:]

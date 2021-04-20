@@ -361,6 +361,7 @@ func unsafeFn(fn string, maskPercent bool) string {
 }
 
 func unlink(fn, mark string) error {
+	_ = mark
 	return os.Remove(fn)
 }
 

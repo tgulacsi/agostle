@@ -410,7 +410,7 @@ var ExtContentType = map[string]string{
 	"odi": "application/vnd.oasis.image",
 
 	"txt": textPlain,
-	"msg": "application/vnd.ms-outlook",
+	"msg": mimeOutlook,
 
 	"jpg":  "image/jpeg",
 	"jpeg": "image/jpeg",
@@ -420,6 +420,8 @@ var ExtContentType = map[string]string{
 	"tiff": "image/tiff",
 }
 
+const mimeOutlook = "application/vnd.ms-outlook"
+
 func fixCT(contentType, fileName string) (ct string) {
 	//defer func() {
 	//	Log("msg", "fixCT", "ct", contentType, "fn", fileName, "result", ct)
@@ -427,7 +429,7 @@ func fixCT(contentType, fileName string) (ct string) {
 
 	switch contentType {
 	case "application/CDFV2":
-		return "application/vnd.ms-outlook"
+		return mimeOutlook
 	case "application/msword":
 		return "application/vnd.ms-word"
 	case applicationZIP, "application/x-zip-compressed":
@@ -521,7 +523,7 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 		converter = HTMLToPdf
 	case messageRFC822:
 		converter = MailToPdfZip
-	case "application/vnd.ms-outlook", "aplication/CDFV2":
+	case mimeOutlook, "application/CDFV2":
 		converter = OutlookToEML
 	case "multipart/related":
 		converter = MPRelatedToPdf
