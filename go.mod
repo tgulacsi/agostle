@@ -41,7 +41,7 @@ require (
 	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/stvp/go-toml-config v0.0.0-20170523163211-314328849d78
 	github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 // indirect
-	github.com/tgulacsi/go v0.17.0
+	github.com/tgulacsi/go v0.18.3
 	github.com/tgulacsi/statik v0.1.3 // indirect
 	github.com/theupdateframework/go-tuf v0.0.0-20201230183259-aee6270feb55
 	github.com/ulikunitz/xz v0.5.10 // indirect

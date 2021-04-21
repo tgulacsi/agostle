@@ -386,6 +386,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 				if !ok {
 					Log("warn", "cannot read", "body", mp, "error", err)
 				}
+				Log("msg", "SKIP", "Seq", mp.Seq)
 				return nil // Skip
 			}
 			mp.ContentType = FixContentType(head[:n], mp.ContentType, fn)
@@ -595,7 +596,7 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 
 	for mp := range partch {
 		fn = mpName(mp)
-		//log.Printf("part %d ct=%s", mp.Seq, mp.ContentType)
+		Log("part", mp.Seq, "ct", mp.ContentType)
 		dn, ok = dirs[mp.Seq]
 		up = up[:0]
 		for p := mp.Parent; dn == ""; p = p.Parent {
