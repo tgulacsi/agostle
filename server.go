@@ -265,7 +265,8 @@ func readerToFile(r io.Reader, prefix string) (*renameio.PendingFile, error) {
 		dfh.Cleanup()
 		return nil, err
 	}
-	return dfh, nil
+	_, err = dfh.Seek(0, 0)
+	return dfh, err
 }
 
 func tempFilename(prefix string) (filename string, err error) {

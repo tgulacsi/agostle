@@ -219,7 +219,16 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 			}
 		}
 
-		n, iErr := strconv.Atoi(fn[len(prefix) : len(fn)-4])
+		var i int
+		for _, r := range fn[len(prefix):] {
+			if '0' <= r && r <= '9' {
+				i++
+			} else {
+				break
+			}
+		}
+		//Log("msg", "", "prefix", prefix, "fn", fn, "i", i)
+		n, iErr := strconv.Atoi(fn[len(prefix) : len(prefix)+i])
 		if iErr != nil {
 			err = fmt.Errorf("%q: %w", fn, iErr)
 			return

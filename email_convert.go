@@ -170,6 +170,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	h := sha1.New()
 	F := firstN{Data: make([]byte, 0, 1024)}
 	inpFh, err := readerToFile(io.TeeReader(req.Input, io.MultiWriter(h, &F)), req.Input.Filename)
+	Log("msg", "readerToFile", "error", err)
 	if err != nil {
 		return resp, fmt.Errorf("cannot read input file: %v", err)
 	}
@@ -178,6 +179,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	Log("msg", "fixed", "params", req.Params)
 	hsh := base64.URLEncoding.EncodeToString(h.Sum(nil))
 	if resp.outFn, err = getCachedFn(req.Params, hsh); err == nil {
+		Log("msg", "used cached", "file", resp.outFn)
 		err = resp.mergeIfRequested(ctx, req.Params, logger)
 		return resp, err
 	}
@@ -185,15 +187,16 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	input := io.Reader(inpFh)
 	if !req.Params.Splitted && req.Params.OutImg == "" {
 		err = converter.MailToPdfZip(ctx, resp.outFn, input, req.Params.ContentType)
+		Log("msg", "MailToPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
 		if err == nil {
 			err = resp.mergeIfRequested(ctx, req.Params, logger)
 		}
 	} else {
 		err = converter.MailToSplittedPdfZip(ctx, resp.outFn, input, req.Params.ContentType,
 			req.Params.Splitted, req.Params.OutImg, req.Params.ImgSize)
+		Log("msg", "MailToSplittedPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
 	}
 	if err != nil {
-		Log("msg", "MailToSplittedPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
 		return resp, err
 	}
 	return resp, nil

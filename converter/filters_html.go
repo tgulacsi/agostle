@@ -165,6 +165,7 @@ func HTMLPartFilter(ctx context.Context,
 				fn = fmt.Sprintf("%s-%02d.html", fn, this)
 			}
 			fn = filepath.Join(dn, fn)
+			_, _ = part.Body.Seek(0, 0)
 			if err = writeToFile(ctx, fn, part.Body, part.ContentType /*, mailHeader*/); err != nil {
 				goto Error
 			}
@@ -215,6 +216,7 @@ func HTMLPartFilter(ctx context.Context,
 
 			_ = os.Mkdir(filepath.Dir(fn), 0755) // ignore error
 			Log("save", fn, "cid", cid, "htmlFn", cg.htmlFn)
+			_, _ = part.Body.Seek(0, 0)
 			if err = writeToFile(ctx, fn, part.Body, part.ContentType /*, mailHeader*/); err != nil {
 				goto Error
 			}
@@ -303,6 +305,7 @@ func SaveOriHTMLFilter(ctx context.Context,
 			fn := filepath.Join(wd, fmt.Sprintf("%02d#%03d.ori.html", part.Level, part.Seq))
 			Log("msg", "saving original html "+fn)
 			if orifh, e := os.Create(fn); e == nil {
+				_, _ = part.Body.Seek(0, 0)
 				if _, e = io.Copy(orifh, part.Body); e != nil {
 					Log("msg", "write ori to", "dest", orifh.Name(), "error", e)
 				}

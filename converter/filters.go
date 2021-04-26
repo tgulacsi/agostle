@@ -24,7 +24,7 @@ import (
 	"context"
 
 	"github.com/tgulacsi/go/i18nmail"
-	"github.com/tgulacsi/go/temp"
+	"github.com/tgulacsi/go/iohlp"
 
 	//"github.com/tgulacsi/go/uncompr"
 	"github.com/mholt/archiver"
@@ -296,9 +296,15 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 			if imErr != nil {
 				errch <- imErr
 			} else {
-				imgfnsMtx.Lock()
-				imgfilenames = append(imgfilenames, args.name)
-				imgfnsMtx.Unlock()
+				if fi, err := os.Stat(args.name); err != nil {
+					errch <- imErr
+				} else if fi.Size() == 0 {
+					errch <- fmt.Errorf("%q: zero image", args.name)
+				} else {
+					imgfnsMtx.Lock()
+					imgfilenames = append(imgfilenames, args.name)
+					imgfnsMtx.Unlock()
+				}
 			}
 		}
 	}
@@ -370,7 +376,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 			default:
 			}
 			fn := headerGetFileName(mp.Header)
-			n, err := io.ReadAtLeast(mp.Body, head[:], 512)
+			n, err := mp.Body.ReadAt(head[:], 0)
 			if err != nil && (!errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) || n == 0) {
 				var ok bool
 				if _, params, _ := mime.ParseMediaType(
@@ -390,9 +396,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 				return nil // Skip
 			}
 			mp.ContentType = FixContentType(head[:n], mp.ContentType, fn)
-			if _, err := mp.Body.Seek(0, 0); err != nil {
-				Log("Seek back", "error", err)
-			}
+			_, _ = mp.Body.Seek(0, 0)
 			partch <- mp
 			return nil
 		},
@@ -435,20 +439,20 @@ const maxErrLen = 1 << 20
 // MailToPdfFiles converts email to PDF files
 // all mail part goes through all filter in Filters, in reverse order (last first)
 func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files []ArchFileItem, err error) {
+	Log := getLogger(ctx).Log
 	hsh := sha1.New()
-	br, e := temp.NewReadSeeker(io.TeeReader(r, hsh))
+	sr, e := iohlp.MakeSectionReader(io.TeeReader(r, hsh), 1<<20)
+	Log("msg", "MailToPdfFiles", "input", sr.Size(), "error", e)
 	if e != nil {
 		err = fmt.Errorf("MailToPdfFiles: %w", e)
 		return
 	}
-	defer func() { _ = br.Close() }()
 
 	hshS := base64.URLEncoding.EncodeToString(hsh.Sum(nil))
 	ctx, _ = prepareContext(ctx, hshS)
-	if _, err = br.Seek(0, 0); err != nil {
+	if _, err = sr.Seek(0, 0); err != nil {
 		return nil, err
 	}
-	r = br
 
 	files = make([]ArchFileItem, 0, 16)
 	errs := make([]string, 0, 16)
@@ -457,7 +461,7 @@ func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files
 	rawch := make(chan i18nmail.MailPart)
 	errch := make(chan error)
 
-	go SlurpMail(ctx, rawch, errch, r, contentType) // SlurpMail sends read parts to partch
+	go SlurpMail(ctx, rawch, errch, sr, contentType) // SlurpMail sends read parts to partch
 	partch := SetupFilters(ctx, rawch, resultch, errch)
 
 	// convert parts
@@ -487,7 +491,13 @@ Collect:
 		select {
 		case item, ok = <-resultch:
 			if ok {
-				files = append(files, item)
+				if fi, err := os.Stat(item.Filename); err != nil {
+					errs = append(errs, err.Error())
+				} else if fi.Size() == 0 {
+					errs = append(errs, fmt.Sprintf("%q: zero file", item.Filename))
+				} else {
+					files = append(files, item)
+				}
 			} else { //closed
 				close(errch)
 				break Collect
@@ -531,6 +541,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 	if messageRFC822 != mp.ContentType {
 		converter = GetConverter(mp.ContentType, mp.MediaType)
 	} else {
+		_, _ = mp.Body.Seek(0, 0)
 		plus, e := MailToPdfFiles(ctx, mp.Body, mp.ContentType)
 		if e != nil {
 			Log("msg", "MailToPdfFiles", "seq", mp.Seq, "error", e)
@@ -554,6 +565,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 		_ = unlink(fn, "MailToPdfFiles dest part") // ignore error
 		Log("msg", "converting to pdf", "ct", mp.ContentType, "seq", mp.Seq, "error", err)
 		j := strings.Index(mp.ContentType, "/")
+		_, _ = mp.Body.Seek(0, 0)
 		resultch <- ArchFileItem{
 			File:    MakeFileLike(mp.Body),
 			Archive: mp.ContentType[:j+1] + filepath.Base(fn),
@@ -625,6 +637,7 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 		if fh, err = os.Create(fn); err != nil {
 			return fmt.Errorf("create %s: %w", fn, err)
 		}
+		_, _ = mp.Body.Seek(0, 0)
 		if _, err = io.Copy(fh, mp.Body); err != nil {
 			_ = fh.Close()
 			return fmt.Errorf("read into%s: %w", fn, err)
@@ -723,7 +736,7 @@ func ExtractingFilter(ctx context.Context,
 		switch part.ContentType {
 		case applicationZIP:
 			makeReader = func(r io.Reader) (uncomprLister, error) {
-				rsc, err := temp.MakeReadSeekCloser("", r)
+				rsc, err := iohlp.MakeSectionReader(r, 1<<20)
 				if err != nil {
 					return nil, err
 				}
