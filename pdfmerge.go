@@ -73,11 +73,20 @@ func pdfMergeEP(ctx context.Context, request interface{}) (response interface{},
 			}
 		}()
 	}
+	tbd := make([]func() error, 0, len(req.Inputs))
+	defer func() {
+		for _, f := range tbd {
+			_ = f()
+		}
+	}()
 	for i, f := range req.Inputs {
-		if filenames[i], err = readerToFile(f.ReadCloser, f.Filename); err != nil {
+		tfh, err := readerToFile(f.ReadCloser, f.Filename)
+		if err != nil {
 			Log("msg", "readerToFile", "file", f.Filename, "error", err)
 			return nil, fmt.Errorf("error saving %q: %s", f.Filename, err)
 		}
+		tbd = append(tbd, tfh.Cleanup)
+		filenames[i] = tfh.Name()
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()

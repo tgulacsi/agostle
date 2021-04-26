@@ -169,27 +169,20 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 
 	h := sha1.New()
 	F := firstN{Data: make([]byte, 0, 1024)}
-	inpFn, err := readerToFile(io.TeeReader(req.Input, io.MultiWriter(h, &F)), req.Input.Filename)
+	inpFh, err := readerToFile(io.TeeReader(req.Input, io.MultiWriter(h, &F)), req.Input.Filename)
 	if err != nil {
 		return resp, fmt.Errorf("cannot read input file: %v", err)
 	}
+	defer func() { _ = inpFh.Cleanup() }()
 	req.Params.ContentType = converter.FixContentType(F.Data, req.Params.ContentType, req.Input.Filename)
 	Log("msg", "fixed", "params", req.Params)
-	if !converter.LeaveTempFiles {
-		defer func() { _ = os.Remove(inpFn) }()
-	}
 	hsh := base64.URLEncoding.EncodeToString(h.Sum(nil))
 	if resp.outFn, err = getCachedFn(req.Params, hsh); err == nil {
 		err = resp.mergeIfRequested(ctx, req.Params, logger)
 		return resp, err
 	}
 
-	input, err := os.Open(inpFn)
-	if err != nil {
-		return nil, err
-	}
-	defer input.Close()
-
+	input := io.Reader(inpFh)
 	if !req.Params.Splitted && req.Params.OutImg == "" {
 		err = converter.MailToPdfZip(ctx, resp.outFn, input, req.Params.ContentType)
 		if err == nil {

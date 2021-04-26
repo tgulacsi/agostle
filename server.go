@@ -29,9 +29,9 @@ import (
 
 	"github.com/UNO-SOFT/otel"
 	"github.com/VictoriaMetrics/metrics"
-	"github.com/oklog/ulid"
+	"github.com/google/renameio"
+	"github.com/oklog/ulid/v2"
 	"github.com/tgulacsi/agostle/converter"
-	"github.com/tgulacsi/go/temp"
 
 	"github.com/go-kit/kit/log"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -256,24 +256,16 @@ func getRequestFiles(r *http.Request) ([]reqFile, error) {
 }
 
 // readerToFile copies the reader to a temp file and returns its name or error
-func readerToFile(r io.Reader, prefix string) (filename string, err error) {
-	dfh, e := ioutil.TempFile("", "agostle-"+baseName(prefix)+"-")
-	if e != nil {
-		err = e
-		return
+func readerToFile(r io.Reader, prefix string) (*renameio.PendingFile, error) {
+	dfh, err := renameio.TempFile("", "agostle-"+baseName(prefix)+"-")
+	if err != nil {
+		return nil, err
 	}
-	if sfh, ok := r.(*os.File); ok {
-		filename = dfh.Name()
-		_ = dfh.Close()
-		_ = os.Remove(filename)
-		err = temp.LinkOrCopy(sfh.Name(), filename)
-		return
+	if _, err = io.Copy(dfh, r); err != nil {
+		dfh.Cleanup()
+		return nil, err
 	}
-	if _, err = io.Copy(dfh, r); err == nil {
-		filename = dfh.Name()
-	}
-	_ = dfh.Close()
-	return
+	return dfh, nil
 }
 
 func tempFilename(prefix string) (filename string, err error) {
