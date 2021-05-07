@@ -494,11 +494,14 @@ Collect:
 				close(errch)
 				break Collect
 			}
-			if item.File == nil {
-				continue Collect
-			}
 			if ok {
-				if fi, err := item.File.Stat(); err != nil {
+				var statter func() (os.FileInfo, error)
+				if item.File != nil {
+					statter = item.File.Stat
+				} else {
+					statter = func() (os.FileInfo, error) { return os.Stat(item.Filename) }
+				}
+				if fi, err := statter(); err != nil {
 					errs = append(errs, fmt.Sprintf("stat %q: %+v", item.Filename, err))
 				} else if fi.Size() == 0 {
 					errs = append(errs, fmt.Sprintf("%q: zero file", item.Filename))
