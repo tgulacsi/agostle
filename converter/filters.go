@@ -490,6 +490,13 @@ Collect:
 		var item ArchFileItem
 		select {
 		case item, ok = <-resultch:
+			if !ok {
+				close(errch)
+				break Collect
+			}
+			if item.File == nil {
+				continue Collect
+			}
 			if ok {
 				if fi, err := item.File.Stat(); err != nil {
 					errs = append(errs, fmt.Sprintf("stat %q: %+v", item.Filename, err))
@@ -499,8 +506,6 @@ Collect:
 					files = append(files, item)
 				}
 			} else { //closed
-				close(errch)
-				break Collect
 			}
 		case err = <-errch:
 			if err != nil {
