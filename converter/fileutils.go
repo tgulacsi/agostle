@@ -93,16 +93,26 @@ type FileLike interface {
 }
 
 func MakeFileLike(r io.Reader) FileLike {
-	if fl, ok := r.(FileLike); ok {
-		return fl
-	}
-	if b, ok := r.(*bytes.Buffer); ok {
+	switch r := r.(type) {
+	case FileLike:
+		return r
+	case *io.SectionReader:
 		return ReadCloserFileLike{
 			Reader: r,
 			Closer: ioutil.NopCloser(nil),
 			FileInfo: dummyFileInfo{
-				name: fmt.Sprintf("file-like-%p", b),
-				size: int64(b.Len()),
+				name: fmt.Sprintf("file-like-%p", r),
+				size: r.Size(),
+				time: time.Now(),
+			},
+		}
+	case *bytes.Buffer:
+		return ReadCloserFileLike{
+			Reader: bytes.NewReader(r.Bytes()),
+			Closer: ioutil.NopCloser(nil),
+			FileInfo: dummyFileInfo{
+				name: fmt.Sprintf("file-like-%p", r),
+				size: int64(r.Len()),
 				time: time.Now(),
 			},
 		}
@@ -115,6 +125,7 @@ func MakeFileLike(r io.Reader) FileLike {
 		Reader: r,
 		Closer: c,
 	}
+	//Log("msg", "MakeFileLike", "r", fmt.Sprintf("%T %#v", r, r))
 	if s, ok := r.(Statter); ok {
 		rc.FileInfo, rc.statErr = s.Stat()
 	} else {

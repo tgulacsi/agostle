@@ -491,8 +491,8 @@ Collect:
 		select {
 		case item, ok = <-resultch:
 			if ok {
-				if fi, err := os.Stat(item.Filename); err != nil {
-					errs = append(errs, err.Error())
+				if fi, err := item.File.Stat(); err != nil {
+					errs = append(errs, fmt.Sprintf("stat %q: %+v", item.Filename, err))
 				} else if fi.Size() == 0 {
 					errs = append(errs, fmt.Sprintf("%q: zero file", item.Filename))
 				} else {
@@ -558,21 +558,21 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 	} else {
 		err = converter(ctx, fn+".pdf", mp.Body, mp.ContentType)
 	}
-	if err != nil {
-		if err == ErrSkip {
-			return nil
-		}
-		_ = unlink(fn, "MailToPdfFiles dest part") // ignore error
-		Log("msg", "converting to pdf", "ct", mp.ContentType, "seq", mp.Seq, "error", err)
-		j := strings.Index(mp.ContentType, "/")
-		_, _ = mp.Body.Seek(0, 0)
-		resultch <- ArchFileItem{
-			File:    MakeFileLike(mp.Body),
-			Archive: mp.ContentType[:j+1] + filepath.Base(fn),
-			Error:   err}
-	} else {
+	if err == nil {
 		resultch <- ArchFileItem{Filename: fn + ".pdf"}
+		return nil
 	}
+	if errors.Is(err, ErrSkip) {
+		return nil
+	}
+	_ = unlink(fn, "MailToPdfFiles dest part") // ignore error
+	Log("msg", "converting to pdf", "ct", mp.ContentType, "fn", fn, "seq", mp.Seq, "error", err)
+	j := strings.Index(mp.ContentType, "/")
+	_, _ = mp.Body.Seek(0, 0)
+	resultch <- ArchFileItem{
+		File:    MakeFileLike(mp.Body),
+		Archive: mp.ContentType[:j+1] + filepath.Base(fn),
+		Error:   err}
 	return nil
 }
 
