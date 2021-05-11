@@ -508,7 +508,6 @@ Collect:
 				} else {
 					files = append(files, item)
 				}
-			} else { //closed
 			}
 		case err = <-errch:
 			if err != nil {
