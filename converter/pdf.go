@@ -205,7 +205,7 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 			if nFi.Size() >= srcFi.Size()*9/10 {
 				gFn := fn + ".gm.pdf"
 				if err = callAt(ctx, *ConfGm, destdir,
-					"convert", "-density", "300x300", fn, "-resample", "300x300", gFn,
+					"convert", fn, "-resample", "300x300", gFn,
 				); err != nil {
 					Log("msg", "gm convert", "fn", fn, "error", err)
 				} else if gFi, err := os.Stat(filepath.Join(destdir, gFn)); err != nil {
