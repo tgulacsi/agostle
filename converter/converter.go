@@ -63,9 +63,7 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 	Log := getLogger(ctx).Log
 	Log("msg", "converting image", "ct", contentType, "dest", destfn)
 	imgtyp := contentType[strings.Index(contentType, "/")+1:]
-	if strings.HasSuffix(destfn, ".pdf") {
-		destfn = destfn[:len(destfn)-4]
-	}
+	destfn = strings.TrimSuffix(destfn, ".pdf")
 	ifh, ok := r.(*os.File)
 	if !ok {
 		var err error
@@ -113,9 +111,7 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 // OfficeToPdf converts other to PDF with LibreOffice
 func OfficeToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	getLogger(ctx).Log("msg", "Converting into", "ct", contentType, "dest", destfn)
-	if strings.HasSuffix(destfn, ".pdf") {
-		destfn = destfn[:len(destfn)-4]
-	}
+	destfn = strings.TrimSuffix(destfn, ".pdf")
 	inpfn := destfn + ".raw"
 	fh, err := os.Create(inpfn)
 	if err != nil {
