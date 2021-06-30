@@ -8,6 +8,7 @@ set -x
 fn=$(pwd)/tuf.pwd
 cd "$(dirname "$0")"
 DEST="${GOBIN:-"$(go env GOBIN)"}"
+export CGO_ENABLED=0
 GOOS=linux GOARCH=amd64 go install &
 GOOS=windows GOARCH=386 go build -o $DEST/agostle.exe &
 (which tuf || go get -u github.com/theupdateframework/go-tuf/cmd/tuf)

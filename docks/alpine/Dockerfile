@@ -1,13 +1,12 @@
-FROM golang:alpine as builder
-
-RUN apk -U upgrade
-
-RUN go install github.com/tgulacsi/agostle@latest
-
+#FROM golang:alpine as builder
+#
+#RUN apk -U upgrade
+#RUN go install github.com/tgulacsi/agostle@latest
+#
 FROM alpine:latest
 MAINTAINER Tamás Gulácsi <tgulacsi78@gmail.com>
 
-COPY --from=builder agostle /app/bin/agostle
+#COPY --from=builder agostle /app/bin/agostle
 RUN apk -U upgrade
 RUN apk add ttf-dejavu ttf-liberation font-noto font-noto-emoji
 RUN apk add msttcorefonts-installer 
