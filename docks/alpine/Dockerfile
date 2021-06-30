@@ -1,14 +1,22 @@
+FROM golang:alpine as builder
+
+RUN apk -U upgrade
+
+RUN go install github.com/tgulacsi/agostle@latest
+
 FROM alpine:latest
 MAINTAINER Tamás Gulácsi <tgulacsi78@gmail.com>
 
+COPY --from=builder agostle /app/bin/agostle
 RUN apk -U upgrade
-RUN apk add msttcorefonts-installer ttf-dejavu ttf-liberation
+RUN apk add ttf-dejavu ttf-liberation font-noto font-noto-emoji
+RUN apk add msttcorefonts-installer 
 RUN update-ms-fonts 
 RUN fc-cache -f
 # https://stackoverflow.com/questions/25193161/chfn-pam-system-error-intermittently-in-docker-hub-builds
 RUN ln -sf /bin/true /usr/bin/chfn
 # Missing:
-# fonts-sil-gentium fonts-dejavu-extra fonts-takao-mincho 
+# fonts-sil-gentium fonts-takao-mincho 
 # pdftk 
 
 RUN apk add \
@@ -31,5 +39,5 @@ RUN apk add procps
 WORKDIR /app
 EXPOSE 9500:9500
 VOLUME ["/app/bin"]
-ENTRYPOINT ["/bin/dash", "-c"]
+ENTRYPOINT ["/bin/sh", "-c"]
 CMD ["/app/bin/agostle serve 0.0.0.0:9500"]
