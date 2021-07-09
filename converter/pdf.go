@@ -117,12 +117,11 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 	if err = ctx.Err(); err != nil {
 		return nil, err
 	}
-	if n, e := PdfPageNum(ctx, srcfn); err != nil {
+	if n, e := PdfPageNum(ctx, srcfn); e != nil {
 		err = fmt.Errorf("cannot determine page number of %s: %w", srcfn, e)
 		return
 	} else if n == 0 {
-		err = errors.New("0 pages in " + srcfn)
-		return
+		Log("msg", "0 pages", "file", srcfn)
 	} else if n == 1 {
 		filenames = append(filenames, srcfn)
 		return
@@ -402,6 +401,9 @@ func PdfClean(ctx context.Context, fn string) (err error) {
 			err = call(ctx, cleaner, "clean", "-ggg", fn, fn+"-cleaned.pdf")
 		}
 		if err != nil {
+			if errS := err.Error(); strings.Contains(errS, " password ") || strings.Contains(errS, " password:") {
+				err = fmt.Errorf("%v: %w", err, ErrPasswordProtected)
+			}
 			return fmt.Errorf("clean with %s: %w", cleaner, err)
 		}
 		cleaned = true
@@ -461,6 +463,8 @@ func execute(cmd *exec.Cmd) error {
 	return nil
 }
 
+var ErrPasswordProtected = errors.New("password protected")
+
 func xToX(ctx context.Context, destfn, srcfn string, tops bool) (err error) {
 	var gsOpts []string
 	if tops {
@@ -477,6 +481,9 @@ func xToX(ctx context.Context, destfn, srcfn string, tops bool) (err error) {
 	}
 
 	if err = call(ctx, *ConfGs, gsOpts...); err != nil {
+		if strings.Contains(err.Error(), " password ") {
+			err = fmt.Errorf("%+v: %w", err, ErrPasswordProtected)
+		}
 		return fmt.Errorf("converting %s to %s with %s: %w",
 			srcfn, destfn, *ConfGs, err)
 	}

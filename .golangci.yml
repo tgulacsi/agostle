@@ -1,11 +1,7 @@
 linters-settings:
-  maligned:
-    suggest-new: true
 
 linters:
   enable:
-    - maligned
-    - interfacer
     - dupl
     - goconst
     - misspell

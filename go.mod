@@ -7,10 +7,12 @@ require (
 	github.com/VictoriaMetrics/metrics v1.15.2
 	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.2.0
+	github.com/disintegration/gift v1.2.1 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/frankban/quicktest v1.11.3 // indirect
 	github.com/gabriel-vasile/mimetype v1.1.2
 	github.com/go-kit/kit v0.10.0
+	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/renameio v1.0.0
 	github.com/h2non/filetype v1.1.1
