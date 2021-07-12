@@ -470,6 +470,8 @@ github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 h1:iGnD/q91
 github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613/go.mod h1:g6AnIpDSYMcphz193otpSIzN+11Rs+AAIIC6rm1enug=
 github.com/tgulacsi/go v0.18.4 h1:lrZhzuBmSmMicsPgreg3QwN5oA2YaXn2rsZM+qxJevA=
 github.com/tgulacsi/go v0.18.4/go.mod h1:IG8Tkn8TQuRMrd9fzqKNGCQHand4xUD78GPzuDRgFpA=
+github.com/tgulacsi/go v0.18.5-0.20210712085219-60a9e8c66e45 h1:QMePZTENC0pCcuWjsGjqsSXgoZMJL63RUyGdpxKKT8c=
+github.com/tgulacsi/go v0.18.5-0.20210712085219-60a9e8c66e45/go.mod h1:IG8Tkn8TQuRMrd9fzqKNGCQHand4xUD78GPzuDRgFpA=
 github.com/tgulacsi/picago v0.0.0-20171229130838-9e1ac2306c70/go.mod h1:YOW4MCz1GRh0aqedyC48A1CRXSHngOB/O/4+1rUjDQg=
 github.com/theupdateframework/go-tuf v0.0.0-20201230183259-aee6270feb55 h1:Zn+mA4qTRyao2Petd+YovKaFOUuxDj158kqCIqvwTow=
 github.com/theupdateframework/go-tuf v0.0.0-20201230183259-aee6270feb55/go.mod h1:L+uU/NRFK/7h0NYAnsmvsX9EghDB5QVCcHCIrK2h5nw=
