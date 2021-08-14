@@ -312,6 +312,7 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 	converter.WorkdirMu.Lock()
 	defer converter.WorkdirMu.Unlock()
 	for _, nm := range tbd {
+		Log("msg", "remove", "file", nm)
 		_ = os.Remove(nm)
 	}
 	return nil
