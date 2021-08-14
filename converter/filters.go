@@ -33,7 +33,7 @@ import (
 const bodyThreshold = 1 << 20
 
 func MailToPdfZip(ctx context.Context, destfn string, body io.Reader, contentType string) error {
-	return MailToSplittedPdfZip(ctx, destfn, body, contentType, false, "", "")
+	return MailToSplittedPdfZip(ctx, destfn, body, contentType, false, "", "", nil)
 }
 
 type maybeArchItems struct {
@@ -44,6 +44,7 @@ type maybeArchItems struct {
 // MailToSplittedPdfZip converts mail to ZIP of PDFs and images
 func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 	contentType string, split bool, imgmime, imgsize string,
+	pages []uint16,
 ) error {
 	Log := getLogger(ctx).Log
 	ctx, _ = prepareContext(ctx, "")
@@ -85,7 +86,7 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 			}
 		}
 
-		go splitPdfMulti(ctx, fts, imgmime, imgsize, rch)
+		go splitPdfMulti(ctx, fts, imgmime, imgsize, rch, pages)
 		for ms := range rch {
 			if ms.Error != nil {
 				errs = append(errs, ms.Error.Error())
@@ -112,8 +113,9 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 		if e = efh.Close(); e != nil {
 			Log("msg", "closing errors file", "dest", efh.Name(), "error", e)
 		}
-		tbz = append(tbz, ArchFileItem{Filename: efn, Archive: ErrTextFn,
-			Error: errors.New("")})
+		tbz = append(tbz, ArchFileItem{
+			Filename: efn, Archive: ErrTextFn, Error: errors.New(""),
+		})
 	}
 
 	destfh, err := openOut(destfn)
@@ -183,9 +185,10 @@ func cleanupFiles(ctx context.Context, files []ArchFileItem, tbz []ArchFileItem)
 	}
 }
 
-func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string, rch chan maybeArchItems) {
+func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string, rch chan maybeArchItems, pages []uint16) {
 	Log := getLogger(ctx).Log
 	var sfiles, ifiles, tbd []string
+	var cleanups []func() error
 	var err error
 	var n int
 	mul := 1
@@ -196,6 +199,11 @@ func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string,
 		for _, fn := range tbd {
 			_ = unlink(fn, "splitted")
 		}
+		for _, c := range cleanups {
+			if c != nil {
+				_ = c()
+			}
+		}
 	}()
 
 	for _, fn := range files {
@@ -203,15 +211,18 @@ func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string,
 			rch <- maybeArchItems{Items: []ArchFileItem{{Filename: fn}}}
 			continue
 		}
-		sfiles, err = PdfSplit(ctx, fn)
+		var cleanup func() error
+		sfiles, cleanup, err = PdfSplit(ctx, fn, pages)
+		cleanups = append(cleanups, cleanup)
 		if err != nil || len(sfiles) == 0 {
 			Log("msg", "Splitting", "file", fn, "error", err)
 			if err = PdfRewrite(ctx, fn, fn); err != nil {
 				Log("msg", "Cannot clean", "file", fn, "error", err)
 			} else {
-				if sfiles, err = PdfSplit(ctx, fn); err != nil || len(sfiles) == 0 {
+				if sfiles, cleanup, err = PdfSplit(ctx, fn, pages); err != nil || len(sfiles) == 0 {
 					Log("msg", "splitting CLEANED", "file", fn, "error", err)
 				}
+				cleanups = append(cleanups, cleanup)
 			}
 		}
 		if err != nil {

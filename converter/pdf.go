@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -113,9 +112,10 @@ func pdfPageNum(ctx context.Context, srcfn string) (numberofpages int, encrypted
 var ErrBadPDF = errors.New("bad pdf")
 
 // PdfSplit splits pdf to pages, returns those filenames
-func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error) {
+func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []string, cleanup func() error, err error) {
+	cleanup = func() error { return nil }
 	if err = ctx.Err(); err != nil {
-		return nil, err
+		return
 	}
 	if n, e := PdfPageNum(ctx, srcfn); e != nil {
 		err = fmt.Errorf("cannot determine page number of %s: %w", srcfn, e)
@@ -132,28 +132,38 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 			return
 		}
 	}
-	destdir := filepath.Join(Workdir,
-		filepath.Base(srcfn)+"-"+strconv.Itoa(rand.Int())+"-split") //nolint:gas
-	if !fileExists(destdir) {
-		if err = os.Mkdir(destdir, 0755); err != nil {
-			return
-		}
+	destdir, dErr := os.MkdirTemp(Workdir, filepath.Base(srcfn)+"-*-split")
+	if dErr != nil {
+		err = dErr
+		return
 	}
+	defer func() {
+		if err != nil {
+			_ = os.RemoveAll(destdir)
+		} else {
+			cleanup = func() error { return os.RemoveAll(destdir) }
+		}
+	}()
+
 	prefix := strings.TrimSuffix(filepath.Base(srcfn), ".pdf") + "_"
 	prefix = strings.Replace(prefix, "%", "!P!", -1)
 
 	srcFi, err := os.Stat(srcfn)
 	if err != nil {
-		return filenames, err
+		return filenames, cleanup, err
 	}
 
 	if pdfsep := popplerOk["pdfseparate"]; pdfsep != "" {
 		Log("msg", pdfsep, "src", srcfn, "dest", destdir)
-		if err = callAt(ctx, pdfsep,
-			destdir,
-			srcfn,
-			filepath.Join(destdir, prefix+"%03d.pdf"),
-		); err != nil {
+		args := []string{srcfn, filepath.Join(destdir, prefix+"%03d.pdf")}
+		if len(pages) == 1 {
+			ps := strconv.FormatUint(uint64(pages[0]), 10)
+			args = append(append(make([]string, 0, 4+len(args)),
+				"-f", ps, "-l", ps,
+			), args...)
+		}
+		Log("msg", "pdfsep", "at", destdir, "args", args)
+		if err = callAt(ctx, pdfsep, destdir, args...); err != nil {
 			err = fmt.Errorf("executing %s: %w", pdfsep, err)
 			return
 		}
@@ -194,6 +204,34 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 			Log("msg", "mismatch", "fn", fn, "prefix", prefix)
 			continue
 		}
+		var i int
+		for _, r := range fn[len(prefix):] {
+			if '0' <= r && r <= '9' {
+				i++
+			} else {
+				break
+			}
+		}
+		//Log("msg", "", "prefix", prefix, "fn", fn, "i", i)
+		n, iErr := strconv.Atoi(fn[len(prefix) : len(prefix)+i])
+		if iErr != nil {
+			err = fmt.Errorf("%q: %w", fn, iErr)
+			return
+		}
+		if len(pages) != 0 {
+			u := uint16(n)
+			var found bool
+			for _, p := range pages {
+				if found = p == u; found {
+					break
+				}
+			}
+			if !found {
+				Log("msg", "skip", "page", u, "file", fn)
+				_ = os.Remove(filepath.Join(destdir, fn))
+				continue
+			}
+		}
 
 		if *ConfGm != "" {
 			nFi, err := os.Stat(filepath.Join(destdir, fn))
@@ -220,20 +258,6 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 			}
 		}
 
-		var i int
-		for _, r := range fn[len(prefix):] {
-			if '0' <= r && r <= '9' {
-				i++
-			} else {
-				break
-			}
-		}
-		//Log("msg", "", "prefix", prefix, "fn", fn, "i", i)
-		n, iErr := strconv.Atoi(fn[len(prefix) : len(prefix)+i])
-		if iErr != nil {
-			err = fmt.Errorf("%q: %w", fn, iErr)
-			return
-		}
 		nfn := fn[:len(prefix)] + fmt.Sprintf(format, n) + ".pdf"
 		if nfn != fn {
 			if err = os.Rename(filepath.Join(dh.Name(), fn), filepath.Join(dh.Name(), nfn)); err != nil {
@@ -248,7 +272,7 @@ func PdfSplit(ctx context.Context, srcfn string) (filenames []string, err error)
 	for i, fn := range filenames {
 		filenames[i] = filepath.Join(destdir, fn)
 	}
-	return filenames, nil
+	return filenames, cleanup, nil
 }
 
 // PdfMerge merges pdf files into destfn

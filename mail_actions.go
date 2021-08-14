@@ -17,7 +17,7 @@ import (
 	"github.com/tgulacsi/agostle/converter"
 )
 
-func mailToPdfZip(ctx context.Context, outfn, inpfn string, splitted bool, outimg string, imgsize string) error {
+func mailToPdfZip(ctx context.Context, outfn, inpfn string, splitted bool, outimg string, imgsize string, pages []uint16) error {
 	input, err := openIn(inpfn)
 	if err != nil {
 		return err
@@ -27,7 +27,7 @@ func mailToPdfZip(ctx context.Context, outfn, inpfn string, splitted bool, outim
 		return converter.MailToPdfZip(ctx, outfn, input, "message/rfc822")
 	}
 	return converter.MailToSplittedPdfZip(ctx, outfn, input, "message/rfc822",
-		splitted, outimg, imgsize)
+		splitted, outimg, imgsize, pages)
 }
 
 func mailToTree(ctx context.Context, outdir, inpfn string) error {
@@ -79,15 +79,16 @@ func init() {
 	}
 	{
 		var (
-			split   bool
-			outimg  string
-			imgsize = "640x640"
+			split         bool
+			outimg, pageS string
+			imgsize       = "640x640"
 		)
 		fs := withOutFlag("mail")
 		fs.BoolVar(&split, "split", false, "split PDF to pages")
 		fs.BoolVar(&converter.SaveOriginalHTML, "save-original-html", converter.SaveOriginalHTML, "save original html")
 		fs.StringVar(&outimg, "outimg", "", "output image format")
 		fs.StringVar(&imgsize, "imgsize", imgsize, "image size")
+		fs.StringVar(&pageS, "pages", "", "pages (comma separated)")
 		mailToPdfZipCmd := ffcli.Command{Name: "mail", ShortHelp: "convert mail to zip of PDFs",
 			ShortUsage: "mail2pdfzip [-split] [-outimg=image/gif] [-imgsize=640x640] mailfile.eml",
 			LongHelp: `reads a message/rfc822 email, converts all of it to PDF files
@@ -105,7 +106,8 @@ Examples:
 				if len(args) != 0 {
 					inp = args[0]
 				}
-				if err := mailToPdfZip(ctx, out, inp, split, outimg, imgsize); err != nil {
+				pages := parseUint16s(strings.Split(pageS, ","))
+				if err := mailToPdfZip(ctx, out, inp, split, outimg, imgsize, pages); err != nil {
 					return fmt.Errorf("mailToPdfZip out=%s: %w", out, err)
 				}
 				return nil

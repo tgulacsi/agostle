@@ -51,6 +51,7 @@ func init() {
 	}
 
 	fs := withOutFlag("split")
+	flagSplitPages := fs.String("pages", "", "pages (comma separated)")
 	splitCmd := ffcli.Command{Name: "split", ShortHelp: "splits the given PDF into one per page",
 		FlagSet: fs,
 		Exec: func(ctx context.Context, args []string) error {
@@ -61,7 +62,7 @@ func init() {
 			if splitInp == "" {
 				splitInp = "-"
 			}
-			if err := splitPdfZip(ctx, out, splitInp); err != nil {
+			if err := splitPdfZip(ctx, out, splitInp, parseUint16s(strings.Split(*flagSplitPages, ","))); err != nil {
 				return fmt.Errorf("splitPdfZip out=%q inp=%q: %w", out, splitInp, err)
 			}
 			return nil
@@ -140,15 +141,16 @@ input.pdf key1=value1 key2=value2...`,
 	pdfCmd.Subcommands = append(pdfCmd.Subcommands, &fillPdfCmd)
 }
 
-func splitPdfZip(ctx context.Context, outfn, inpfn string) error {
+func splitPdfZip(ctx context.Context, outfn, inpfn string, pages []uint16) error {
 	var changed bool
 	if inpfn, changed = ensureFilename(inpfn, false); changed {
 		defer func() { _ = os.Remove(inpfn) }()
 	}
-	filenames, err := converter.PdfSplit(ctx, inpfn)
+	filenames, cleanup, err := converter.PdfSplit(ctx, inpfn, pages)
 	if err != nil {
 		return err
 	}
+	defer cleanup()
 	outfh, err := openOut(outfn)
 	if err != nil {
 		return err

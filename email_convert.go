@@ -101,14 +101,16 @@ func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, erro
 		defer r.MultipartForm.RemoveAll()
 	}
 	req := emailConvertRequest{Params: convertParams{
-		Splitted: r.Form.Get("splitted") == "1",
-		OutImg:   r.Form.Get("outimg"),
-		ImgSize:  r.Form.Get("imgsize"),
-		Pages:    parseUint16s(r.Form["page"]),
-		Merged:   r.Form.Get("merged") == "1" || r.Header.Get("Accept") == "application/pdf",
+		OutImg:  r.Form.Get("outimg"),
+		ImgSize: r.Form.Get("imgsize"),
+		Pages:   parseUint16s(r.Form["page"]),
+		Merged:  r.Form.Get("merged") == "1" || r.Header.Get("Accept") == "application/pdf",
 	}}
+	req.Params.Splitted = len(req.Params.Pages) != 0 || r.Form.Get("splitted") == "1"
 	if req.Params.ImgSize == "" {
 		req.Params.ImgSize = defaultImageSize
+	} else if strings.IndexByte(req.Params.ImgSize, 'x') < 0 {
+		req.Params.ImgSize += "x" + req.Params.ImgSize
 	}
 	for _, a := range r.Header["Accept"] {
 		if strings.HasPrefix(a, "image/") {
@@ -224,7 +226,8 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 		}
 	} else {
 		err = converter.MailToSplittedPdfZip(ctx, resp.outFn, input, req.Params.ContentType,
-			req.Params.Splitted, req.Params.OutImg, req.Params.ImgSize)
+			req.Params.Splitted, req.Params.OutImg, req.Params.ImgSize,
+			req.Params.Pages)
 		Log("msg", "MailToSplittedPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
 	}
 	if err != nil {
@@ -360,8 +363,8 @@ func (first *firstN) Write(p []byte) (int, error) {
 func parseUint16s(ss []string) []uint16 {
 	us := make([]uint16, 0, len(ss))
 	for _, s := range ss {
-		u, err := strconv.ParseUint(s, 10, 16)
-		if err == nil {
+		u, _ := strconv.ParseUint(s, 10, 16)
+		if u != 0 {
 			us = append(us, uint16(u))
 		}
 	}
