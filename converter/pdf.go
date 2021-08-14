@@ -641,7 +641,8 @@ func getFdf(ctx context.Context, inpfn string) (fieldParts, error) {
 
 	fdf, fdfErr := ioutil.ReadFile(fdfFn)
 	if fdfErr != nil {
-		if _, ok := fdfErr.(*os.PathError); !ok {
+		var pe *os.PathError
+		if !errors.Is(fdfErr, pe) {
 			Log("msg", "read fdf", "file", fdfFn, "error", fdfErr)
 			os.Remove(fdfFn)
 		} else {

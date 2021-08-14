@@ -522,7 +522,7 @@ Collect:
 		}
 	}
 
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		errs = append(errs, "error reading parts: "+err.Error())
 	}
 	if len(errs) > 0 {
@@ -662,7 +662,7 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 		default:
 		}
 	}
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return fmt.Errorf("MailToTree: %w", err)
 	}
 	return nil
@@ -778,7 +778,7 @@ func ExtractingFilter(ctx context.Context,
 		for {
 			z, zErr := zr.Read()
 			if zErr != nil {
-				if zErr == io.EOF {
+				if errors.Is(zErr, io.EOF) {
 					break
 				}
 				Log("msg", "read archive", "error", err)

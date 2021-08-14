@@ -83,7 +83,7 @@ func pdfMergeEP(ctx context.Context, request interface{}) (response interface{},
 		tfh, err := readerToFile(f.ReadCloser, f.Filename)
 		if err != nil {
 			Log("msg", "readerToFile", "file", f.Filename, "error", err)
-			return nil, fmt.Errorf("error saving %q: %s", f.Filename, err)
+			return nil, fmt.Errorf("error saving %q: %w", f.Filename, err)
 		}
 		tbd = append(tbd, tfh.Cleanup)
 		filenames[i] = tfh.Name()

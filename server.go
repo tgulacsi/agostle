@@ -216,7 +216,7 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 		for _, fileHeader := range fileHeaders {
 			var err error
 			if f.ReadCloser, err = fileHeader.Open(); err != nil {
-				return f, fmt.Errorf("error opening part %q: %s", fileHeader.Filename, err)
+				return f, fmt.Errorf("error opening part %q: %w", fileHeader.Filename, err)
 			}
 			if fileHeader != nil {
 				f.FileHeader = *fileHeader
@@ -246,7 +246,7 @@ func getRequestFiles(r *http.Request) ([]reqFile, error) {
 		for _, fileHeader := range fileHeaders {
 			f := reqFile{FileHeader: *fileHeader}
 			if f.ReadCloser, err = fileHeader.Open(); err != nil {
-				return nil, fmt.Errorf("error reading part %q: %s", fileHeader.Filename, err)
+				return nil, fmt.Errorf("error reading part %q: %w", fileHeader.Filename, err)
 			}
 			files = append(files, f)
 		}

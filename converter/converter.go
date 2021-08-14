@@ -160,7 +160,7 @@ func MPRelatedToPdf(ctx context.Context, destfn string, r io.Reader, contentType
 	for e == nil {
 		_, e = parts.NextPart()
 	}
-	if e != nil && e != io.EOF {
+	if e != nil && !errors.Is(e, io.EOF) {
 		return e
 	}
 	return nil

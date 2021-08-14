@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -229,7 +230,7 @@ func NewB64QuoPriDecoder(r io.Reader) io.Reader {
 		n, err = io.ReadFull(b64r, buf)
 		//log.Printf("i=%d j=%d key=%s n=%d buf=%s err=%s", i, j, data[i+1:j],
 		//	n, buf, err)
-		if err != nil && err != io.ErrUnexpectedEOF {
+		if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
 			Log("msg", "NewQuoPriDecode cannot decode", "msg", data[i:j+1])
 			return j + 1, data[:j+1], nil
 		}

@@ -10,11 +10,14 @@ linters:
     - unused
     - staticcheck
     - gofmt
+    - errorlint
+    - noctx
+    - sqlclosecheck
+    - unconvert
 
   disable:
+    - interfacer
     - errcheck
-    - typecheck
-    - megacheck
 
 issues:
   exclude:

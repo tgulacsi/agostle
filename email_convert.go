@@ -212,7 +212,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	inpFh, err := readerToFile(io.TeeReader(req.Input, io.MultiWriter(h, &F)), req.Input.Filename)
 	Log("msg", "readerToFile", "error", err)
 	if err != nil {
-		return resp, fmt.Errorf("cannot read input file: %v", err)
+		return resp, fmt.Errorf("cannot read input file: %w", err)
 	}
 	defer func() { _ = inpFh.Cleanup() }()
 	req.Params.ContentType = converter.FixContentType(F.Data, req.Params.ContentType, req.Input.Filename)
