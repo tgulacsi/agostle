@@ -164,6 +164,10 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 		outFn := getOutFn(params, hsh)
 		converter.WorkdirMu.RLock()
 		outFh, outErr := os.Open(outFn)
+		if outErr == nil {
+			now := time.Now()
+			_ = os.Chtimes(outFh.Name(), now, now)
+		}
 		converter.WorkdirMu.RUnlock()
 		if outErr != nil {
 			return nil, outErr
