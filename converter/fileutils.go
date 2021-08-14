@@ -243,7 +243,6 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 			err = e
 		}
 	}()
-	Log("msg", "zipFiles", "dest", dest)
 	var (
 		fi         os.FileInfo
 		zi         *zip.FileHeader
@@ -255,7 +254,6 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 		if err == nil || err.Error() == "" {
 			return
 		}
-		Log("msg", "zipFiles", "error", err)
 		if errs == nil {
 			errs = []error{err}
 		} else {

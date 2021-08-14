@@ -39,7 +39,7 @@ var emailConvertServer = kithttp.NewServer(
 	emailConvertEP,
 	emailConvertDecode,
 	emailConvertEncode,
-	kithttp.ServerBefore(append([]kithttp.RequestFunc{SaveRequest}, defaultBeforeFuncs...)...),
+	kithttp.ServerBefore(defaultBeforeFuncs...),
 	kithttp.ServerAfter(kithttp.SetContentType("application/zip")),
 )
 
@@ -94,6 +94,7 @@ type emailConvertRequest struct {
 	Params      convertParams
 	Input       reqFile
 	IfNoneMatch []string
+	r           *http.Request
 }
 
 func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, error) {
@@ -101,7 +102,7 @@ func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, erro
 	if r.MultipartForm != nil {
 		defer r.MultipartForm.RemoveAll()
 	}
-	req := emailConvertRequest{Params: convertParams{
+	req := emailConvertRequest{r: r, Params: convertParams{
 		OutImg:  r.Form.Get("outimg"),
 		ImgSize: r.Form.Get("imgsize"),
 		Pages:   parseUint16s(r.Form["page"]),
@@ -147,7 +148,7 @@ func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, erro
 
 func emailConvertEP(ctx context.Context, request interface{}) (response interface{}, err error) {
 	logger := getLogger(ctx)
-	Log := logger.Log
+	Log := log.With(logger, "f", "emailConvertEP").Log
 	req := request.(emailConvertRequest)
 	defer func() { _ = req.Input.Close() }()
 
@@ -191,9 +192,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 		return outFh, nil
 	}
 
-	resp := emailConvertResponse{
-		r: ctx.Value(ctxKeyHTTPRequest).(*http.Request),
-	}
+	resp := emailConvertResponse{r: req.r}
 
 	for _, hsh := range req.IfNoneMatch {
 		var fh *os.File
@@ -215,12 +214,13 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	req.Params.ContentType = converter.FixContentType(F.Data, req.Params.ContentType, req.Input.Filename)
 	Log("msg", "fixed", "params", req.Params)
 	hsh := base64.URLEncoding.EncodeToString(h.Sum(nil))
-	if resp.content, err = getCached(req.Params, hsh); err == nil {
+	if fh, err := getCached(req.Params, hsh); err == nil {
+		resp.outFn, resp.content = fh.Name(), fh
 		Log("msg", "used cached", "file", resp.outFn)
 		err = resp.mergeIfRequested(ctx, req.Params, logger)
 		return resp, err
 	}
-
+	resp.outFn = getOutFn(req.Params, hsh)
 	input := io.Reader(inpFh)
 	if !req.Params.Splitted && req.Params.OutImg == "" {
 		err = converter.MailToPdfZip(ctx, resp.outFn, input, req.Params.ContentType)
@@ -235,10 +235,11 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 			req.Params.Pages)
 		Log("msg", "MailToSplittedPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
 	}
-	if err != nil {
-		return resp, err
+	if err == nil {
+		resp.content, err = os.Open(resp.outFn)
 	}
-	return resp, nil
+	Log("msg", "end", "contentNil", resp.content == nil, "fn", resp.outFn, "error", err)
+	return resp, err
 }
 
 type readSeekCloser interface {
@@ -249,20 +250,25 @@ type readSeekCloser interface {
 
 type emailConvertResponse struct {
 	content     readSeekCloser
-	r           *http.Request
 	outFn, hsh  string
+	r           *http.Request
 	NotModified bool
 }
 
 func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response interface{}) error {
-	resp := response.(emailConvertResponse)
+	logger := getLogger(ctx)
+	Log := logger.Log
+	resp, ok := response.(emailConvertResponse)
+	if !ok {
+		return fmt.Errorf("wanted emailConvertResponse, got %T", response)
+	}
+	Log("msg", "emailConvertEncode", "notModified", resp.NotModified, "fn", resp.outFn, "contentNil", resp.content == nil)
 	if resp.NotModified {
 		w.WriteHeader(http.StatusNotModified)
 		return nil
 	}
 	w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
 	w.Header().Set("Etag", `"`+resp.hsh+`"`)
-	logger.Log("msg", "emailConvertEncode", "resp", resp)
 	if resp.content != nil {
 		defer resp.content.Close()
 		modTime := time.Now()
@@ -305,14 +311,6 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 		_ = os.Remove(nm)
 	}
 	return nil
-}
-
-const (
-	ctxKeyHTTPRequest = ctxKey("http.Request")
-)
-
-func SaveRequest(ctx context.Context, r *http.Request) context.Context {
-	return context.WithValue(ctx, ctxKeyHTTPRequest, r)
 }
 
 func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params convertParams, logger log.Logger) error {
