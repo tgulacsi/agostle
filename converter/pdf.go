@@ -117,12 +117,13 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 	if err = ctx.Err(); err != nil {
 		return
 	}
-	if n, e := PdfPageNum(ctx, srcfn); e != nil {
+	pageNum, e := PdfPageNum(ctx, srcfn)
+	if e != nil {
 		err = fmt.Errorf("cannot determine page number of %s: %w", srcfn, e)
 		return
-	} else if n == 0 {
+	} else if pageNum == 0 {
 		Log("msg", "0 pages", "file", srcfn)
-	} else if n == 1 {
+	} else if pageNum == 1 {
 		filenames = append(filenames, srcfn)
 		return
 	}
@@ -155,17 +156,25 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 
 	if pdfsep := popplerOk["pdfseparate"]; pdfsep != "" {
 		Log("msg", pdfsep, "src", srcfn, "dest", destdir)
-		args := []string{srcfn, filepath.Join(destdir, prefix+"%03d.pdf")}
-		if len(pages) == 1 {
-			ps := strconv.FormatUint(uint64(pages[0]), 10)
-			args = append(append(make([]string, 0, 4+len(args)),
-				"-f", ps, "-l", ps,
-			), args...)
-		}
-		Log("msg", "pdfsep", "at", destdir, "args", args)
-		if err = callAt(ctx, pdfsep, destdir, args...); err != nil {
-			err = fmt.Errorf("executing %s: %w", pdfsep, err)
-			return
+		restArgs := []string{srcfn, filepath.Join(destdir, prefix+"%03d.pdf")}
+		if len(pages) != 0 && (len(pages) == 1 || len(pages) <= pageNum/2) {
+			args := append(append(make([]string, 0, 4+len(restArgs)),
+				"-f", "", "-l", ""), restArgs...)
+			for _, p := range pages {
+				ps := strconv.FormatUint(uint64(p), 10)
+				args[1], args[3] = ps, ps
+				Log("msg", "pdfsep", "at", destdir, "args", args)
+				if err = callAt(ctx, pdfsep, destdir, args...); err != nil {
+					err = fmt.Errorf("executing %s: %w", pdfsep, err)
+					return
+				}
+			}
+		} else {
+			Log("msg", "pdfsep", "at", destdir, "args", restArgs)
+			if err = callAt(ctx, pdfsep, destdir, restArgs...); err != nil {
+				err = fmt.Errorf("executing %s: %w", pdfsep, err)
+				return
+			}
 		}
 	} else {
 		Log("msg", *ConfPdftk, "src", srcfn, "dest", destdir)
