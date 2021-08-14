@@ -269,21 +269,21 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 	Log("msg", "emailConvertEncode", "notModified", resp.NotModified, "fn", resp.outFn, "contentNil", resp.content == nil)
 	if resp.NotModified {
 		w.WriteHeader(http.StatusNotModified)
-		return nil
-	}
-	w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
-	w.Header().Set("Etag", `"`+resp.hsh+`"`)
-	if resp.content != nil {
-		defer resp.content.Close()
-		modTime := time.Now()
-		if fi, err := os.Stat(resp.outFn); err == nil {
-			modTime = fi.ModTime()
+	} else {
+		w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
+		w.Header().Set("Etag", `"`+resp.hsh+`"`)
+		if resp.content != nil {
+			defer resp.content.Close()
+			modTime := time.Now()
+			if fi, err := os.Stat(resp.outFn); err == nil {
+				modTime = fi.ModTime()
+			}
+			w.Header().Set("Content-Type", "application/pdf")
+			http.ServeContent(w, resp.r, resp.outFn+".pdf", modTime, resp.content)
+		} else {
+			http.ServeFile(w, resp.r, resp.outFn)
 		}
-		w.Header().Set("Content-Type", "application/pdf")
-		http.ServeContent(w, resp.r, resp.outFn+".pdf", modTime, resp.content)
-		return nil
 	}
-	http.ServeFile(w, resp.r, resp.outFn)
 
 	converter.WorkdirMu.RLock()
 	var tbd []string
