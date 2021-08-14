@@ -95,8 +95,8 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 		}
 	}
 
+	Log("msg", "MailToSplittedPdfZip", "error", errs)
 	if len(errs) > 0 {
-		Log("msg", "MailToSplittedPdfZip:", "error", errs)
 		efn := destfn + "-errors.txt"
 		efh, e := os.Create(efn)
 		if e != nil {

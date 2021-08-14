@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"context"
@@ -125,6 +126,7 @@ func LoadConfig(ctx context.Context, fn string) error {
 }
 
 // Workdir is the main working directory
+var WorkdirMu sync.RWMutex
 var Workdir = os.TempDir()
 
 // LeaveTempFiles should be true only for debugging purposes (leaves temp files)

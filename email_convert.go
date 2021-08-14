@@ -11,6 +11,7 @@ import (
 	"archive/zip"
 	"crypto/sha1"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -155,22 +156,20 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 			fmt.Sprintf("result-%s!%s.zip", hsh, params))
 	}
 
-	getCachedFn := func(params convertParams, hsh string) (string, error) {
+	getCached := func(params convertParams, hsh string) (*os.File, error) {
 		if strings.Contains(hsh, "/") {
-			return "", fmt.Errorf("bad hsh: %q", hsh)
+			return nil, fmt.Errorf("bad hsh: %q", hsh)
 		}
 		outFn := getOutFn(params, hsh)
+		converter.WorkdirMu.RLock()
 		outFh, outErr := os.Open(outFn)
+		converter.WorkdirMu.RUnlock()
 		if outErr != nil {
-			return outFn, outErr
+			return nil, outErr
 		}
 		defer func() {
-			if closeErr := outFh.Close(); closeErr != nil && err == nil {
-				err = closeErr
-			}
-		}()
-		defer func() {
 			if err != nil {
+				outFh.Close()
 				Log("msg", "Removing stale result", "file", outFn)
 				_ = os.Remove(outFn)
 			}
@@ -178,15 +177,18 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 
 		fi, statErr := outFh.Stat()
 		if statErr != nil || fi.Size() == 0 {
-			return outFn, statErr
+			if statErr == nil {
+				statErr = errors.New("zero file")
+			}
+			return nil, statErr
 		}
 		// test correctness of the zip file
 		z, zErr := zip.OpenReader(outFh.Name())
 		if zErr != nil {
-			return outFn, zErr
+			return nil, zErr
 		}
 		_ = z.Close()
-		return outFn, nil
+		return outFh, nil
 	}
 
 	resp := emailConvertResponse{
@@ -194,7 +196,9 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	}
 
 	for _, hsh := range req.IfNoneMatch {
-		if _, err = getCachedFn(req.Params, hsh); err == nil {
+		var fh *os.File
+		if fh, err = getCached(req.Params, hsh); err == nil {
+			fh.Close()
 			resp.NotModified = true
 			return resp, nil
 		}
@@ -211,7 +215,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	req.Params.ContentType = converter.FixContentType(F.Data, req.Params.ContentType, req.Input.Filename)
 	Log("msg", "fixed", "params", req.Params)
 	hsh := base64.URLEncoding.EncodeToString(h.Sum(nil))
-	if resp.outFn, err = getCachedFn(req.Params, hsh); err == nil {
+	if resp.content, err = getCached(req.Params, hsh); err == nil {
 		Log("msg", "used cached", "file", resp.outFn)
 		err = resp.mergeIfRequested(ctx, req.Params, logger)
 		return resp, err
@@ -223,6 +227,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 		Log("msg", "MailToPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
 		if err == nil {
 			err = resp.mergeIfRequested(ctx, req.Params, logger)
+			Log("msg", "mergeIfRequested", "error", err)
 		}
 	} else {
 		err = converter.MailToSplittedPdfZip(ctx, resp.outFn, input, req.Params.ContentType,
@@ -257,6 +262,7 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 	}
 	w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
 	w.Header().Set("Etag", `"`+resp.hsh+`"`)
+	logger.Log("msg", "emailConvertEncode", "resp", resp)
 	if resp.content != nil {
 		defer resp.content.Close()
 		modTime := time.Now()
@@ -268,6 +274,36 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 		return nil
 	}
 	http.ServeFile(w, resp.r, resp.outFn)
+
+	converter.WorkdirMu.RLock()
+	var tbd []string
+	threshold := time.Now().Add(-7 * 24 * time.Hour)
+	ds, _ := os.ReadDir(converter.Workdir)
+	for _, d := range ds {
+		if !d.Type().IsRegular() {
+			continue
+		}
+		nm := d.Name()
+		if !(strings.HasPrefix(nm, "result-") && strings.Contains(nm, "!") && strings.HasSuffix(nm, ".zip")) {
+			continue
+		}
+		if fi, err := d.Info(); err != nil {
+			_ = os.Remove(filepath.Join(converter.Workdir, nm))
+			continue
+		} else if fi.ModTime().Before(threshold) {
+			tbd = append(tbd, filepath.Join(converter.Workdir, nm))
+		}
+	}
+	converter.WorkdirMu.RUnlock()
+	if len(tbd) == 0 {
+		return nil
+	}
+
+	converter.WorkdirMu.Lock()
+	defer converter.WorkdirMu.Unlock()
+	for _, nm := range tbd {
+		_ = os.Remove(nm)
+	}
 	return nil
 }
 
