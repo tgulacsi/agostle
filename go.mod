@@ -7,12 +7,10 @@ require (
 	github.com/VictoriaMetrics/metrics v1.15.2
 	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.2.0
-	github.com/disintegration/gift v1.2.1 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/frankban/quicktest v1.11.3 // indirect
 	github.com/gabriel-vasile/mimetype v1.1.2
 	github.com/go-kit/kit v0.10.0
-	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/renameio v1.0.0
 	github.com/h2non/filetype v1.1.1
@@ -45,6 +43,25 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
 
-go 1.13
+require (
+	github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3 // indirect
+	github.com/go-logfmt/logfmt v0.5.0 // indirect
+	github.com/goccy/go-json v0.7.3 // indirect
+	github.com/hhrutter/lzw v0.0.0-20190829144645-6f07a24e8650 // indirect
+	github.com/hhrutter/tiff v0.0.0-20190829141212-736cae8d0bc7 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 // indirect
+	github.com/valyala/fastrand v1.0.0 // indirect
+	github.com/valyala/histogram v1.1.2 // indirect
+	go.opentelemetry.io/otel v0.20.0 // indirect
+	go.opentelemetry.io/otel/metric v0.20.0 // indirect
+	go.opentelemetry.io/otel/sdk v0.20.0 // indirect
+	go.opentelemetry.io/otel/sdk/export/metric v0.20.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v0.20.0 // indirect
+	go.opentelemetry.io/otel/trace v0.20.0 // indirect
+	golang.org/x/exp v0.0.0-20200207192155-f17229e696bd // indirect
+)
 
-replace github.com/tgulacsi/go => ../go
+go 1.17
+
+//replace github.com/tgulacsi/go => ../go

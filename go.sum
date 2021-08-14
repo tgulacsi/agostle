@@ -31,8 +31,6 @@ github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWX
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/UNO-SOFT/otel v0.0.8 h1:4RzKBDeGKex+8wHD4BKmGrEkP+cAHoVznACjgLmGzjI=
 github.com/UNO-SOFT/otel v0.0.8/go.mod h1:46e3jXbo8C133HYmbXH7/MHb8k8C3Y41Pa2pZIOhHRo=
-github.com/UNO-SOFT/ulog v1.2.0 h1:8foAhY0UM+Jq1lTWKRW1T9fdIkgQXXyc4eqT/EHXYwQ=
-github.com/UNO-SOFT/ulog v1.2.0/go.mod h1:BCuYA5OkCiic6eIVKQoo2eYtcR8TBVZz2WZNL2mSu1g=
 github.com/UNO-SOFT/ulog v1.3.0 h1:yLtTd/jK/bpuhJRv6RnP5yJizGNBSW0KbbpcYCYoqNQ=
 github.com/UNO-SOFT/ulog v1.3.0/go.mod h1:ZqOYqL5/UbbOeyELT8UTTls4Fni6F3cfqshPs7/+he8=
 github.com/VictoriaMetrics/metrics v1.15.2 h1:w/GD8L9tm+gvx1oZvAofRRXwammiicdI0jgLghA2Gdo=
@@ -113,8 +111,6 @@ github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2/go.mod h1:SqUrOPUn
 github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
 github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3 h1:/RVgXZkKAnmlRC/625cvago9x6ROe7fNj7cCdGc4ICw=
 github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3/go.mod h1:FDHdQKtI1NtvxIYsG/y+ymRaIQIsp+LRSTGl7eBKQEU=
-github.com/disintegration/gift v1.2.1 h1:Y005a1X4Z7Uc+0gLpSAsKhWi4qLtsdEcMIbbdvdZ6pc=
-github.com/disintegration/gift v1.2.1/go.mod h1:Jh2i7f7Q2BM7Ezno3PhfezbR1xpUg9dUg3/RlKGr4HI=
 github.com/dsnet/compress v0.0.1 h1:PlZu0n3Tuv04TzpfPbrnI0HW/YwodEXDS+oPKahKF0Q=
 github.com/dsnet/compress v0.0.1/go.mod h1:Aw8dCMJ7RioblQeTqt88akK31OvO8Dhf5JflhBbQEHo=
 github.com/dsnet/golib v0.0.0-20171103203638-1ea166775780/go.mod h1:Lj+Z9rebOhdfkVLjJ8T6VcRQv3SXugXy999NBtR9aFY=
@@ -468,10 +464,8 @@ github.com/syndtr/goleveldb v0.0.0-20180608030153-db3ee9ee8931/go.mod h1:Z4AUp2K
 github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpPAyBWyWuQ=
 github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 h1:iGnD/q9160NWqKZZ5vY4p0dMiYMRknzctfSkqA4nBDw=
 github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613/go.mod h1:g6AnIpDSYMcphz193otpSIzN+11Rs+AAIIC6rm1enug=
-github.com/tgulacsi/go v0.18.4 h1:lrZhzuBmSmMicsPgreg3QwN5oA2YaXn2rsZM+qxJevA=
-github.com/tgulacsi/go v0.18.4/go.mod h1:IG8Tkn8TQuRMrd9fzqKNGCQHand4xUD78GPzuDRgFpA=
-github.com/tgulacsi/go v0.18.5-0.20210712085219-60a9e8c66e45 h1:QMePZTENC0pCcuWjsGjqsSXgoZMJL63RUyGdpxKKT8c=
-github.com/tgulacsi/go v0.18.5-0.20210712085219-60a9e8c66e45/go.mod h1:IG8Tkn8TQuRMrd9fzqKNGCQHand4xUD78GPzuDRgFpA=
+github.com/tgulacsi/go v0.18.5 h1:2i0C1mh5ItbxeDfwzfyo8CATz36rNBEyVrDVb0rJOtA=
+github.com/tgulacsi/go v0.18.5/go.mod h1:IG8Tkn8TQuRMrd9fzqKNGCQHand4xUD78GPzuDRgFpA=
 github.com/tgulacsi/picago v0.0.0-20171229130838-9e1ac2306c70/go.mod h1:YOW4MCz1GRh0aqedyC48A1CRXSHngOB/O/4+1rUjDQg=
 github.com/theupdateframework/go-tuf v0.0.0-20201230183259-aee6270feb55 h1:Zn+mA4qTRyao2Petd+YovKaFOUuxDj158kqCIqvwTow=
 github.com/theupdateframework/go-tuf v0.0.0-20201230183259-aee6270feb55/go.mod h1:L+uU/NRFK/7h0NYAnsmvsX9EghDB5QVCcHCIrK2h5nw=
