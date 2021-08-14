@@ -14,12 +14,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/bits"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,19 +44,47 @@ var emailConvertServer = kithttp.NewServer(
 
 type convertParams struct {
 	ContentType, OutImg, ImgSize string
+	Pages                        []uint16
 	Splitted, Merged             bool
 }
 
 func (p convertParams) String() string {
-	c := "m"
+	var buf strings.Builder
+	n := 5 + (len(p.ContentType) + 1) + (len(p.OutImg) + 1) + len(p.ImgSize) + 2 + 2*len(p.Pages)
+	if n&(n-1) != 0 {
+		// power of 2
+		n = 1 << (bits.Len(uint(n)) + 1)
+	}
+	buf.Grow(n)
+	buf.WriteString(strings.ReplaceAll(p.ContentType, "/", "--"))
+	buf.WriteByte('_')
+	buf.WriteString(strings.ReplaceAll(p.OutImg, "/", "--"))
+	buf.WriteByte('_')
+	buf.WriteString(p.ImgSize)
+	buf.WriteByte('_')
 	if p.Splitted {
-		c = "s"
+		buf.WriteByte('s')
+	} else {
+		buf.WriteByte('m')
 	}
-	m := "s"
+	buf.WriteByte('_')
 	if p.Merged {
-		m = "m"
+		buf.WriteByte('m')
+	} else {
+		buf.WriteByte('s')
 	}
-	return strings.Replace(p.ContentType, "/", "--", -1) + "_" + strings.Replace(p.OutImg, "/", "--", -1) + "_" + p.ImgSize + "_" + c + "_" + m
+	if len(p.Pages) != 0 {
+		buf.WriteByte('_')
+		var b []byte
+		for i, pg := range p.Pages {
+			if i != 0 {
+				buf.WriteByte(',')
+			}
+			b = strconv.AppendUint(b[:0], uint64(pg), 10)
+			buf.Write(b)
+		}
+	}
+	return buf.String()
 }
 
 var etagRe = regexp.MustCompile(`"[^"]+"`)
@@ -74,6 +104,7 @@ func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, erro
 		Splitted: r.Form.Get("splitted") == "1",
 		OutImg:   r.Form.Get("outimg"),
 		ImgSize:  r.Form.Get("imgsize"),
+		Pages:    parseUint16s(r.Form["page"]),
 		Merged:   r.Form.Get("merged") == "1" || r.Header.Get("Accept") == "application/pdf",
 	}}
 	if req.Params.ImgSize == "" {
@@ -324,4 +355,15 @@ func (first *firstN) Write(p []byte) (int, error) {
 		first.Data = append(first.Data, p[:m]...)
 	}
 	return len(p), nil
+}
+
+func parseUint16s(ss []string) []uint16 {
+	us := make([]uint16, 0, len(ss))
+	for _, s := range ss {
+		u, err := strconv.ParseUint(s, 10, 16)
+		if err == nil {
+			us = append(us, uint16(u))
+		}
+	}
+	return us
 }
