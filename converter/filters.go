@@ -188,7 +188,6 @@ func cleanupFiles(ctx context.Context, files []ArchFileItem, tbz []ArchFileItem)
 func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string, rch chan maybeArchItems, pages []uint16) {
 	Log := getLogger(ctx).Log
 	var sfiles, ifiles, tbd []string
-	var cleanups []func() error
 	var err error
 	var n int
 	mul := 1
@@ -199,11 +198,6 @@ func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string,
 		for _, fn := range tbd {
 			_ = unlink(fn, "splitted")
 		}
-		for _, c := range cleanups {
-			if c != nil {
-				_ = c()
-			}
-		}
 	}()
 
 	for _, fn := range files {
@@ -211,18 +205,15 @@ func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string,
 			rch <- maybeArchItems{Items: []ArchFileItem{{Filename: fn}}}
 			continue
 		}
-		var cleanup func() error
-		sfiles, cleanup, err = PdfSplit(ctx, fn, pages)
-		cleanups = append(cleanups, cleanup)
+		sfiles, _, err = PdfSplit(ctx, fn, pages)
 		if err != nil || len(sfiles) == 0 {
 			Log("msg", "Splitting", "file", fn, "error", err)
 			if err = PdfRewrite(ctx, fn, fn); err != nil {
 				Log("msg", "Cannot clean", "file", fn, "error", err)
 			} else {
-				if sfiles, cleanup, err = PdfSplit(ctx, fn, pages); err != nil || len(sfiles) == 0 {
+				if sfiles, _, err = PdfSplit(ctx, fn, pages); err != nil || len(sfiles) == 0 {
 					Log("msg", "splitting CLEANED", "file", fn, "error", err)
 				}
-				cleanups = append(cleanups, cleanup)
 			}
 		}
 		if err != nil {
@@ -252,11 +243,6 @@ func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string,
 		rch <- maybeArchItems{Items: items}
 	}
 	close(rch)
-}
-
-type pdfToImageArgs struct {
-	w, r             *os.File
-	name, mime, size string
 }
 
 // PdfToImageMulti converts PDF pages to images, using parallel threads
@@ -293,6 +279,12 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 			}
 		}
 	}()
+
+	type pdfToImageArgs struct {
+		w, r             *os.File
+		name, mime, size string
+	}
+
 	workch := make(chan pdfToImageArgs)
 	var workWg sync.WaitGroup
 	work := func() {

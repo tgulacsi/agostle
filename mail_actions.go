@@ -23,6 +23,7 @@ func mailToPdfZip(ctx context.Context, outfn, inpfn string, splitted bool, outim
 		return err
 	}
 	defer func() { _ = input.Close() }()
+	splitted = splitted || len(pages) != 0
 	if !splitted && outimg == "" {
 		return converter.MailToPdfZip(ctx, outfn, input, "message/rfc822")
 	}
@@ -90,7 +91,7 @@ func init() {
 		fs.StringVar(&imgsize, "imgsize", imgsize, "image size")
 		fs.StringVar(&pageS, "pages", "", "pages (comma separated)")
 		mailToPdfZipCmd := ffcli.Command{Name: "mail", ShortHelp: "convert mail to zip of PDFs",
-			ShortUsage: "mail2pdfzip [-split] [-outimg=image/gif] [-imgsize=640x640] mailfile.eml",
+			ShortUsage: "mail [-split] [-outimg=image/gif] [-imgsize=640x640] mailfile.eml",
 			LongHelp: `reads a message/rfc822 email, converts all of it to PDF files
 (including attachments), and outputs a zip file containing these pdfs,
 optionally splits the PDFs to separate pages, and converts these pages to images.
