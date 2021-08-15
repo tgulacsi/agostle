@@ -264,7 +264,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 					Log("msg", "not smaller", "fn", fn, "oSize", nFi.Size(), "nSize", gFi.Size())
 				} else {
 					Log("msg", "replace split pdf with gm convert'd", "fn", fn, "oSize", nFi.Size(), "nSize", gFi.Size())
-					os.Rename(filepath.Join(destdir, gFn), filepath.Join(destdir, fn))
+					_ = os.Rename(filepath.Join(destdir, gFn), filepath.Join(destdir, fn))
 				}
 			}
 		}
@@ -579,12 +579,12 @@ func PdfDumpFields(ctx context.Context, inpfn string) ([]string, error) {
 	}()
 	err := cmd.Run()
 	if err != nil {
-		pw.CloseWithError(err)
+		_ = pw.CloseWithError(err)
 		return fields, fmt.Errorf("pdftk generate_fdf: %w", err)
 	}
 	pw.Close()
 	wg.Wait()
-	return fields, nil
+	return fields, err
 }
 
 // PdfDumpFdf dumps the FDF from the given PDF.
@@ -707,25 +707,25 @@ func (fp fieldParts) WriteTo(w io.Writer) (n int64, err error) {
 		if i == length {
 			break
 		}
-		cew.Write(part)
+		_, _ = cew.Write(part)
 		val := fp.Values[fp.Fields[i]]
 		if len(val) == 0 {
-			cew.Write(fieldPartV)
+			_, _ = cew.Write(fieldPartV)
 		} else {
-			cew.Write(fpv1)
-			cew.Write([]byte{0xfe, 0xff})
+			_, _ = cew.Write(fpv1)
+			_, _ = cew.Write([]byte{0xfe, 0xff})
 			for _, u := range utf16.Encode([]rune(val)) {
 				// http://stackoverflow.com/questions/6047970/weird-characters-when-filling-pdf-with-pdftk/19170162#19170162
 				// UTF16-BE
-				cew.Write([]byte{byte(u >> 8), byte(u & 0xff)})
+				_, _ = cew.Write([]byte{byte(u >> 8), byte(u & 0xff)})
 			}
-			cew.Write(fpv2)
+			_, _ = cew.Write(fpv2)
 		}
 		if cew.err != nil {
 			break
 		}
 	}
-	cew.Write(fp.Parts[length])
+	_, _ = cew.Write(fp.Parts[length])
 	return cew.n, cew.err
 }
 

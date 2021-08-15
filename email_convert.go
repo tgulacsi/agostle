@@ -98,9 +98,11 @@ type emailConvertRequest struct {
 }
 
 func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, error) {
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		return nil, err
+	}
 	if r.MultipartForm != nil {
-		defer r.MultipartForm.RemoveAll()
+		defer func() { _ = r.MultipartForm.RemoveAll() }()
 	}
 	req := emailConvertRequest{r: r, Params: convertParams{
 		OutImg:  r.Form.Get("outimg"),
@@ -147,8 +149,7 @@ func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, erro
 }
 
 func emailConvertEP(ctx context.Context, request interface{}) (response interface{}, err error) {
-	logger := getLogger(ctx)
-	Log := log.With(logger, "f", "emailConvertEP").Log
+	logger := log.With(getLogger(ctx), "f", "emailConvertEP")
 	req := request.(emailConvertRequest)
 	defer func() { _ = req.Input.Close() }()
 
@@ -175,7 +176,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 		defer func() {
 			if err != nil {
 				outFh.Close()
-				Log("msg", "Removing stale result", "file", outFn)
+				logger.Log("msg", "Removing stale result", "file", outFn)
 				_ = os.Remove(outFn)
 			}
 		}()
@@ -210,17 +211,17 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	h := sha1.New()
 	F := firstN{Data: make([]byte, 0, 1024)}
 	inpFh, err := readerToFile(io.TeeReader(req.Input, io.MultiWriter(h, &F)), req.Input.Filename)
-	Log("msg", "readerToFile", "error", err)
+	logger.Log("msg", "readerToFile", "error", err)
 	if err != nil {
 		return resp, fmt.Errorf("cannot read input file: %w", err)
 	}
 	defer func() { _ = inpFh.Cleanup() }()
 	req.Params.ContentType = converter.FixContentType(F.Data, req.Params.ContentType, req.Input.Filename)
-	Log("msg", "fixed", "params", req.Params)
+	logger.Log("msg", "fixed", "params", req.Params)
 	hsh := base64.URLEncoding.EncodeToString(h.Sum(nil))
 	if fh, err := getCached(req.Params, hsh); err == nil {
 		resp.outFn, resp.content = fh.Name(), fh
-		Log("msg", "used cached", "file", resp.outFn)
+		logger.Log("msg", "used cached", "file", resp.outFn)
 		err = resp.mergeIfRequested(ctx, req.Params, logger)
 		return resp, err
 	}
@@ -228,21 +229,21 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	input := io.Reader(inpFh)
 	if !req.Params.Splitted && req.Params.OutImg == "" {
 		err = converter.MailToPdfZip(ctx, resp.outFn, input, req.Params.ContentType)
-		Log("msg", "MailToPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
+		logger.Log("msg", "MailToPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
 		if err == nil {
 			err = resp.mergeIfRequested(ctx, req.Params, logger)
-			Log("msg", "mergeIfRequested", "error", err)
+			logger.Log("msg", "mergeIfRequested", "error", err)
 		}
 	} else {
 		err = converter.MailToSplittedPdfZip(ctx, resp.outFn, input, req.Params.ContentType,
 			req.Params.Splitted, req.Params.OutImg, req.Params.ImgSize,
 			req.Params.Pages)
-		Log("msg", "MailToSplittedPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
+		logger.Log("msg", "MailToSplittedPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
 	}
 	if err == nil {
 		resp.content, err = os.Open(resp.outFn)
 	}
-	Log("msg", "end", "contentNil", resp.content == nil, "fn", resp.outFn, "error", err)
+	logger.Log("msg", "end", "contentNil", resp.content == nil, "fn", resp.outFn, "error", err)
 	return resp, err
 }
 
@@ -261,12 +262,11 @@ type emailConvertResponse struct {
 
 func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response interface{}) error {
 	logger := getLogger(ctx)
-	Log := logger.Log
 	resp, ok := response.(emailConvertResponse)
 	if !ok {
 		return fmt.Errorf("wanted emailConvertResponse, got %T", response)
 	}
-	Log("msg", "emailConvertEncode", "notModified", resp.NotModified, "fn", resp.outFn, "contentNil", resp.content == nil)
+	logger.Log("msg", "emailConvertEncode", "notModified", resp.NotModified, "fn", resp.outFn, "contentNil", resp.content == nil)
 	if resp.NotModified {
 		w.WriteHeader(http.StatusNotModified)
 	} else {
@@ -312,7 +312,7 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 	converter.WorkdirMu.Lock()
 	defer converter.WorkdirMu.Unlock()
 	for _, nm := range tbd {
-		Log("msg", "remove", "file", nm)
+		logger.Log("msg", "remove", "file", nm)
 		_ = os.Remove(nm)
 	}
 	return nil

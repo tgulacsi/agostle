@@ -28,10 +28,10 @@ var pdfMergeServer = kithttp.NewServer(
 )
 
 func pdfMergeDecode(ctx context.Context, r *http.Request) (interface{}, error) {
-	Log := log.With(logger, "fn", "pdfMergeDecode").Log
+	logger := log.With(logger, "fn", "pdfMergeDecode")
 	inputs, err := getRequestFiles(r)
 	if err != nil {
-		Log("msg", "getRequestFiles", "error", err)
+		logger.Log("msg", "getRequestFiles", "error", err)
 		return nil, err
 	}
 	req := pdfMergeRequest{Inputs: inputs}
@@ -57,9 +57,9 @@ func pdfMergeEP(ctx context.Context, request interface{}) (response interface{},
 		}
 	}()
 
-	Log := log.With(logger, "fn", "pdfMergeEP").Log
+	logger := log.With(logger, "fn", "pdfMergeEP")
 	if sortBeforeMerge && req.Sort != NoSort || !sortBeforeMerge && req.Sort != DoSort {
-		Log("msg", "sorting filenames, as requested", "ask", req.Sort, "config", sortBeforeMerge)
+		logger.Log("msg", "sorting filenames, as requested", "ask", req.Sort, "config", sortBeforeMerge)
 		sort.Sort(ByName(req.Inputs))
 	}
 
@@ -82,7 +82,7 @@ func pdfMergeEP(ctx context.Context, request interface{}) (response interface{},
 	for i, f := range req.Inputs {
 		tfh, err := readerToFile(f.ReadCloser, f.Filename)
 		if err != nil {
-			Log("msg", "readerToFile", "file", f.Filename, "error", err)
+			logger.Log("msg", "readerToFile", "file", f.Filename, "error", err)
 			return nil, fmt.Errorf("error saving %q: %w", f.Filename, err)
 		}
 		tbd = append(tbd, tfh.Cleanup)
@@ -96,41 +96,41 @@ func pdfMergeEP(ctx context.Context, request interface{}) (response interface{},
 
 	dst, err := tempFilename("pdfmerge-")
 	if err != nil {
-		Log("msg", "tempFilename", "error", err)
+		logger.Log("msg", "tempFilename", "error", err)
 		return nil, err
 	}
 	defer os.Remove(dst)
-	Log("msg", "PdfMerge", "dst", dst, "filenames", filenames)
+	logger.Log("msg", "PdfMerge", "dst", dst, "filenames", filenames)
 	if err = converter.PdfMerge(ctx, dst, filenames...); err != nil {
-		Log("msg", "PdfMerge", "dst", dst, "filenames", filenames, "error", err)
+		logger.Log("msg", "PdfMerge", "dst", dst, "filenames", filenames, "error", err)
 		return nil, err
 	}
 	f, err := os.Open(dst)
 	if err != nil {
-		Log("msg", "Open(dst)", "dst", dst, "error", err)
+		logger.Log("msg", "Open(dst)", "dst", dst, "error", err)
 		return nil, err
 	}
 	return f, nil
 }
 
 func pdfMergeEncode(ctx context.Context, w http.ResponseWriter, response interface{}) error {
-	Log := log.With(logger, "fn", "pdfMergeEncode").Log
+	logger := log.With(logger, "fn", "pdfMergeEncode")
 	if f, ok := response.(interface {
 		Stat() (os.FileInfo, error)
 	}); ok {
 		if fi, err := f.Stat(); err != nil {
-			Log("msg", "response file Stat", "error", err)
+			logger.Log("msg", "response file Stat", "error", err)
 		} else {
 			w.Header().Set("Content-Length", fmt.Sprintf("%d", fi.Size()))
 		}
 	} else {
-		Log("msg", "pdfMergeEncode non-statable response!", "response", fmt.Sprintf("%#v %T", response, response))
+		logger.Log("msg", "pdfMergeEncode non-statable response!", "response", fmt.Sprintf("%#v %T", response, response))
 	}
 	dst := response.(io.ReadCloser)
 	defer func() { _ = dst.Close() }()
 	// successful PdfMerge recreated the dest file
 	_, err := io.Copy(w, dst)
-	Log("msg", "read", "file", dst, "error", err)
+	logger.Log("msg", "read", "file", dst, "error", err)
 	return err
 }
 

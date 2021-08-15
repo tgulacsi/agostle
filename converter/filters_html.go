@@ -37,7 +37,7 @@ func HTMLPartFilter(ctx context.Context,
 	inch <-chan i18nmail.MailPart, outch chan<- i18nmail.MailPart,
 	files chan<- ArchFileItem, errch chan<- error,
 ) {
-	Log := getLogger(ctx).Log
+	logger := getLogger(ctx)
 	defer func() {
 		close(outch)
 	}()
@@ -64,7 +64,7 @@ func HTMLPartFilter(ctx context.Context,
 
 	html2pdf := func(fn string) (string, error) {
 		if fn == "" {
-			Log("msg", "empty filename!!!")
+			logger.Log("msg", "empty filename!!!")
 			return "", errors.New("empty filename")
 		}
 		tbd[fn] = struct{}{}
@@ -80,9 +80,9 @@ func HTMLPartFilter(ctx context.Context,
 			}
 		}
 		if err != nil {
-			Log("msg", "html2pdf", "error", err)
+			logger.Log("msg", "html2pdf", "error", err)
 			if alter != "" && aConverter != nil {
-				Log("msg", "html2pdf using alternative content "+alter)
+				logger.Log("msg", "html2pdf using alternative content "+alter)
 				if fh, err = os.Open(alter); err != nil {
 					err = fmt.Errorf("open txt %s: %w", alter, err)
 				} else {
@@ -117,7 +117,7 @@ func HTMLPartFilter(ctx context.Context,
 		} else {
 			grandpa = parent.Parent
 		}
-		Log("part", part.Seq, "ct", part.ContentType, "groups", groups)
+		logger.Log("part", part.Seq, "ct", part.ContentType, "groups", groups)
 		if part.ContentType == textPlain || part.ContentType == textHtml {
 			//if part.Parent.ContentType != "multipart/alternative" || part.Parent.ContentType != "multipart/related" {
 			if part.ContentType == textPlain && part.Parent != nil && part.Parent.ContentType != "multipart/alternative" {
@@ -202,7 +202,7 @@ func HTMLPartFilter(ctx context.Context,
 			}
 			if !found {
 				err = fmt.Errorf("WARN this=%d not in %v", part.Seq, groups)
-				Log("msg", "SKIP not found", "error", err)
+				logger.Log("msg", "SKIP not found", "error", err)
 				goto Skip
 			}
 		}
@@ -215,7 +215,7 @@ func HTMLPartFilter(ctx context.Context,
 			fn = filepath.Join(filepath.Dir(cg.htmlFn), fn)
 
 			_ = os.Mkdir(filepath.Dir(fn), 0755) // ignore error
-			Log("save", fn, "cid", cid, "htmlFn", cg.htmlFn)
+			logger.Log("save", fn, "cid", cid, "htmlFn", cg.htmlFn)
 			_, _ = part.Body.Seek(0, 0)
 			if err = writeToFile(ctx, fn, part.Body, part.ContentType /*, mailHeader*/); err != nil {
 				goto Error
@@ -225,7 +225,7 @@ func HTMLPartFilter(ctx context.Context,
 
 		continue
 	Error:
-		Log("error", err)
+		logger.Log("error", err)
 		if err != nil {
 			errch <- err
 		}
@@ -287,7 +287,7 @@ func SaveOriHTMLFilter(ctx context.Context,
 	inch <-chan i18nmail.MailPart, outch chan<- i18nmail.MailPart,
 	files chan<- ArchFileItem, errch chan<- error,
 ) {
-	Log := getLogger(ctx).Log
+	logger := getLogger(ctx)
 	defer func() {
 		close(outch)
 	}()
@@ -303,15 +303,15 @@ func SaveOriHTMLFilter(ctx context.Context,
 	for part := range inch {
 		if part.ContentType == textHtml {
 			fn := filepath.Join(wd, fmt.Sprintf("%02d#%03d.ori.html", part.Level, part.Seq))
-			Log("msg", "saving original html "+fn)
+			logger.Log("msg", "saving original html "+fn)
 			if orifh, e := os.Create(fn); e == nil {
 				_, _ = part.Body.Seek(0, 0)
 				if _, e = io.Copy(orifh, part.Body); e != nil {
-					Log("msg", "write ori to", "dest", orifh.Name(), "error", e)
+					logger.Log("msg", "write ori to", "dest", orifh.Name(), "error", e)
 				}
 				orifh.Close()
 				if fh, err := os.Open(orifh.Name()); e != nil {
-					Log("msg", "reopen", "file", orifh.Name(), "error", err)
+					logger.Log("msg", "reopen", "file", orifh.Name(), "error", err)
 					errch <- err
 					continue
 				} else {

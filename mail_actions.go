@@ -43,7 +43,7 @@ func mailToTree(ctx context.Context, outdir, inpfn string) error {
 }
 
 func outlookToEmail(ctx context.Context, outfn, inpfn string) error {
-	Log := log.With(logger, "fn", "outlookToEmail").Log
+	logger := log.With(logger, "fn", "outlookToEmail")
 	inp, err := openIn(inpfn)
 	if err != nil {
 		return err
@@ -54,7 +54,7 @@ func outlookToEmail(ctx context.Context, outfn, inpfn string) error {
 	}
 	defer func() {
 		if closeErr := out.Close(); closeErr != nil {
-			Log("msg", "Close", "error", err)
+			logger.Log("msg", "Close", "error", err)
 			if err == nil {
 				err = closeErr
 			}

@@ -27,7 +27,9 @@ func BenchmarkMIMEDetector(t *testing.B) {
 
 	t.Run("Sequential", func(t *testing.B) {
 		for i := 0; i < t.N; i++ {
-			seq.Match(b)
+			if _, err := seq.Match(b); err != nil {
+				t.Error(err)
+			}
 		}
 	})
 
@@ -35,7 +37,9 @@ func BenchmarkMIMEDetector(t *testing.B) {
 	par.Parallel = true
 	t.Run("Parallel", func(t *testing.B) {
 		for i := 0; i < t.N; i++ {
-			par.Match(b)
+			if _, err := par.Match(b); err != nil {
+				t.Error(err)
+			}
 		}
 	})
 }

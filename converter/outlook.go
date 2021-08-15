@@ -109,9 +109,9 @@ func newOLEStorageReaderDirect(ctx context.Context, r io.Reader) (io.ReadCloser,
 			Log("msg", "WARN OLEStorageReader", "args", cmd.Args, "errTxt", errTxt, "error", err)
 			err = fmt.Errorf("%s: %w", errTxt, err)
 		}
-		pw.CloseWithError(err)
+		_ = pw.CloseWithError(err)
 		if remove {
-			os.Remove(in.Name())
+			_ = os.Remove(in.Name())
 		}
 	}()
 	return struct {
@@ -159,7 +159,7 @@ CMD ["/bin/sh", "-c", "cat ->/tmp/input.msg && perl -w -e 'use Email::Outlook::M
 			Log("msg", "OLEStorageReader", "args", cmd.Args, "stderr", errTxt, "error", err)
 			err = fmt.Errorf("%s: %w", errTxt, err)
 		}
-		pw.CloseWithError(err)
+		_ = pw.CloseWithError(err)
 		//if remove {
 		//os.Remove(in.Name())
 		//}

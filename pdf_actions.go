@@ -150,7 +150,7 @@ func splitPdfZip(ctx context.Context, outfn, inpfn string, pages []uint16) error
 	if err != nil {
 		return err
 	}
-	defer cleanup()
+	defer func() { _ = cleanup() }()
 	outfh, err := openOut(outfn)
 	if err != nil {
 		return err

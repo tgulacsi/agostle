@@ -39,14 +39,13 @@ var (
 )
 
 func onStart() {
-	Log := logger.Log
 	var err error
 	if self, err = osext.Executable(); err != nil {
-		Log("msg", "error getting the path for self", "error", err)
+		logger.Log("msg", "error getting the path for self", "error", err)
 	} else {
 		var self2 string
 		if self2, err = filepath.Abs(self); err != nil {
-			Log("msg", "error getting the absolute path", "for", self, "error", err)
+			logger.Log("msg", "error getting the absolute path", "for", self, "error", err)
 		} else {
 			self = self2
 		}
@@ -54,7 +53,7 @@ func onStart() {
 
 	var uname string
 	if u, e := user.Current(); e != nil {
-		Log("msg", "cannot get current user", "error", e)
+		logger.Log("msg", "cannot get current user", "error", e)
 		uname = os.Getenv("USER")
 	} else {
 		uname = u.Username

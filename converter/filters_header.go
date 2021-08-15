@@ -30,7 +30,7 @@ func PrependHeaderFilter(ctx context.Context,
 	inch <-chan i18nmail.MailPart, outch chan<- i18nmail.MailPart,
 	files chan<- ArchFileItem, errch chan<- error,
 ) {
-	Log := getLogger(ctx).Log
+	logger := getLogger(ctx)
 	defer func() {
 		close(outch)
 	}()
@@ -55,7 +55,7 @@ func PrependHeaderFilter(ctx context.Context,
 			}
 			if len(hdrs) > 0 {
 				hdr := hdrs[len(hdrs)-1]
-				Log("msg", "filling mailHeader", "header", hdr)
+				logger.Log("msg", "filling mailHeader", "header", hdr)
 				for _, k := range PrependHeaders {
 					if v, ok := hdr[k]; ok {
 						mailHeader[k] = v
@@ -69,7 +69,7 @@ func PrependHeaderFilter(ctx context.Context,
 		}
 		headersBuf.Reset()
 		if err := writeHeaders(ctx, headersBuf, mailHeader, part.ContentType); err != nil {
-			Log("msg", "error writing headers", "error", err)
+			logger.Log("msg", "error writing headers", "error", err)
 			goto Skip
 		}
 		//Log("msg", "headers written", "buf", headersBuf.String())
@@ -87,7 +87,7 @@ func PrependHeaderFilter(ctx context.Context,
 		if *ConfWkhtmltopdf == "" {
 			b, err := ioutil.ReadAll(part.Body)
 			if err != nil {
-				Log("msg", "cannot read", "body", part.Body, "error", err)
+				logger.Log("msg", "cannot read", "body", part.Body, "error", err)
 			}
 			// add some garbage to each line ending!
 			b = bytes.TrimSpace(
@@ -153,7 +153,7 @@ func PrependHeaderFilter(ctx context.Context,
 				if len(c) > 4096 {
 					c = c[len(c)-4096:]
 				}
-				Log("msg", "no body in", "b", string(c))
+				logger.Log("msg", "no body in", "b", string(c))
 				part.Body, _ = i18nmail.MakeSectionReader(io.MultiReader(
 					bytes.NewReader(headersBuf.Bytes()),
 					bytes.NewReader(b),
@@ -188,7 +188,7 @@ func decodeHTML(ctx context.Context, r io.Reader, deleteMETA bool) io.Reader {
 	b = b[:n]
 	r = io.MultiReader(bytes.NewReader(b), r)
 
-	Log := getLogger(ctx).Log
+	logger := getLogger(ctx)
 	var enc encoding.Encoding
 	p := 0
 	for {
@@ -222,7 +222,7 @@ func decodeHTML(ctx context.Context, r io.Reader, deleteMETA bool) io.Reader {
 		}
 		var err error
 		if enc, err = htmlindex.Get(charset); err != nil {
-			Log("msg", "cannot find encoding", "charset", charset)
+			logger.Log("msg", "cannot find encoding", "charset", charset)
 			continue
 		}
 		if !deleteMETA && len(charset) >= 5 {
@@ -249,8 +249,8 @@ func writeToFile(ctx context.Context, fn string, r io.Reader, contentType string
 	}
 	br := bufio.NewReader(r)
 
-	Log := getLogger(ctx).Log
-	Log("msg", "writeToPdfFile", "file", fn, "ct", contentType)
+	logger := getLogger(ctx)
+	logger.Log("msg", "writeToPdfFile", "file", fn, "ct", contentType)
 	if _, err = io.Copy(fh, br); err != nil {
 		_ = fh.Close()
 		return fmt.Errorf("save to %s: %w", fn, err)
@@ -259,7 +259,7 @@ func writeToFile(ctx context.Context, fn string, r io.Reader, contentType string
 }
 
 func writeHeaders(ctx context.Context, w io.Writer, mailHeader mail.Header, contentType string) error {
-	Log := getLogger(ctx).Log
+	logger := getLogger(ctx)
 	if mailHeader == nil || !(contentType == textPlain || contentType == textHtml) {
 		return nil
 	}
@@ -278,7 +278,7 @@ func writeHeaders(ctx context.Context, w io.Writer, mailHeader mail.Header, cont
 		escape = template.HTMLEscapeString
 	}
 
-	io.WriteString(ew, preList)
+	_, _ = io.WriteString(ew, preList)
 	mh := i18nmail.Header(mailHeader)
 	for _, k := range PrependHeaders {
 		if k == "Subject" || k == "Date" {
@@ -287,28 +287,28 @@ func writeHeaders(ctx context.Context, w io.Writer, mailHeader mail.Header, cont
 		if mh.Get(k) == "" {
 			continue
 		}
-		io.WriteString(ew, bol+preKey+k+postKey)
+		_, _ = io.WriteString(ew, bol+preKey+k+postKey)
 		addr, err := mh.AddressList(k)
 		if err != nil {
 			if a, err := i18nmail.ParseAddress(mh.Get(k)); err != nil {
-				Log("msg", "parsing address", "of", k, "value", mh.Get(k), "error", err)
-				io.WriteString(ew, escape(mh.Get(k)))
+				logger.Log("msg", "parsing address", "of", k, "value", mh.Get(k), "error", err)
+				_, _ = io.WriteString(ew, escape(mh.Get(k)))
 			} else {
 				addr = append(addr, a)
 			}
 		}
 		s := ""
 		for i, a := range addr {
-			io.WriteString(ew, s+escape(a.Name)+" "+preAddr+escape(a.Address)+postAddr)
+			_, _ = io.WriteString(ew, s+escape(a.Name)+" "+preAddr+escape(a.Address)+postAddr)
 			if i == 0 {
 				s = ", "
 			}
 		}
-		io.WriteString(ew, eol)
+		_, _ = io.WriteString(ew, eol)
 	}
-	io.WriteString(ew, bol+preKey+"Subject"+postKey+escape(i18nmail.HeadDecode(mh.Get("Subject")))+eol)
-	io.WriteString(ew, bol+preKey+"Date"+postKey+escape(mh.Get("Date"))+eol)
-	io.WriteString(ew, postList)
+	_, _ = io.WriteString(ew, bol+preKey+"Subject"+postKey+escape(i18nmail.HeadDecode(mh.Get("Subject")))+eol)
+	_, _ = io.WriteString(ew, bol+preKey+"Date"+postKey+escape(mh.Get("Date"))+eol)
+	_, _ = io.WriteString(ew, postList)
 
 	if ew.Err != nil {
 		return ew.Err

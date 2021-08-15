@@ -132,7 +132,7 @@ func MakeFileLike(r io.Reader) FileLike {
 		rs, err := temp.NewReadSeeker(r)
 		rc.statErr = err
 		size, _ := rs.Seek(0, 2)
-		rs.Seek(0, 0)
+		_, _ = rs.Seek(0, 0)
 		rc.Reader, rc.Closer = rs, rs
 		rc.FileInfo = dummyFileInfo{
 			name: fmt.Sprintf("file-like-%p", r),

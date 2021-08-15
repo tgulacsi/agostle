@@ -157,15 +157,15 @@ func dumpRequest(ctx context.Context, req *http.Request) context.Context {
 	prefix := filepath.Join(converter.Workdir, time.Now().Format("20060102_150405")+"-")
 	var reqSeq uint64
 	b, err := httputil.DumpRequest(req, true)
-	Log := log.With(getLogger(ctx), "fn", "dumpRequest").Log
+	logger := log.With(getLogger(ctx), "fn", "dumpRequest")
 	if err != nil {
-		Log("msg", "dumping request", "error", err)
+		logger.Log("msg", "dumping request", "error", err)
 	}
 	fn := fmt.Sprintf("%s%06d.dmp", prefix, atomic.AddUint64(&reqSeq, 1))
 	if err = ioutil.WriteFile(fn, b, 0660); err != nil {
-		Log("msg", "writing", "dumpfile", fn, "error", err)
+		logger.Log("msg", "writing", "dumpfile", fn, "error", err)
 	} else {
-		Log("msg", "Request has been dumped into "+fn)
+		logger.Log("msg", "Request has been dumped into "+fn)
 	}
 	return ctx
 }
@@ -194,12 +194,12 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 	}
 	f := reqFile{ReadCloser: r.Body}
 	contentType := r.Header.Get("Content-Type")
-	Log := getLogger(ctx).Log
-	Log("msg", "readRequestOneFile", "content-type", contentType)
+	logger := getLogger(ctx)
+	logger.Log("msg", "readRequestOneFile", "content-type", contentType)
 	if !strings.HasPrefix(contentType, "multipart/") {
 		f.FileHeader.Header = textproto.MIMEHeader(r.Header)
 		_, params, _ := mime.ParseMediaType(r.Header.Get("Content-Disposition"))
-		Log("content-disposition", r.Header.Get("Content-Disposition"), "params", params)
+		logger.Log("content-disposition", r.Header.Get("Content-Disposition"), "params", params)
 		f.FileHeader.Filename = params["filename"]
 		return f, nil
 	}
@@ -210,7 +210,7 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 	if r.MultipartForm == nil || len(r.MultipartForm.File) == 0 {
 		return f, errors.New("no files?")
 	}
-	defer r.MultipartForm.RemoveAll()
+	defer func() { _ = r.MultipartForm.RemoveAll() }()
 
 	for _, fileHeaders := range r.MultipartForm.File {
 		for _, fileHeader := range fileHeaders {
@@ -239,7 +239,7 @@ func getRequestFiles(r *http.Request) ([]reqFile, error) {
 	if r.MultipartForm == nil || len(r.MultipartForm.File) == 0 {
 		return nil, errors.New("no files?")
 	}
-	defer r.MultipartForm.RemoveAll()
+	defer func() { _ = r.MultipartForm.RemoveAll() }()
 
 	files := make([]reqFile, 0, len(r.MultipartForm.File))
 	for _, fileHeaders := range r.MultipartForm.File {
@@ -264,7 +264,7 @@ func readerToFile(r io.Reader, prefix string) (*renameio.PendingFile, error) {
 		return nil, err
 	}
 	if _, err = io.Copy(dfh, r); err != nil {
-		dfh.Cleanup()
+		_ = dfh.Cleanup()
 		return nil, err
 	}
 	_, err = dfh.Seek(0, 0)

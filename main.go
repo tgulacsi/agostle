@@ -120,7 +120,7 @@ func Main() error {
 				rootKeysSrc = bytes.NewReader(b)
 			}
 			var rootKeys []*tufdata.Key
-			if json.NewDecoder(rootKeysSrc).Decode(&rootKeys); err != nil {
+			if err = json.NewDecoder(rootKeysSrc).Decode(&rootKeys); err != nil {
 				return err
 			}
 			tc := tufclient.NewClient(tufclient.MemoryLocalStore(), remote)
@@ -214,9 +214,9 @@ func Main() error {
 			}
 			for _, s := range srvs {
 				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-				s.Shutdown(ctx)
+				_ = s.Shutdown(ctx)
 				cancel()
-				s.Close()
+				_ = s.Close()
 			}
 			return grp.Wait()
 		},
@@ -236,18 +236,17 @@ func Main() error {
 	if !verbose {
 		i18nmail.Debugf = nil
 	}
-	Log := logger.Log
-	Log("leave_tempfiles?", leaveTempFiles)
+	logger.Log("leave_tempfiles?", leaveTempFiles)
 	converter.LeaveTempFiles = leaveTempFiles
 	converter.Concurrency = concurrency
 	if configFile == "" {
 		if self, execErr := osext.Executable(); execErr != nil {
-			Log("msg", "Cannot determine executable file name", "error", execErr)
+			logger.Log("msg", "Cannot determine executable file name", "error", execErr)
 		} else {
 			ini := filepath.Join(filepath.Dir(self), "agostle.ini")
 			f, iniErr := os.Open(ini)
 			if iniErr != nil {
-				Log("msg", "Cannot open config", "file", ini, "error", iniErr)
+				logger.Log("msg", "Cannot open config", "file", ini, "error", iniErr)
 			} else {
 				_ = f.Close()
 				configFile = ini
@@ -256,23 +255,23 @@ func Main() error {
 	}
 	ctx, cancel := globalctx.Wrap(context.Background())
 	defer cancel()
-	Log("msg", "Loading config", "file", configFile)
+	logger.Log("msg", "Loading config", "file", configFile)
 	if err = converter.LoadConfig(ctx, configFile); err != nil {
-		Log("msg", "Parsing config", "file", configFile, "error", err)
+		logger.Log("msg", "Parsing config", "file", configFile, "error", err)
 		return err
 	}
 	if timeout > 0 && timeout != *converter.ConfChildTimeout {
-		Log("msg", "Setting timeout", "from", *converter.ConfChildTimeout, "to", timeout)
+		logger.Log("msg", "Setting timeout", "from", *converter.ConfChildTimeout, "to", timeout)
 		*converter.ConfChildTimeout = timeout
 	}
 	if closeLogfile == nil {
 		if closeLogfile, err = logToFile(*converter.ConfLogFile); err != nil {
-			Log("error", err)
+			logger.Log("error", err)
 		}
 	}
 
 	sortBeforeMerge = *converter.ConfSortBeforeMerge
-	Log("msg", "commands",
+	logger.Log("msg", "commands",
 		"pdftk", *converter.ConfPdftk,
 		"loffice", *converter.ConfLoffice,
 		"gm", *converter.ConfGm,
@@ -280,7 +279,7 @@ func Main() error {
 		"pdfclean", *converter.ConfPdfClean,
 		"wkhtmltopdf", *converter.ConfWkhtmltopdf,
 	)
-	Log("msg", "parameters",
+	logger.Log("msg", "parameters",
 		"sortBeforeMerge", sortBeforeMerge,
 		"workdir", converter.Workdir,
 		"listen", *converter.ConfListenAddr,
@@ -293,7 +292,7 @@ func Main() error {
 
 	if closeLogfile != nil {
 		defer func() {
-			Log("msg", "close log file", "error", closeLogfile())
+			logger.Log("msg", "close log file", "error", closeLogfile())
 		}()
 	}
 

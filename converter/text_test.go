@@ -99,12 +99,12 @@ func TestLoHtmlPdf(t *testing.T) {
 	defer os.Remove(out.Name())
 	defer out.Close()
 
-	io.WriteString(out, `<!DOCTYPE html>
+	_, _ = io.WriteString(out, `<!DOCTYPE html>
 <html lang="hu" />
 <head><meta charset="utf-8" /><title>proba</title></head>
 <body>`)
-	io.WriteString(out, `<p>`+accented+`</p>`)
-	io.WriteString(out, `</body></html>`)
+	_, _ = io.WriteString(out, `<p>`+accented+`</p>`)
+	_, _ = io.WriteString(out, `</body></html>`)
 	out.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	err = lofficeConvert(ctx, "/tmp", "/tmp/b.html")

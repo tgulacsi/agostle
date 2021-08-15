@@ -43,7 +43,7 @@ func textToHTML(r io.Reader) io.Reader {
 	go func() {
 		if _, err := io.Copy(&htmlEscaper{w: pw}, iohlp.WrappingReader(r, 80)); err != nil {
 			Log("msg", "escape", "error", err)
-			pw.CloseWithError(err)
+			_ = pw.CloseWithError(err)
 			return
 		}
 		pw.Close()
@@ -60,8 +60,8 @@ func textToHTML(r io.Reader) io.Reader {
 
 // ImageToPdf convert image (image/...) to PDF
 func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
-	Log := getLogger(ctx).Log
-	Log("msg", "converting image", "ct", contentType, "dest", destfn)
+	logger := getLogger(ctx)
+	logger.Log("msg", "converting image", "ct", contentType, "dest", destfn)
 	imgtyp := contentType[strings.Index(contentType, "/")+1:]
 	destfn = strings.TrimSuffix(destfn, ".pdf")
 	ifh, ok := r.(*os.File)
@@ -73,10 +73,10 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 			return fmt.Errorf("create temp image file %s: %w", inpfn, err)
 		}
 		if _, err = io.Copy(ifh, r); err != nil {
-			Log("msg", "ImageToPdf reading", "file", ifh.Name(), "error", err)
+			logger.Log("msg", "ImageToPdf reading", "file", ifh.Name(), "error", err)
 		}
 		if err = ifh.Close(); err != nil {
-			Log("msg", "ImageToPdf writing", "dest", ifh.Name(), "error", err)
+			logger.Log("msg", "ImageToPdf writing", "dest", ifh.Name(), "error", err)
 		}
 		if ifh, err = os.Open(inpfn); err != nil {
 			return fmt.Errorf("open inp %s: %w", inpfn, err)
@@ -168,7 +168,7 @@ func MPRelatedToPdf(ctx context.Context, destfn string, r io.Reader, contentType
 
 // HTMLToPdf converts HTML (text/html) to PDF
 func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
-	Log := log.With(getLogger(ctx), "func", "HTMLToPdf", "dest", destfn).Log
+	logger := log.With(getLogger(ctx), "func", "HTMLToPdf", "dest", destfn)
 	var inpfn string
 	if fh, ok := r.(*os.File); ok && fileExists(fh.Name()) {
 		inpfn = fh.Name()
@@ -231,10 +231,10 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 				}
 				buf.Reset()
 				if err = html.Render(&buf, img); err != nil {
-					Log("msg", "html.Render", "img", img, "error", err)
+					logger.Log("msg", "html.Render", "img", img, "error", err)
 					continue
 				}
-				Log("old", string(line), "new", buf.String())
+				logger.Log("old", string(line), "new", buf.String())
 				i := pos[0] + copy(b[pos[0]:pos[1]], buf.Bytes())
 				for i < pos[1] {
 					b[i] = ' '
@@ -294,7 +294,7 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 	if outDir == "" {
 		return errors.New("outDir is required")
 	}
-	Log := getLogger(ctx).Log
+	logger := getLogger(ctx)
 	args := []string{"--headless", "--convert-to", "pdf", "--outdir",
 		outDir, inpfn}
 	lofficeMu.Lock()
@@ -318,7 +318,7 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 			lcAll = "en_US.UTF-8"
 		}
 		cmd.Env[0] = lcAll
-		Log("msg", "env LC_ALL="+lcAll)
+		logger.Log("msg", "env LC_ALL="+lcAll)
 		// delete LC_* LANG* env vars.
 		for _, s := range os.Environ() {
 			if strings.HasPrefix(s, "LC_") || s == "LANG" || s == "LANGUAGE" {
@@ -342,7 +342,7 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 
 // calls wkhtmltopdf
 func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
-	Log := getLogger(ctx).Log
+	logger := getLogger(ctx)
 	args := []string{
 		inpfn,
 		"--allow", "images",
@@ -364,7 +364,7 @@ func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 		if bytes.HasSuffix(buf.Bytes(), []byte("ContentNotFoundError\n")) ||
 			bytes.HasSuffix(buf.Bytes(), []byte("ProtocolUnknownError\n")) ||
 			bytes.HasSuffix(buf.Bytes(), []byte("HostNotFoundError\n")) { // K-MT11422:99503
-			Log("msg", buf.String())
+			logger.Log("msg", buf.String())
 		} else {
 			return fmt.Errorf("%s: %w", buf.String(), err)
 		}
