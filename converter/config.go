@@ -107,8 +107,15 @@ func LoadConfig(ctx context.Context, fn string) error {
 		Workdir = *ConfWorkdir
 	}
 	var err error
-	if Cache, err = filecache.Open(Workdir); err != nil {
-		return err
+	cd := filepath.Join(Workdir, "agostle-filecache")
+	_ = os.MkdirAll(cd, 0700)
+	if Cache, err = filecache.Open(cd); err != nil {
+		var tErr error
+		if cd, tErr = os.MkdirTemp(Workdir, "agostle-filecache-*"); tErr != nil {
+			return err
+		} else if Cache, tErr = filecache.Open(cd); tErr != nil {
+			return err
+		}
 	}
 
 	bn := filepath.Base(*ConfPdfseparate)

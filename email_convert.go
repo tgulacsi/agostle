@@ -9,7 +9,7 @@ package main
 
 import (
 	"archive/zip"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -32,6 +32,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/mholt/archiver"
 	"github.com/tgulacsi/agostle/converter"
+	"github.com/tgulacsi/go/iohlp"
 
 	kithttp "github.com/go-kit/kit/transport/http"
 )
@@ -58,9 +59,17 @@ func (p convertParams) String() string {
 		n = 1 << (bits.Len(uint(n)) + 1)
 	}
 	buf.Grow(n)
-	buf.WriteString(strings.ReplaceAll(p.ContentType, "/", "--"))
+	w64 := func(s string) {
+		if s == "" {
+			return
+		}
+		b64 := base64.NewEncoder(base64.URLEncoding, &buf)
+		b64.Write([]byte(s))
+		b64.Close()
+	}
+	w64(p.ContentType)
 	buf.WriteByte('_')
-	buf.WriteString(strings.ReplaceAll(p.OutImg, "/", "--"))
+	w64(p.OutImg)
 	buf.WriteByte('_')
 	buf.WriteString(p.ImgSize)
 	buf.WriteByte('_')
@@ -159,6 +168,9 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 			fmt.Sprintf("result-%s!%s.zip", hsh, params))
 	}
 
+	cacheKey := func(fn string) filecache.ActionID {
+		return filecache.NewActionID([]byte(filepath.Base(fn)))
+	}
 	getCached := func(params convertParams, hsh string) (*os.File, error) {
 		if strings.Contains(hsh, "/") {
 			return nil, fmt.Errorf("bad hsh: %q", hsh)
@@ -166,8 +178,8 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 		outFn := getOutFn(params, hsh)
 		var outFh *os.File
 		var alreadyCached bool
-		cacheKey := filecache.NewActionID([]byte(hsh + "!" + params.String()))
-		if fn, _, err := converter.Cache.GetFile(cacheKey); err == nil {
+		key := cacheKey(outFn)
+		if fn, _, err := converter.Cache.GetFile(key); err == nil {
 			var outErr error
 			if outFh, outErr = os.Open(fn); outErr != nil {
 				outFh = nil
@@ -204,8 +216,9 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 		_ = z.Close()
 
 		if !alreadyCached {
-			_, _, _ = converter.Cache.Put(cacheKey, outFh)
+			_, _, _ = converter.Cache.Put(key, outFh)
 			_, err := outFh.Seek(0, 0)
+			converter.Cache.Trim()
 			return outFh, err
 		}
 		return outFh, nil
@@ -222,25 +235,25 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 		}
 	}
 
-	h := sha1.New()
-	F := firstN{Data: make([]byte, 0, 1024)}
-	inpFh, err := readerToFile(io.TeeReader(req.Input, io.MultiWriter(h, &F)), req.Input.Filename)
+	h := sha256.New()
+	sr, err := iohlp.MakeSectionReader(io.TeeReader(req.Input, h), 1<<20)
 	logger.Log("msg", "readerToFile", "error", err)
 	if err != nil {
 		return resp, fmt.Errorf("cannot read input file: %w", err)
 	}
-	defer func() { _ = inpFh.Cleanup() }()
-	req.Params.ContentType = converter.FixContentType(F.Data, req.Params.ContentType, req.Input.Filename)
-	logger.Log("msg", "fixed", "params", req.Params)
 	hsh := base64.URLEncoding.EncodeToString(h.Sum(nil))
+	resp.outFn = getOutFn(req.Params, hsh)
+	var head [1024]byte
+	n, _ := sr.ReadAt(head[:], 0)
+	req.Params.ContentType = converter.FixContentType(head[:n], req.Params.ContentType, req.Input.Filename)
+	logger.Log("msg", "fixed", "params", req.Params)
 	if fh, err := getCached(req.Params, hsh); err == nil {
 		resp.outFn, resp.content = fh.Name(), fh
 		logger.Log("msg", "use cached", "file", resp.outFn)
 		err = resp.mergeIfRequested(ctx, req.Params, logger)
 		return resp, err
 	}
-	resp.outFn = getOutFn(req.Params, hsh)
-	input := io.Reader(inpFh)
+	input := io.NewSectionReader(sr, 0, sr.Size())
 	if !req.Params.Splitted && req.Params.OutImg == "" {
 		err = converter.MailToPdfZip(ctx, resp.outFn, input, req.Params.ContentType)
 		logger.Log("msg", "MailToPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
@@ -257,11 +270,11 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	if err == nil {
 		var fh *os.File
 		if fh, err = os.Open(resp.outFn); err == nil {
-			cacheKey := filecache.NewActionID([]byte(hsh + "!" + req.Params.String()))
-			_, _, _ = converter.Cache.Put(cacheKey, fh)
+			_, _, _ = converter.Cache.Put(cacheKey(resp.outFn), fh)
 			if _, err = fh.Seek(0, 0); err == nil {
 				resp.content = fh
 			}
+			converter.Cache.Trim()
 		}
 	}
 	logger.Log("msg", "end", "contentNil", resp.content == nil, "fn", resp.outFn, "error", err)
@@ -373,21 +386,6 @@ func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params c
 	}
 	resp.content = f.(readSeekCloser)
 	return nil
-}
-
-type firstN struct {
-	Data []byte
-}
-
-func (first *firstN) Write(p []byte) (int, error) {
-	m := cap(first.Data) - len(first.Data)
-	if m > 0 {
-		if m > len(p) {
-			m = len(p)
-		}
-		first.Data = append(first.Data, p[:m]...)
-	}
-	return len(p), nil
 }
 
 func parseUint16s(ss []string) []uint16 {
