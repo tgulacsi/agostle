@@ -12,7 +12,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.1.2
 	github.com/go-kit/kit v0.10.0
 	github.com/golang/snappy v0.0.3 // indirect
-	github.com/google/renameio v1.0.0
+	github.com/google/renameio v1.0.1
 	github.com/h2non/filetype v1.1.1
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/kardianos/service v1.2.0
@@ -44,12 +44,14 @@ require (
 )
 
 require (
+	github.com/UNO-SOFT/filecache v0.0.0-20210816065935-16e6176802a0 // indirect
 	github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3 // indirect
 	github.com/go-logfmt/logfmt v0.5.0 // indirect
 	github.com/goccy/go-json v0.7.3 // indirect
 	github.com/hhrutter/lzw v0.0.0-20190829144645-6f07a24e8650 // indirect
 	github.com/hhrutter/tiff v0.0.0-20190829141212-736cae8d0bc7 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 // indirect
 	github.com/valyala/fastrand v1.0.0 // indirect
 	github.com/valyala/histogram v1.1.2 // indirect

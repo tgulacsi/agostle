@@ -9,11 +9,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"context"
 
+	"github.com/UNO-SOFT/filecache"
 	"github.com/go-kit/kit/log"
 	config "github.com/stvp/go-toml-config"
 	"github.com/tgulacsi/go/osgroup"
@@ -106,6 +106,10 @@ func LoadConfig(ctx context.Context, fn string) error {
 		_ = os.Setenv("TMPDIR", *ConfWorkdir)
 		Workdir = *ConfWorkdir
 	}
+	var err error
+	if Cache, err = filecache.Open(Workdir); err != nil {
+		return err
+	}
 
 	bn := filepath.Base(*ConfPdfseparate)
 	prefix := (*ConfPdfseparate)[:len(*ConfPdfseparate)-len(bn)]
@@ -126,8 +130,8 @@ func LoadConfig(ctx context.Context, fn string) error {
 }
 
 // Workdir is the main working directory
-var WorkdirMu sync.RWMutex
 var Workdir = os.TempDir()
+var Cache *filecache.Cache
 
 // LeaveTempFiles should be true only for debugging purposes (leaves temp files)
 var LeaveTempFiles = false

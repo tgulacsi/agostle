@@ -152,8 +152,6 @@ func dumpRequest(ctx context.Context, req *http.Request) context.Context {
 	if req == nil {
 		return ctx
 	}
-	converter.WorkdirMu.RLock()
-	defer converter.WorkdirMu.RUnlock()
 	prefix := filepath.Join(converter.Workdir, time.Now().Format("20060102_150405")+"-")
 	var reqSeq uint64
 	b, err := httputil.DumpRequest(req, true)

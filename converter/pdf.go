@@ -133,9 +133,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 			return
 		}
 	}
-	WorkdirMu.RLock()
 	destdir, dErr := os.MkdirTemp(Workdir, filepath.Base(srcfn)+"-*-split")
-	WorkdirMu.RUnlock()
 	if dErr != nil {
 		err = dErr
 		return
@@ -627,9 +625,7 @@ func getFdf(ctx context.Context, inpfn string) (fieldParts, error) {
 	if err != nil {
 		return fp, err
 	}
-	WorkdirMu.RLock()
 	fdfFn := filepath.Join(Workdir, base64.URLEncoding.EncodeToString(hsh.Sum(nil))+".fdf")
-	WorkdirMu.RUnlock()
 	if f, gobErr := os.Open(fdfFn + ".gob"); gobErr == nil {
 		err = gob.NewDecoder(f).Decode(&fp)
 		f.Close()

@@ -28,6 +28,7 @@ import (
 
 	"context"
 
+	"github.com/UNO-SOFT/filecache"
 	"github.com/go-kit/kit/log"
 	"github.com/mholt/archiver"
 	"github.com/tgulacsi/agostle/converter"
@@ -163,23 +164,30 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 			return nil, fmt.Errorf("bad hsh: %q", hsh)
 		}
 		outFn := getOutFn(params, hsh)
-		converter.WorkdirMu.RLock()
-		outFh, outErr := os.Open(outFn)
-		if outErr == nil {
-			now := time.Now()
-			_ = os.Chtimes(outFh.Name(), now, now)
-		}
-		converter.WorkdirMu.RUnlock()
-		if outErr != nil {
-			return nil, outErr
-		}
-		defer func() {
-			if err != nil {
-				outFh.Close()
-				logger.Log("msg", "Removing stale result", "file", outFn)
-				_ = os.Remove(outFn)
+		var outFh *os.File
+		var alreadyCached bool
+		cacheKey := filecache.NewActionID([]byte(hsh + "!" + params.String()))
+		if fn, _, err := converter.Cache.GetFile(cacheKey); err == nil {
+			var outErr error
+			if outFh, outErr = os.Open(fn); outErr != nil {
+				outFh = nil
+			} else {
+				alreadyCached = true
 			}
-		}()
+		}
+		if outFh == nil {
+			var outErr error
+			if outFh, outErr = os.Open(outFn); outErr != nil {
+				return nil, outErr
+			}
+			defer func() {
+				if err != nil {
+					outFh.Close()
+					logger.Log("msg", "Removing stale result", "file", outFn)
+					_ = os.Remove(outFn)
+				}
+			}()
+		}
 
 		fi, statErr := outFh.Stat()
 		if statErr != nil || fi.Size() == 0 {
@@ -194,6 +202,12 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 			return nil, zErr
 		}
 		_ = z.Close()
+
+		if !alreadyCached {
+			_, _, _ = converter.Cache.Put(cacheKey, outFh)
+			_, err := outFh.Seek(0, 0)
+			return outFh, err
+		}
 		return outFh, nil
 	}
 
@@ -221,7 +235,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	hsh := base64.URLEncoding.EncodeToString(h.Sum(nil))
 	if fh, err := getCached(req.Params, hsh); err == nil {
 		resp.outFn, resp.content = fh.Name(), fh
-		logger.Log("msg", "used cached", "file", resp.outFn)
+		logger.Log("msg", "use cached", "file", resp.outFn)
 		err = resp.mergeIfRequested(ctx, req.Params, logger)
 		return resp, err
 	}
@@ -241,7 +255,14 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 		logger.Log("msg", "MailToSplittedPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
 	}
 	if err == nil {
-		resp.content, err = os.Open(resp.outFn)
+		var fh *os.File
+		if fh, err = os.Open(resp.outFn); err == nil {
+			cacheKey := filecache.NewActionID([]byte(hsh + "!" + req.Params.String()))
+			_, _, _ = converter.Cache.Put(cacheKey, fh)
+			if _, err = fh.Seek(0, 0); err == nil {
+				resp.content = fh
+			}
+		}
 	}
 	logger.Log("msg", "end", "contentNil", resp.content == nil, "fn", resp.outFn, "error", err)
 	return resp, err
@@ -285,36 +306,6 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 		}
 	}
 
-	converter.WorkdirMu.RLock()
-	var tbd []string
-	threshold := time.Now().Add(-7 * 24 * time.Hour)
-	ds, _ := os.ReadDir(converter.Workdir)
-	for _, d := range ds {
-		if !d.Type().IsRegular() {
-			continue
-		}
-		nm := d.Name()
-		if !(strings.HasPrefix(nm, "result-") && strings.Contains(nm, "!") && strings.HasSuffix(nm, ".zip")) {
-			continue
-		}
-		if fi, err := d.Info(); err != nil {
-			_ = os.Remove(filepath.Join(converter.Workdir, nm))
-			continue
-		} else if fi.ModTime().Before(threshold) {
-			tbd = append(tbd, filepath.Join(converter.Workdir, nm))
-		}
-	}
-	converter.WorkdirMu.RUnlock()
-	if len(tbd) == 0 {
-		return nil
-	}
-
-	converter.WorkdirMu.Lock()
-	defer converter.WorkdirMu.Unlock()
-	for _, nm := range tbd {
-		logger.Log("msg", "remove", "file", nm)
-		_ = os.Remove(nm)
-	}
 	return nil
 }
 
