@@ -64,8 +64,8 @@ func (p convertParams) String() string {
 			return
 		}
 		b64 := base64.NewEncoder(base64.URLEncoding, &buf)
-		b64.Write([]byte(s))
-		b64.Close()
+		_, _ = b64.Write([]byte(s))
+		_ = b64.Close()
 	}
 	w64(p.ContentType)
 	buf.WriteByte('_')
@@ -218,7 +218,6 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 		if !alreadyCached {
 			_, _, _ = converter.Cache.Put(key, outFh)
 			_, err := outFh.Seek(0, 0)
-			converter.Cache.Trim()
 			return outFh, err
 		}
 		return outFh, nil
@@ -274,7 +273,6 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 			if _, err = fh.Seek(0, 0); err == nil {
 				resp.content = fh
 			}
-			converter.Cache.Trim()
 		}
 	}
 	logger.Log("msg", "end", "contentNil", resp.content == nil, "fn", resp.outFn, "error", err)

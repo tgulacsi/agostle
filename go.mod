@@ -44,7 +44,7 @@ require (
 )
 
 require (
-	github.com/UNO-SOFT/filecache v0.0.1 // indirect
+	github.com/UNO-SOFT/filecache v0.0.2 // indirect
 	github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3 // indirect
 	github.com/go-logfmt/logfmt v0.5.0 // indirect
 	github.com/goccy/go-json v0.7.3 // indirect
@@ -65,5 +65,7 @@ require (
 )
 
 go 1.17
+
+//replace github.com/UNO-SOFT/filecache => ../../UNO-SOFT/filecache
 
 //replace github.com/tgulacsi/go => ../go

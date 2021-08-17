@@ -35,6 +35,8 @@ github.com/UNO-SOFT/filecache v0.0.0-20210816065935-16e6176802a0 h1:TCNdsHi8T9MZ
 github.com/UNO-SOFT/filecache v0.0.0-20210816065935-16e6176802a0/go.mod h1:U0sX7xsfLvD+cFSaVIJlsij1kleyJFOpNwH/M7q8hrg=
 github.com/UNO-SOFT/filecache v0.0.1 h1:LRCjWG2Q8a7693y8ujKTGQOmOYa8HWW9qe9SiOUtGTc=
 github.com/UNO-SOFT/filecache v0.0.1/go.mod h1:U0sX7xsfLvD+cFSaVIJlsij1kleyJFOpNwH/M7q8hrg=
+github.com/UNO-SOFT/filecache v0.0.2 h1:SG9+JtYLuguKPI+e9o9tDfdDr1FnPM2c7jUrmmrYP+4=
+github.com/UNO-SOFT/filecache v0.0.2/go.mod h1:U0sX7xsfLvD+cFSaVIJlsij1kleyJFOpNwH/M7q8hrg=
 github.com/UNO-SOFT/otel v0.0.8 h1:4RzKBDeGKex+8wHD4BKmGrEkP+cAHoVznACjgLmGzjI=
 github.com/UNO-SOFT/otel v0.0.8/go.mod h1:46e3jXbo8C133HYmbXH7/MHb8k8C3Y41Pa2pZIOhHRo=
 github.com/UNO-SOFT/ulog v1.3.0 h1:yLtTd/jK/bpuhJRv6RnP5yJizGNBSW0KbbpcYCYoqNQ=

@@ -6,6 +6,7 @@ package converter
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -19,9 +20,11 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"context"
 
+	"github.com/UNO-SOFT/filecache"
 	"github.com/go-kit/kit/log"
 	"github.com/tgulacsi/go/iohlp"
 	"golang.org/x/net/html"
@@ -31,6 +34,101 @@ var ErrSkip = errors.New("skip this part")
 
 // Converter converts to Pdf (destination filename, source reader and source content-type)
 type Converter func(context.Context, string, io.Reader, string) error
+
+var (
+	lastTrimMu sync.Mutex
+	lastTrim   time.Time
+)
+
+func (c Converter) WithCache(ctx context.Context, destfn string, r io.Reader, sourceContentType, destContentType string) error {
+	logger := log.With(getLogger(ctx), "f", "convertWithCache", "sct", sourceContentType, "dct", destContentType, "dest", destfn)
+	hsh := filecache.NewHash()
+	if destContentType == "" {
+		destContentType = "application/pdf"
+	}
+	hsh.Write([]byte(sourceContentType + ":" + destContentType + ":"))
+	ifh, ok := r.(*os.File)
+	if ok && fileExists(ifh.Name()) {
+		if _, err := io.Copy(hsh, ifh); err != nil {
+			return err
+		}
+		if _, err := ifh.Seek(0, 0); err != nil {
+			return err
+		}
+	} else {
+		var err error
+		typ := sourceContentType
+		if i := strings.IndexByte(typ, '/'); i >= 0 {
+			typ = typ[i+1:]
+		}
+		if i := strings.IndexAny(typ, "; "); i >= 0 {
+			typ = typ[:i]
+		}
+		inpfn := destfn + "." + typ
+		ifh, err = os.Create(inpfn)
+		if err != nil {
+			return fmt.Errorf("create temp image file %s: %w", inpfn, err)
+		}
+		if _, err = io.Copy(io.MultiWriter(ifh, hsh), r); err != nil {
+			logger.Log("msg", "reading", "file", ifh.Name(), "error", err)
+		}
+		if err = ifh.Close(); err != nil {
+			logger.Log("msg", "writing", "dest", ifh.Name(), "error", err)
+		}
+		if ifh, err = os.Open(inpfn); err != nil {
+			return fmt.Errorf("open inp %s: %w", inpfn, err)
+		}
+		defer func() { _ = ifh.Close() }()
+		if !LeaveTempFiles {
+			defer func() { _ = unlink(inpfn, "convertWithCache") }()
+		}
+	}
+
+	key := filecache.ActionID(hsh.SumID())
+	if fn, _, err := Cache.GetFile(key); err == nil {
+		if fh, err := os.Open(fn); err == nil {
+			w, err := os.Create(destfn)
+			if err != nil {
+				return err
+			}
+			_, err = io.Copy(w, fh)
+			fh.Close()
+			w.Close()
+			if err == nil {
+				logger.Log("msg", "served from cache")
+				return nil
+			}
+			logger.Log("msg", "copy from cache", "source", fh.Name(), "dest", w.Name(), "error", err)
+			_ = os.Remove(fh.Name())
+			_ = os.Remove(w.Name())
+		}
+	}
+
+	if _, err := ifh.Seek(0, 0); err != nil {
+		return err
+	}
+	if err := c(ctx, destfn, ifh, sourceContentType); err != nil {
+		return err
+	}
+
+	ofh, err := os.Open(destfn)
+	if err != nil {
+		return err
+	}
+
+	lastTrimMu.Lock()
+	now := time.Now()
+	if lastTrim.IsZero() || lastTrim.Add(time.Hour).Before(now) {
+		lastTrim = now
+		Cache.Trim()
+	}
+	lastTrimMu.Unlock()
+
+	_, _, err = Cache.Put(key, ofh)
+	ofh.Close()
+	logger.Log("msg", "store into cache", "dest", ofh.Name(), "key", hex.EncodeToString(key[:]), "error", err)
+	return nil
+}
 
 // TextToPdf converts text (text/plain) to PDF
 func TextToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
@@ -60,12 +158,20 @@ func textToHTML(r io.Reader) io.Reader {
 
 // ImageToPdf convert image (image/...) to PDF
 func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	return Converter(imageToPdf).WithCache(ctx, destfn, r, contentType, "application/pdf")
+}
+func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	logger := getLogger(ctx)
 	logger.Log("msg", "converting image", "ct", contentType, "dest", destfn)
 	imgtyp := contentType[strings.Index(contentType, "/")+1:]
 	destfn = strings.TrimSuffix(destfn, ".pdf")
+
 	ifh, ok := r.(*os.File)
-	if !ok {
+	if !ok && fileExists(ifh.Name()) {
+		if _, err := ifh.Seek(0, 0); err != nil {
+			return err
+		}
+	} else {
 		var err error
 		inpfn := destfn + "." + imgtyp
 		ifh, err = os.Create(inpfn)
@@ -87,17 +193,11 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 		}
 	}
 	destfn = destfn + ".pdf"
-	if _, err := ifh.Seek(0, 0); err != nil {
-		return err
-	}
-	if !fileExists(ifh.Name()) {
-		Log("msg", "Input file not exist!", "file", ifh.Name())
-		return fmt.Errorf("input file %s not exists", ifh.Name())
-	}
 	w, err := os.Create(destfn)
 	if err != nil {
 		return err
 	}
+
 	if err = ImageToPdfGm(ctx, w, ifh, contentType); err != nil {
 		Log("msg", "ImageToPdfGm", "error", err)
 	}
@@ -110,6 +210,9 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 
 // OfficeToPdf converts other to PDF with LibreOffice
 func OfficeToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	return Converter(officeToPdf).WithCache(ctx, destfn, r, contentType, "application/pdf")
+}
+func officeToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	getLogger(ctx).Log("msg", "Converting into", "ct", contentType, "dest", destfn)
 	destfn = strings.TrimSuffix(destfn, ".pdf")
 	inpfn := destfn + ".raw"
@@ -168,6 +271,9 @@ func MPRelatedToPdf(ctx context.Context, destfn string, r io.Reader, contentType
 
 // HTMLToPdf converts HTML (text/html) to PDF
 func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	return Converter(htmlToPdf).WithCache(ctx, destfn, r, contentType, "application/pdf")
+}
+func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	logger := log.With(getLogger(ctx), "func", "HTMLToPdf", "dest", destfn)
 	var inpfn string
 	if fh, ok := r.(*os.File); ok && fileExists(fh.Name()) {
@@ -267,13 +373,16 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 }
 
 func OutlookToEML(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	return Converter(outlookToEML).WithCache(ctx, destfn, r, contentType, messageRFC822)
+}
+func outlookToEML(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	rc, err := NewOLEStorageReader(ctx, r)
 	Log("msg", "OutlookToEML", "ct", contentType, "error", err)
 	if err != nil {
 		return err
 	}
 	defer rc.Close()
-	return MailToPdfZip(ctx, destfn, rc, messageRFC822)
+	return Converter(MailToPdfZip).WithCache(ctx, destfn, rc, messageRFC822, messageRFC822)
 }
 
 var reHtmlImg = regexp.MustCompile(`(?i)(<img[^>]*/?>)`)
