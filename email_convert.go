@@ -29,7 +29,7 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/filecache"
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/mholt/archiver"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/iohlp"

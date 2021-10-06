@@ -1,3 +1,4 @@
+//go:build pdfdirect
 // +build pdfdirect
 
 // Copyright 2017 The Agostle Authors. All rights reserved.

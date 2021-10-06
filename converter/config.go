@@ -14,7 +14,7 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/filecache"
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	config "github.com/stvp/go-toml-config"
 	"github.com/tgulacsi/go/osgroup"
 )

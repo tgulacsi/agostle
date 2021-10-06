@@ -15,8 +15,8 @@ import (
 
 	"github.com/tgulacsi/agostle/converter"
 
-	"github.com/go-kit/kit/log"
 	kithttp "github.com/go-kit/kit/transport/http"
+	"github.com/go-kit/log"
 )
 
 var pdfMergeServer = kithttp.NewServer(

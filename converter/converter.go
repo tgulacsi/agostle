@@ -25,7 +25,7 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/filecache"
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/tgulacsi/go/iohlp"
 	"golang.org/x/net/html"
 )

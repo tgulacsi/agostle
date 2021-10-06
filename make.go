@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Copyright 2017 The Agostle Authors. All rights reserved.
@@ -14,7 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 )
 
 func main() {

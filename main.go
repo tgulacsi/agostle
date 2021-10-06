@@ -24,7 +24,7 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/ulog"
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	tufclient "github.com/theupdateframework/go-tuf/client"
 	tufdata "github.com/theupdateframework/go-tuf/data"
