@@ -1,6 +1,6 @@
 linters-settings:
   errcheck:
-    ignore: "fmt:.*,github.com/go-kit/log:.*,database/sql:Rollback,github.com/UNO-SOFT/ulog:.*"
+    ignore: fmt:.*,github.com/go-kit/log:.*,github.com/go-kit/kit/log:.*,database/sql:Rollback,github.com/UNO-SOFT/ulog:.*
 
 linters:
   enable:
