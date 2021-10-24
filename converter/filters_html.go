@@ -19,6 +19,7 @@ import (
 	"golang.org/x/text/encoding/htmlindex"
 	"golang.org/x/text/transform"
 
+	"github.com/UNO-SOFT/filecache"
 	"github.com/tgulacsi/go/i18nmail"
 )
 
@@ -69,31 +70,45 @@ func HTMLPartFilter(ctx context.Context,
 		}
 		tbd[fn] = struct{}{}
 		destfn := filepath.Join(wd, filepath.Base(fn)+".pdf")
+		hsh, err := hashFile(fn)
+		if err != nil {
+			return destfn, err
+		}
+		key := filecache.NewActionID(append(hsh.Sum(nil), ".html .pdf"...))
+		if cfn, _, err := Cache.GetFile(key); err == nil {
+			if err = copyFile(cfn, destfn); err == nil {
+				return destfn, nil
+			}
+		}
 		fh, err := os.Open(fn)
 		if err != nil {
 			err = fmt.Errorf("open html %s: %w", fn, err)
 		} else {
 			err = converter(ctx, destfn, fh, textHtml)
 			fh.Close()
-			if err != nil {
-				err = fmt.Errorf("converting %s to %s: %w", fn, destfn, err)
-			}
-		}
-		if err != nil {
-			logger.Log("msg", "html2pdf", "error", err)
-			if alter != "" && aConverter != nil {
-				logger.Log("msg", "html2pdf using alternative content "+alter)
-				if fh, err = os.Open(alter); err != nil {
-					err = fmt.Errorf("open txt %s: %w", alter, err)
-				} else {
-					err = aConverter(ctx, destfn, fh, textPlain)
-					fh.Close()
-					if err != nil {
-						err = fmt.Errorf("converting %s to %s: %w", alter, destfn, err)
-					}
+			if err == nil {
+				fh, err := os.Open(destfn)
+				if err == nil {
+					_, _, _ = Cache.Put(key, fh)
+					_ = fh.Close()
 				}
-				alter, aConverter = "", nil
+				return destfn, err
 			}
+			err = fmt.Errorf("converting %s to %s: %w", fn, destfn, err)
+		}
+		logger.Log("msg", "html2pdf", "error", err)
+		if alter != "" && aConverter != nil {
+			logger.Log("msg", "html2pdf using alternative content "+alter)
+			if fh, err = os.Open(alter); err != nil {
+				err = fmt.Errorf("open txt %s: %w", alter, err)
+			} else {
+				err = aConverter(ctx, destfn, fh, textPlain)
+				fh.Close()
+				if err != nil {
+					err = fmt.Errorf("converting %s to %s: %w", alter, destfn, err)
+				}
+			}
+			alter, aConverter = "", nil
 		}
 		return destfn, err
 	}
