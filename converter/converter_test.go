@@ -6,9 +6,14 @@ package converter
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
+
+	"github.com/UNO-SOFT/ulog"
+	"github.com/go-kit/log"
 )
 
 func TestTextToHTML(t *testing.T) {
@@ -25,4 +30,23 @@ func TestTextToHTML(t *testing.T) {
 	if !bytes.Equal(buf.Bytes(), []byte(wanted)) {
 		t.Errorf("mismatch:\n\tgot\n%s\n\twanted\n%s", buf.String(), wanted)
 	}
+}
+
+func setTestLogger(t *testing.T) func() {
+	SetLogger(ulog.NewTestLogger(t))
+	return func() { SetLogger(log.NewNopLogger()) }
+}
+
+var testDir string
+
+func TestMain(m *testing.M) {
+	var err error
+	testDir, err = os.MkdirTemp("", "agostle-test-")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(13)
+	}
+	code := m.Run()
+	_ = os.RemoveAll(testDir)
+	os.Exit(code)
 }

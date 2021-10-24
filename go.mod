@@ -3,7 +3,7 @@ module github.com/tgulacsi/agostle
 require (
 	bitbucket.org/zombiezen/gopdf v0.0.0-20190421151423-ab3d04824694
 	github.com/UNO-SOFT/otel v0.1.2
-	github.com/UNO-SOFT/ulog v1.3.1
+	github.com/UNO-SOFT/ulog v1.3.2-0.20211024070009-3dfe1efbe5d6
 	github.com/VictoriaMetrics/metrics v1.15.2
 	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.2.0
@@ -49,6 +49,7 @@ require (
 )
 
 require (
+	github.com/KarpelesLab/reflink v0.0.2 // indirect
 	github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/goccy/go-json v0.7.9 // indirect
@@ -74,3 +75,4 @@ go 1.17
 //replace github.com/UNO-SOFT/filecache => ../../UNO-SOFT/filecache
 
 //replace github.com/tgulacsi/go => ../go
+//replace github.com/UNO-SOFT/ulog => ../../UNO-SOFT/ulog

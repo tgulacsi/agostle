@@ -6,7 +6,6 @@ package converter
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,20 +21,6 @@ import (
 var accented = `
 Árvíztűrő
  tükörfúrógép`
-
-var testDir string
-
-func TestMain(m *testing.M) {
-	var err error
-	testDir, err = os.MkdirTemp("", "agostle-test-")
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(13)
-	}
-	code := m.Run()
-	_ = os.RemoveAll(testDir)
-	os.Exit(code)
-}
 
 func tempFile(fn string) (*os.File, error) {
 	fn = filepath.Base(fn)

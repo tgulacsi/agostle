@@ -444,7 +444,7 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 	}
 	outfn := filepath.Join(outDir, filepath.Base(nakeFilename(inpfn))+".pdf")
 	if _, err := os.Stat(outfn); err != nil {
-		return fmt.Errorf("loffice no output for %s: %w", filepath.Base(inpfn), err)
+		return fmt.Errorf("%v no output for %s: %w", cmd.Args, filepath.Base(inpfn), err)
 	}
 	return nil
 }

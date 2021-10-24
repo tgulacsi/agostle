@@ -7,7 +7,6 @@ package converter
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"reflect"
@@ -17,33 +16,37 @@ import (
 	"github.com/kylelemons/godebug/diff"
 )
 
+const pdfFormExample = "testdata/OoPdfFormExample.pdf"
+
 func TestDumpFields(t *testing.T) {
+	defer setTestLogger(t)()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	fields, err := PdfDumpFields(ctx, "testdata/f1040.pdf")
+	fields, err := PdfDumpFields(ctx, pdfFormExample)
 	cancel()
 	if err != nil {
 		t.Fatalf("PdfDumpFields: %v", err)
 	}
-	t.Logf("fields=%v", fields)
+	t.Logf("fields=%q", fields)
 }
 
 func TestGetFdf(t *testing.T) {
+	defer setTestLogger(t)()
 	var err error
-	if Workdir, err = ioutil.TempDir("", "agostle-"); err != nil {
+	if Workdir, err = os.MkdirTemp(testDir, "agostle-"); err != nil {
 		t.Fatalf("tempdir for Workdir: %v", err)
 	}
 	defer os.RemoveAll(Workdir)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	s := time.Now()
-	fp1, err := getFdf(ctx, "testdata/f1040.pdf")
+	fp1, err := getFdf(ctx, pdfFormExample)
 	cancel()
-	t.Logf("PDF -> FDF vanilla route: %s", time.Since(s))
+	t.Logf("PDF -> FDF vanilla route: %s (%d fields)", time.Since(s), len(fp1.Fields))
 	if err != nil {
 		t.Errorf("getFdf: %v", err)
 	}
-	if len(fp1.Fields) != 214 {
-		t.Errorf("getFdf: got %d, awaited %d fields.", len(fp1.Fields), 214)
+	if len(fp1.Fields) != 4 {
+		t.Errorf("getFdf: got %d, awaited %d fields.", len(fp1.Fields), 4)
 	}
 	var buf1 bytes.Buffer
 	if _, err = fp1.WriteTo(&buf1); err != nil {
@@ -52,7 +55,7 @@ func TestGetFdf(t *testing.T) {
 
 	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	s = time.Now()
-	fp2, err := getFdf(ctx, "testdata/f1040.pdf")
+	fp2, err := getFdf(ctx, pdfFormExample)
 	cancel()
 	t.Logf("gob -> FDF route: %s", time.Since(s))
 	if err != nil {
@@ -388,7 +391,7 @@ trailer
 		t.Errorf("WriteTo: %v", err)
 	}
 
-	df := diff.Diff(buf.String(), `%FDF-1.2
+	if df := diff.Diff(`%FDF-1.2
 %âăĎÓ
 1 0 obj
 <<
@@ -680,8 +683,9 @@ trailer
 /Root 1 0 R
 >>
 %%EOF
-`)
-	if df != "" {
+`,
+		buf.String(),
+	); df != "" {
 		t.Errorf("mismatch: %s", df)
 	}
 }

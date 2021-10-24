@@ -24,6 +24,8 @@ github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym
 github.com/DataDog/zstd v1.4.1/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
 github.com/DataDog/zstd v1.4.5/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
 github.com/FiloSottile/b2 v0.0.0-20170207175032-b197f7a2c317/go.mod h1:3DBotXAz3n/g1px/orhrK7xBJLjfaJRRrsEAJiUYEtY=
+github.com/KarpelesLab/reflink v0.0.2 h1:PK0nDUsk2eEdIvMOUzh2TI35GY5KYmTdqdCCwd3BIz0=
+github.com/KarpelesLab/reflink v0.0.2/go.mod h1:mB+2afhyn+eZTMFSH1gXunrgArTsiUBzfoAy0X2fatA=
 github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible/go.mod h1:r7JcOSlj0wfOMncg0iLm8Leh48TZaKVeNIfJntJ2wa0=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/PuerkitoBio/goquery v1.5.0/go.mod h1:qD2PgZ9lccMbQlc7eEOjaeRlFQON7xY8kdmcsrnKqMg=
@@ -45,6 +47,8 @@ github.com/UNO-SOFT/ulog v1.3.0 h1:yLtTd/jK/bpuhJRv6RnP5yJizGNBSW0KbbpcYCYoqNQ=
 github.com/UNO-SOFT/ulog v1.3.0/go.mod h1:ZqOYqL5/UbbOeyELT8UTTls4Fni6F3cfqshPs7/+he8=
 github.com/UNO-SOFT/ulog v1.3.1 h1:Zd1cePSMvEa+LadalIDVng4mhU/FWpM6K6iffxW+I+Q=
 github.com/UNO-SOFT/ulog v1.3.1/go.mod h1:x14kTiR+nTWQtoeaGaOwK+oLKCde/ajXVIsgV204fkI=
+github.com/UNO-SOFT/ulog v1.3.2-0.20211024070009-3dfe1efbe5d6 h1:1mj8xlxZMTTcJsghYdZP2L/5uu2fBlfSTAvTRqUv+4U=
+github.com/UNO-SOFT/ulog v1.3.2-0.20211024070009-3dfe1efbe5d6/go.mod h1:x14kTiR+nTWQtoeaGaOwK+oLKCde/ajXVIsgV204fkI=
 github.com/VictoriaMetrics/metrics v1.15.2 h1:w/GD8L9tm+gvx1oZvAofRRXwammiicdI0jgLghA2Gdo=
 github.com/VictoriaMetrics/metrics v1.15.2/go.mod h1:Z1tSfPfngDn12bTfZSCqArT3OPY3u88J12hSoOhuiRE=
 github.com/VividCortex/gohistogram v1.0.0/go.mod h1:Pf5mBqqDxYaXu3hDrrU+w6nw50o/4+TcAqDqk/vUH7g=

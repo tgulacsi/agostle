@@ -5,7 +5,6 @@
 package converter
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/sha1"
 	"encoding/base64"
@@ -13,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -557,32 +555,19 @@ func PdfRewrite(ctx context.Context, destfn, srcfn string) error {
 
 // PdfDumpFields dumps the field names from the given PDF.
 func PdfDumpFields(ctx context.Context, inpfn string) ([]string, error) {
-	pr, pw := io.Pipe()
+	var buf bytes.Buffer
 	cmd := exec.CommandContext(ctx, *ConfPdftk, inpfn, "dump_data_fields_utf8", "output", "-")
-	cmd.Stdout = pw
-	var fields []string
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scan := bufio.NewScanner(pr)
-		for scan.Scan() {
-			if bytes.HasPrefix(scan.Bytes(), []byte("FieldName: ")) {
-				fields = append(fields, string(bytes.TrimSpace(scan.Bytes()[11:])))
-			}
-		}
-		if scan.Err() != nil {
-			Log("msg", "scan", "error", scan.Err())
-		}
-	}()
-	err := cmd.Run()
-	if err != nil {
-		_ = pw.CloseWithError(err)
-		return fields, fmt.Errorf("pdftk generate_fdf: %w", err)
+	cmd.Stdout = &buf
+	if err := cmd.Run(); err != nil {
+		return nil, err
 	}
-	pw.Close()
-	wg.Wait()
-	return fields, err
+	var fields []string
+	for _, line := range bytes.Split(buf.Bytes(), []byte("\n")) {
+		if bytes.HasPrefix(line, []byte("FieldName: ")) {
+			fields = append(fields, string(bytes.TrimSpace(line[11:])))
+		}
+	}
+	return fields, nil
 }
 
 // PdfDumpFdf dumps the FDF from the given PDF.
@@ -635,26 +620,23 @@ func getFdf(ctx context.Context, inpfn string) (fieldParts, error) {
 		Log("msg", "decoding", "file", f.Name(), "error", err)
 	}
 
-	fdf, fdfErr := ioutil.ReadFile(fdfFn)
+	fdf, fdfErr := os.ReadFile(fdfFn)
 	if fdfErr != nil {
-		var pe *os.PathError
-		if !errors.Is(fdfErr, pe) {
-			Log("msg", "read fdf", "file", fdfFn, "error", fdfErr)
-			os.Remove(fdfFn)
-		} else {
-			fillFdfMu.Lock()
-			err = PdfDumpFdf(ctx, fdfFn, inpfn)
-			fillFdfMu.Unlock()
-			if err != nil {
-				return fp, err
-			}
-			if fdf, err = ioutil.ReadFile(fdfFn); err != nil {
-				return fp, err
-			}
+		_ = os.Remove(fdfFn)
+
+		fillFdfMu.Lock()
+		err = PdfDumpFdf(ctx, fdfFn, inpfn)
+		fillFdfMu.Unlock()
+		if err != nil {
+			return fp, err
+		}
+		if fdf, err = os.ReadFile(fdfFn); err != nil {
+			return fp, err
 		}
 	}
 
 	fp = splitFdf(fdf)
+	//Log("msg", "fdf", "len", len(fdf), "split", fp)
 
 	f, err := os.OpenFile(fdfFn+".gob", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
@@ -668,7 +650,7 @@ func getFdf(ctx context.Context, inpfn string) (fieldParts, error) {
 		} else {
 			if err = f.Close(); err != nil {
 				Log("msg", "close", "file", f.Name(), "error", err)
-				os.Remove(f.Name())
+				_ = os.Remove(f.Name())
 			}
 		}
 	}
@@ -704,7 +686,10 @@ func (fp fieldParts) WriteTo(w io.Writer) (n int64, err error) {
 			break
 		}
 		_, _ = cew.Write(part)
-		val := fp.Values[fp.Fields[i]]
+		var val string
+		if i < len(fp.Fields) {
+			val = fp.Values[fp.Fields[i]]
+		}
 		if len(val) == 0 {
 			_, _ = cew.Write(fieldPartV)
 		} else {
@@ -736,14 +721,15 @@ func (fp fieldParts) Set(key, value string) error {
 
 func splitFdf(fdf []byte) fieldParts {
 	var fp fieldParts
+	shortFieldPartV := []byte("\n/V ()\n")
 	for {
-		i := bytes.Index(fdf, fieldPartV)
+		i := bytes.Index(fdf, shortFieldPartV)
 		if i < 0 {
 			fp.Parts = append(fp.Parts, fdf)
 			break
 		}
-		fp.Parts = append(fp.Parts, fdf[:i])
-		fdf = fdf[i+len(fieldPartV):]
+		fp.Parts = append(fp.Parts, bytes.TrimSuffix(fdf[:i], []byte("\n<<")))
+		fdf = fdf[i+len(shortFieldPartV):]
 	}
 	fp.Fields = make([]string, 0, len(fp.Parts)-1)
 	fp.Values = make(map[string]string, len(fp.Parts)-1)
@@ -752,7 +738,7 @@ func splitFdf(fdf []byte) fieldParts {
 		if i < 0 {
 			continue
 		}
-		j := bytes.Index(part[i:], []byte(")\n>>"))
+		j := bytes.Index(part[i:], []byte(")\n"))
 		if j < 0 {
 			continue
 		}
