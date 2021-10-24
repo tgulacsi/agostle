@@ -6,6 +6,7 @@ package converter
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -46,6 +47,8 @@ func TestMain(m *testing.M) {
 		fmt.Println(err)
 		os.Exit(13)
 	}
+	*ConfWorkdir = testDir
+	_ = LoadConfig(context.Background(), "")
 	code := m.Run()
 	_ = os.RemoveAll(testDir)
 	os.Exit(code)

@@ -6,7 +6,6 @@
 package converter
 
 import (
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -191,14 +190,4 @@ func getLogger(ctx context.Context) log.Logger {
 
 func Log(keyvals ...interface{}) {
 	globalLogger.Log(keyvals...)
-}
-
-func hashFile(fn string) (hsh filecache.Hash, err error) {
-	fh, err := os.Open(fn)
-	if err != nil {
-		return hsh, err
-	}
-	defer fh.Close()
-	_, err = io.Copy(hsh, fh)
-	return hsh, err
 }

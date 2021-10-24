@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"os"
@@ -86,22 +85,11 @@ func (c Converter) WithCache(ctx context.Context, destfn string, r io.Reader, so
 
 	key := filecache.ActionID(hsh.SumID())
 	if fn, _, err := Cache.GetFile(key); err == nil {
-		if fh, err := os.Open(fn); err == nil {
-			w, err := os.Create(destfn)
-			if err != nil {
-				return err
-			}
-			_, err = io.Copy(w, fh)
-			fh.Close()
-			w.Close()
-			if err == nil {
-				logger.Log("msg", "served from cache")
-				return nil
-			}
-			logger.Log("msg", "copy from cache", "source", fh.Name(), "dest", w.Name(), "error", err)
-			_ = os.Remove(fh.Name())
-			_ = os.Remove(w.Name())
+		if err = copyFile(fn, destfn); err == nil {
+			logger.Log("msg", "served from cache")
+			return nil
 		}
+		logger.Log("msg", "copy from cache", "source", fn, "dest", destfn, "error", err)
 	}
 
 	if _, err := ifh.Seek(0, 0); err != nil {
@@ -293,7 +281,7 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 		}
 	} else {
 
-		b, err := ioutil.ReadFile(inpfn)
+		b, err := os.ReadFile(inpfn)
 		if err == nil {
 			var f func(*html.Node) *html.Node
 			f = func(n *html.Node) *html.Node {
@@ -348,7 +336,7 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 				}
 			}
 
-			if err = ioutil.WriteFile(inpfn, b, 0644); err != nil {
+			if err = os.WriteFile(inpfn, b, 0644); err != nil {
 				return fmt.Errorf("overwrite %s: %w", inpfn, err)
 			}
 		}
