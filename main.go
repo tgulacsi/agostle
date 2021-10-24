@@ -50,7 +50,7 @@ func init() {
 	stdlog.SetFlags(0)
 	stdlog.SetOutput(log.NewStdlibAdapter(logger))
 
-	converter.Logger = log.With(logger, "lib", "converter")
+	converter.SetLogger(log.With(logger, "lib", "converter"))
 
 	sLog := stdlog.New(log.NewStdlibAdapter(log.With(logger, "lib", "i18nmail")), "", 0)
 	i18nmail.Debugf, i18nmail.Infof = sLog.Printf, sLog.Printf

@@ -6,6 +6,7 @@
 package converter
 
 import (
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,7 +20,9 @@ import (
 	"github.com/tgulacsi/go/osgroup"
 )
 
-var Logger log.Logger
+var globalLogger = &log.SwapLogger{}
+
+func SetLogger(logger log.Logger) { globalLogger.Swap(logger) }
 
 func lookPath(fn string) string {
 	path, err := exec.LookPath(fn)
@@ -183,15 +186,19 @@ func getLogger(ctx context.Context) log.Logger {
 			return logger
 		}
 	}
-	if Logger == nil {
-		return log.NewNopLogger()
-	}
-	return Logger
+	return globalLogger
 }
 
 func Log(keyvals ...interface{}) {
-	if Logger == nil {
-		return
+	globalLogger.Log(keyvals...)
+}
+
+func hashFile(fn string) (hsh filecache.Hash, err error) {
+	fh, err := os.Open(fn)
+	if err != nil {
+		return hsh, err
 	}
-	Logger.Log(keyvals...)
+	defer fh.Close()
+	_, err = io.Copy(hsh, fh)
+	return hsh, err
 }
