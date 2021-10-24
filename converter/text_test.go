@@ -6,8 +6,8 @@ package converter
 
 import (
 	"bytes"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,24 +23,26 @@ var accented = `
 Árvíztűrő
  tükörfúrógép`
 
+var testDir string
+
+func TestMain(m *testing.M) {
+	var err error
+	testDir, err = os.MkdirTemp("", "agostle-test-")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(13)
+	}
+	code := m.Run()
+	_ = os.RemoveAll(testDir)
+	os.Exit(code)
+}
+
 func tempFile(fn string) (*os.File, error) {
 	fn = filepath.Base(fn)
 	ext := filepath.Ext(fn)
 	bn := fn[:len(fn)-len(ext)]
 
-	fh, err := ioutil.TempFile("", bn)
-	if err != nil {
-		return nil, err
-	}
-	if ext == "" {
-		return fh, nil
-	}
-	if err = os.Rename(fh.Name(), fh.Name()+ext); err != nil {
-		fh.Close()
-		os.Remove(fh.Name())
-		return nil, err
-	}
-	return fh, nil
+	return os.CreateTemp(testDir, bn+"-*"+ext)
 }
 
 func TestText(t *testing.T) {
@@ -96,6 +98,7 @@ func TestLoHtmlPdf(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Logf("out=%q", out.Name())
 	defer os.Remove(out.Name())
 	defer out.Close()
 
@@ -105,9 +108,11 @@ func TestLoHtmlPdf(t *testing.T) {
 <body>`)
 	_, _ = io.WriteString(out, `<p>`+accented+`</p>`)
 	_, _ = io.WriteString(out, `</body></html>`)
-	out.Close()
+	if err := out.Close(); err != nil {
+		t.Fatal(err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	err = lofficeConvert(ctx, "/tmp", "/tmp/b.html")
+	err = lofficeConvert(ctx, testDir, out.Name())
 	cancel()
 	if err != nil {
 		t.Errorf("error converting with loffice: %s", err)
