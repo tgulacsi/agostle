@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net/url"
 	"os"
@@ -21,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/KarpelesLab/reflink"
 	"github.com/tgulacsi/go/temp"
 )
 
@@ -51,19 +51,7 @@ func copyFile(from, to string) error {
 	if from == to {
 		return nil
 	}
-	ifh, err := os.Open(from)
-	if err != nil {
-		return fmt.Errorf("copy cannot open %s for reading: %w", from, err)
-	}
-	defer func() { _ = ifh.Close() }()
-	ofh, err := os.Create(to)
-	if err != nil {
-		return fmt.Errorf("copy cannot open %s for writing: %w", to, err)
-	}
-	if _, err = io.Copy(ofh, ifh); err != nil {
-		return fmt.Errorf("error copying from %s to %s: %w", from, to, err)
-	}
-	return nil
+	return reflink.Auto(from, to)
 }
 
 func openOut(destfn string) (*os.File, error) {
@@ -99,7 +87,7 @@ func MakeFileLike(r io.Reader) FileLike {
 	case *io.SectionReader:
 		return ReadCloserFileLike{
 			Reader: r,
-			Closer: ioutil.NopCloser(nil),
+			Closer: io.NopCloser(nil),
 			FileInfo: dummyFileInfo{
 				name: fmt.Sprintf("file-like-%p", r),
 				size: r.Size(),
@@ -109,7 +97,7 @@ func MakeFileLike(r io.Reader) FileLike {
 	case *bytes.Buffer:
 		return ReadCloserFileLike{
 			Reader: bytes.NewReader(r.Bytes()),
-			Closer: ioutil.NopCloser(nil),
+			Closer: io.NopCloser(nil),
 			FileInfo: dummyFileInfo{
 				name: fmt.Sprintf("file-like-%p", r),
 				size: int64(r.Len()),
@@ -119,7 +107,7 @@ func MakeFileLike(r io.Reader) FileLike {
 	}
 	c, ok := r.(io.Closer)
 	if !ok {
-		c = ioutil.NopCloser(nil)
+		c = io.NopCloser(nil)
 	}
 	rc := ReadCloserFileLike{
 		Reader: r,
