@@ -3,10 +3,10 @@ module github.com/tgulacsi/agostle
 require (
 	bitbucket.org/zombiezen/gopdf v0.0.0-20190421151423-ab3d04824694
 	github.com/UNO-SOFT/otel v0.1.2
-	github.com/UNO-SOFT/ulog v1.3.2-0.20211024070009-3dfe1efbe5d6
+	github.com/UNO-SOFT/ulog v1.4.0
 	github.com/VictoriaMetrics/metrics v1.15.2
 	github.com/benbjohnson/clock v1.1.0 // indirect
-	github.com/coreos/go-systemd/v22 v22.2.0
+	github.com/coreos/go-systemd/v22 v22.3.2
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/frankban/quicktest v1.11.3 // indirect
 	github.com/gabriel-vasile/mimetype v1.1.2

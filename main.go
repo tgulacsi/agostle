@@ -24,6 +24,7 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/ulog"
+	"github.com/UNO-SOFT/ulog/ulogjournal"
 	"github.com/go-kit/log"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	tufclient "github.com/theupdateframework/go-tuf/client"
@@ -42,7 +43,7 @@ const defaultUpdateURL = "https://www.unosoft.hu/tuf"
 
 var (
 	swLogger = &log.SwapLogger{}
-	logger   = ulog.New()
+	logger   = ulog.WithWriter(ulogjournal.Maybe(os.Stderr))
 )
 
 func init() {
