@@ -51,6 +51,8 @@ github.com/UNO-SOFT/ulog v1.3.2-0.20211024070009-3dfe1efbe5d6 h1:1mj8xlxZMTTcJsg
 github.com/UNO-SOFT/ulog v1.3.2-0.20211024070009-3dfe1efbe5d6/go.mod h1:x14kTiR+nTWQtoeaGaOwK+oLKCde/ajXVIsgV204fkI=
 github.com/UNO-SOFT/ulog v1.4.0 h1:gbolCvmDp9JeDhX97cvsEny0iMAs7lO0wKVkjDK+KxI=
 github.com/UNO-SOFT/ulog v1.4.0/go.mod h1:YfDdwu9hUvkU4UtFukSUqQcaAmiJdORNa7o12mC26QY=
+github.com/UNO-SOFT/ulog v1.4.1 h1:FSALEWLg4OgxxH5o65B33Ac5ODOEwJQBp+zY95og4pg=
+github.com/UNO-SOFT/ulog v1.4.1/go.mod h1:YfDdwu9hUvkU4UtFukSUqQcaAmiJdORNa7o12mC26QY=
 github.com/VictoriaMetrics/metrics v1.15.2 h1:w/GD8L9tm+gvx1oZvAofRRXwammiicdI0jgLghA2Gdo=
 github.com/VictoriaMetrics/metrics v1.15.2/go.mod h1:Z1tSfPfngDn12bTfZSCqArT3OPY3u88J12hSoOhuiRE=
 github.com/VividCortex/gohistogram v1.0.0/go.mod h1:Pf5mBqqDxYaXu3hDrrU+w6nw50o/4+TcAqDqk/vUH7g=
