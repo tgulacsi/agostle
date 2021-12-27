@@ -24,7 +24,6 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/ulog"
-	"github.com/UNO-SOFT/ulog/ulogjournal"
 	"github.com/go-kit/log"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	tufclient "github.com/theupdateframework/go-tuf/client"
@@ -41,22 +40,7 @@ import (
 
 const defaultUpdateURL = "https://www.unosoft.hu/tuf"
 
-var (
-	swLogger = &log.SwapLogger{}
-	logger   = ulog.WithWriter(ulogjournal.Maybe(os.Stderr))
-)
-
-func init() {
-	swLogger.Swap(log.NewLogfmtLogger(os.Stderr))
-	stdlog.SetFlags(0)
-	stdlog.SetOutput(log.NewStdlibAdapter(logger))
-
-	converter.SetLogger(log.With(logger, "lib", "converter"))
-
-	sLog := stdlog.New(log.NewStdlibAdapter(log.With(logger, "lib", "i18nmail")), "", 0)
-	i18nmail.Debugf, i18nmail.Infof = sLog.Printf, sLog.Printf
-
-}
+var logger = &log.SwapLogger{}
 
 func main() {
 	if err := Main(); err != nil {
@@ -72,7 +56,17 @@ var (
 )
 
 func newFlagSet(name string) *flag.FlagSet { return flag.NewFlagSet(name, flag.ContinueOnError) }
+
 func Main() error {
+	logger.Swap(ulog.New())
+	stdlog.SetFlags(0)
+	stdlog.SetOutput(log.NewStdlibAdapter(logger))
+
+	converter.SetLogger(log.With(logger, "lib", "converter"))
+
+	sLog := stdlog.New(log.NewStdlibAdapter(log.With(logger, "lib", "i18nmail")), "", 0)
+	i18nmail.Debugf, i18nmail.Infof = sLog.Printf, sLog.Printf
+
 	updateURL := defaultUpdateURL
 	var (
 		verbose, leaveTempFiles bool
@@ -188,7 +182,7 @@ func Main() error {
 			if listenAddr == "" && len(listeners) == 0 {
 				listenAddr = *converter.ConfListenAddr
 			}
-			logger.Log("listeners", listeners, "listenAddr", listenAddr)
+			logger.Log("listeners", len(listeners), "listenAddr", listenAddr)
 
 			grp, grpCtx := errgroup.WithContext(ctx)
 			srvs := make([]*http.Server, 0, len(listeners)+1)
@@ -310,7 +304,7 @@ func logToFile(fn string) (func() error, error) {
 		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
 	logger.Log("msg", "Will log to", "file", fh.Name())
-	swLogger.Swap(log.NewLogfmtLogger(io.MultiWriter(os.Stderr, fh)))
+	logger.Swap(log.NewLogfmtLogger(io.MultiWriter(os.Stderr, fh)))
 	logger.Log("msg", "Logging to", "file", fh.Name())
 	return fh.Close, nil
 }

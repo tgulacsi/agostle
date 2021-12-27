@@ -52,6 +52,13 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 	}
 
 	var mux http.ServeMux
+	s := &http.Server{
+		Addr:         address,
+		ReadTimeout:  300 * time.Second,
+		WriteTimeout: 1800 * time.Second,
+		Handler:      otel.HTTPMiddleware(otel.GlobalTracer("unosoft.hu/aodb"), &mux),
+	}
+
 	//mux.Handle("/debug/pprof", pprof.Handler)
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) { metrics.WritePrometheus(w, true) })
 
@@ -81,7 +88,7 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 	H("/email/convert", emailConvertServer.ServeHTTP)
 	H("/convert", emailConvertServer.ServeHTTP)
 	H("/outlook", outlookToEmailServer.ServeHTTP)
-	mux.Handle("/_admin/stop", http.HandlerFunc(adminStopHandler))
+	mux.Handle("/_admin/stop", mkAdminStopHandler(s))
 	mux.Handle("/", http.DefaultServeMux)
 
 	tp, err := otel.LogTraceProvider(logger.Log)
@@ -90,12 +97,7 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 	}
 	otel.SetGlobalTraceProvider(tp)
 
-	return &http.Server{
-		Addr:         address,
-		ReadTimeout:  300 * time.Second,
-		WriteTimeout: 1800 * time.Second,
-		Handler:      otel.HTTPMiddleware(otel.GlobalTracer("unosoft.hu/aodb"), &mux),
-	}
+	return s
 }
 
 type ctxKey string
@@ -168,15 +170,19 @@ func dumpRequest(ctx context.Context, req *http.Request) context.Context {
 	return ctx
 }
 
-func adminStopHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Refresh", "3;URL=/")
-	w.WriteHeader(200)
-	fmt.Fprintf(w, `Stopping...`)
-	go func() {
-		time.Sleep(time.Millisecond * 500)
-		logger.Log("msg", "SUICIDE for ask!")
-		os.Exit(3)
-	}()
+func mkAdminStopHandler(s interface{ Shutdown(context.Context) error }) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Refresh", "3;URL=/")
+		w.WriteHeader(200)
+		logger.Log("msg", "/_admin/stop", "header", r.Header, "from", r.RemoteAddr)
+		fmt.Fprintf(w, `Stopping...`)
+		s.Shutdown(r.Context())
+		go func() {
+			time.Sleep(time.Millisecond * 500)
+			logger.Log("msg", "SUICIDE for ask!")
+			os.Exit(3)
+		}()
+	})
 }
 
 type reqFile struct {
