@@ -27,7 +27,7 @@ import (
 	"github.com/tgulacsi/go/iohlp"
 
 	//"github.com/tgulacsi/go/uncompr"
-	"github.com/mholt/archiver"
+	"github.com/mholt/archiver/v3"
 )
 
 const bodyThreshold = 1 << 20

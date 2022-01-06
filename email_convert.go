@@ -30,7 +30,7 @@ import (
 
 	"github.com/UNO-SOFT/filecache"
 	"github.com/go-kit/log"
-	"github.com/mholt/archiver"
+	"github.com/mholt/archiver/v3"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/iohlp"
 
