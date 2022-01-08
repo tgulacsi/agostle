@@ -14,13 +14,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/bits"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -30,7 +28,7 @@ import (
 
 	"github.com/UNO-SOFT/filecache"
 	"github.com/go-kit/log"
-	"github.com/mholt/archiver/v3"
+	"github.com/mholt/archiver/v4"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/iohlp"
 
@@ -324,40 +322,17 @@ func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params c
 	if !params.Merged {
 		return nil
 	}
-	// merge PDFs
-	tempDir, err := ioutil.TempDir("", "agostle-")
+	fh, err := os.Open(resp.outFn)
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tempDir)
-
-	// archiver.Unarchive
-	uaIface, err := archiver.ByExtension(resp.outFn)
+	defer fh.Close()
+	format, err := archiver.Identify(fh.Name(), fh)
 	if err != nil {
 		return err
 	}
-	u, ok := uaIface.(archiver.Unarchiver)
-	if !ok {
-		return fmt.Errorf("format specified by source filename is not an archive format: %s (%T)", resp.outFn, uaIface)
-	}
-	ru := reflect.ValueOf(u).Elem()
-	if f := ru.FieldByName("MkdirAll"); f.IsValid() {
-		f.SetBool(true)
-	}
-	if f := ru.FieldByName("OverwriteExisting"); f.IsValid() {
-		f.SetBool(true)
-	}
-	if err = u.Unarchive(resp.outFn, tempDir); err != nil {
-		return fmt.Errorf("unarchive %q to %q: %w", resp.outFn, tempDir, err)
-	}
-
-	dh, err := os.Open(tempDir)
-	if err != nil {
-		return fmt.Errorf("%s: %w", tempDir, err)
-	}
-	names, _ := dh.Readdirnames(-1)
-	dh.Close()
-	mr := pdfMergeRequest{Inputs: make([]reqFile, 0, len(names))}
+	_, _ = fh.Seek(0, 0)
+	var mr pdfMergeRequest
 	defer func() {
 		for _, inp := range mr.Inputs {
 			if rc := inp.ReadCloser; rc != nil {
@@ -365,19 +340,42 @@ func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params c
 			}
 		}
 	}()
+	A := func(name string, open func() (io.ReadCloser, error)) error {
+		if !strings.HasSuffix(name, ".pdf") {
+			return nil
+		}
+		rc, err := open()
+		if err != nil {
+			return err
+		}
+		defer rc.Close()
+		sr, err := iohlp.MakeSectionReader(rc, 1<<20)
+		if err != nil {
+			return err
+		}
+		mr.Inputs = append(mr.Inputs, reqFile{
+			FileHeader: multipart.FileHeader{Filename: name, Size: sr.Size()},
+			ReadCloser: struct {
+				io.Reader
+				io.Closer
+			}{sr, io.NopCloser(nil)},
+		})
+		return nil
+	}
 
-	logger.Log("tempDir", tempDir, "files", names)
-	for _, fn := range names {
-		if strings.HasSuffix(fn, ".pdf") {
-			fh, err := os.Open(filepath.Join(tempDir, fn))
-			if err != nil {
-				logger.Log("msg", "open", "file", filepath.Join(tempDir, fn), "error", err)
-				continue
-			}
-			fi, _ := fh.Stat()
-			mr.Inputs = append(mr.Inputs, reqFile{FileHeader: multipart.FileHeader{Filename: fh.Name(), Size: fi.Size()}, ReadCloser: fh})
+	if ex, ok := format.(archiver.Extractor); ok {
+		if err = ex.Extract(ctx, fh, nil, func(ctx context.Context, f archiver.File) error {
+			return A(f.Name(), f.Open)
+		}); err != nil {
+			return err
+		}
+	} else if decom, ok := format.(archiver.Decompressor); ok {
+		nm := fh.Name()
+		if err = A(nm[:len(nm)-len(filepath.Ext(nm))], func() (io.ReadCloser, error) { return decom.OpenReader(fh) }); err != nil {
+			return err
 		}
 	}
+
 	f, err := pdfMergeEP(ctx, mr)
 	if err != nil {
 		return fmt.Errorf("merge %v: %w", mr.Inputs, err)

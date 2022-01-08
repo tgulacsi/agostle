@@ -27,7 +27,7 @@ import (
 	"github.com/tgulacsi/go/iohlp"
 
 	//"github.com/tgulacsi/go/uncompr"
-	"github.com/mholt/archiver/v3"
+	"github.com/mholt/archiver/v4"
 )
 
 const bodyThreshold = 1 << 20
@@ -715,8 +715,8 @@ func ExtractingFilter(ctx context.Context,
 
 	for part := range allIn {
 		var (
-			makeReader   func(io.Reader) (uncomprLister, error)
-			zr           uncomprLister
+			format       archiver.Archival
+			rsc          *io.SectionReader
 			err          error
 			archRowCount int
 		)
@@ -746,69 +746,49 @@ func ExtractingFilter(ctx context.Context,
 
 		switch part.ContentType {
 		case applicationZIP:
-			makeReader = func(r io.Reader) (uncomprLister, error) {
-				rsc, err := iohlp.MakeSectionReader(r, 1<<20)
-				if err != nil {
-					return nil, err
-				}
-				n, err := rsc.Seek(0, 2)
-				if err != nil {
-					return nil, err
-				}
-				if _, err = rsc.Seek(0, 0); err != nil {
-					return nil, err
-				}
-				zp := archiver.NewZip()
-				err = zp.Open(rsc, n)
-				return zp, err
-			}
+			format = archiver.Zip{}
 		case "application/rar":
-			makeReader = func(r io.Reader) (uncomprLister, error) {
-				rar := archiver.NewRar()
-				err := rar.Open(r, 0)
-				return rar, err
-			}
-		//case "application/tar": makeReader = UnTar
+			format = archiver.Rar{}
+		case "application/tar":
+			format = archiver.Tar{}
 		default:
 			goto Skip
 		}
-		zr, err = makeReader(body)
-		if err != nil {
+		if rsc, err = iohlp.MakeSectionReader(body, 1<<20); err != nil {
 			goto Error
 		}
-		for {
-			z, zErr := zr.Read()
-			if zErr != nil {
-				if errors.Is(zErr, io.EOF) {
-					break
-				}
-				logger.Log("msg", "read archive", "error", err)
-				break
+		if err = format.Extract(ctx, rsc, nil, func(ctx context.Context, f archiver.File) error {
+			name := f.Name()
+			if name == "__MACOSX" {
+				logger.Log("msg", "skip", "item", name)
+				return nil
 			}
-			if z.Name() == "__MACOSX" {
-				logger.Log("msg", "skip", "item", z.Name())
-				continue
-			}
-			if zfh, ok := z.Header.(zip.FileHeader); ok && strings.HasPrefix(zfh.Name, "__MACOSX/") {
+			if zfh, ok := f.Header.(zip.FileHeader); ok && strings.HasPrefix(zfh.Name, "__MACOSX/") {
 				logger.Log("msg", "skip", "item", zfh.Name)
-				continue
+				return nil
 			}
 
 			archRowCount++
+			z, err := f.Open()
+			if err != nil {
+				return err
+			}
 			chunk, cErr := ioutil.ReadAll(z)
 			_ = z.Close()
-			logger.Log("msg", "read zip element", "i", archRowCount, "fi", z.Name(), "error", err)
+			logger.Log("msg", "read zip element", "i", archRowCount, "fi", name, "error", err)
 			if cErr != nil {
-				continue
+				return nil
 			}
 			child := part.Spawn()
-			child.ContentType = FixContentType(chunk, "application/octet-stream",
-				z.Name())
+			child.ContentType = FixContentType(chunk, "application/octet-stream", name)
 			child.Body = io.NewSectionReader(bytes.NewReader(chunk), 0, int64(len(chunk)))
 			child.Header = textproto.MIMEHeader(make(map[string][]string, 1))
-			child.Header.Add("X-FileName", safeFn(z.Name(), true))
+			child.Header.Add("X-FileName", safeFn(name, true))
 			wg.Add(1)
 			allIn <- child
+			return nil
+		}); err != nil {
+			goto Error
 		}
 		wg.Done()
 		continue
@@ -874,8 +854,4 @@ func DupFilter(ctx context.Context,
 		}
 		outch <- part
 	}
-}
-
-type uncomprLister interface {
-	Read() (archiver.File, error)
 }
