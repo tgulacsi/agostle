@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2022 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -8,6 +8,7 @@ package main
 //  /pdf/merge Accept: application/zip
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"errors"
@@ -176,7 +177,7 @@ func mkAdminStopHandler(s interface{ Shutdown(context.Context) error }) http.Han
 		w.WriteHeader(200)
 		logger.Log("msg", "/_admin/stop", "header", r.Header, "from", r.RemoteAddr)
 		fmt.Fprintf(w, `Stopping...`)
-		s.Shutdown(r.Context())
+		_ = s.Shutdown(r.Context())
 		go func() {
 			time.Sleep(time.Millisecond * 500)
 			logger.Log("msg", "SUICIDE for ask!")
@@ -261,18 +262,47 @@ func getRequestFiles(r *http.Request) ([]reqFile, error) {
 	return files, nil
 }
 
+type pendingFile interface {
+	Name() string
+	io.ReadWriteSeeker
+	io.Closer
+	Cleanup() error
+	CloseAtomicallyReplace() error
+}
+
 // readerToFile copies the reader to a temp file and returns its name or error
-func readerToFile(r io.Reader, prefix string) (*renameio.PendingFile, error) {
-	dfh, err := renameio.TempFile("", "agostle-"+baseName(prefix)+"-")
+func readerToFile(r io.Reader, prefix string) (pendingFile, error) {
+	pat := "agostle-" + baseName(prefix) + "-"
+	dfh, err := renameio.TempFile("", pat)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("renameio.TempFile: %w", err)
 	}
-	if _, err = io.Copy(dfh, r); err != nil {
+	var buf bytes.Buffer
+	if _, err = io.Copy(dfh, io.TeeReader(r, &buf)); err != nil {
+		logger.Log("msg", "readerToFile renameio.TempFile", "error", err)
 		_ = dfh.Cleanup()
-		return nil, err
+		if dfh, err := os.CreateTemp("", pat); err == nil {
+			if _, err = io.Copy(dfh, io.MultiReader(bytes.NewReader(buf.Bytes()), r)); err == nil {
+				if _, err = dfh.Seek(0, 0); err == nil {
+					return dummyPendingFile{File: dfh}, nil
+				}
+			}
+		}
+		return nil, fmt.Errorf("copy from %v to %v: %w", r, dfh, err)
 	}
 	_, err = dfh.Seek(0, 0)
 	return dfh, err
+}
+
+type dummyPendingFile struct {
+	*os.File
+}
+
+func (f dummyPendingFile) CloseAtomicallyReplace() error { return f.File.Close() }
+func (f dummyPendingFile) Cleanup() error {
+	err := f.File.Close()
+	_ = os.Remove(f.File.Name())
+	return err
 }
 
 func tempFilename(prefix string) (filename string, err error) {
