@@ -357,17 +357,22 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	b := make([]byte, 2048)
 	n, _ := mp.Body.ReadAt(b, 0)
 	b = b[:n]
-	if typ, _ := MIMEMatch(b); typ != "" && !bytes.Contains(b, []byte("\nTo:")) && !bytes.Contains(b, []byte("\nReceived:")) && !bytes.Contains(b, []byte("\nFrom: ")) {
+	if typ, _ := MIMEMatch(b); typ != "" &&
+		!(bytes.Contains(b, []byte("\nTo:")) || bytes.Contains(b, []byte("\nReceived:")) ||
+			bytes.Contains(b, []byte("\nFrom: ")) || bytes.Contains(b, []byte("\nMIME-Version: "))) {
 		logger.Log("msg", "not email!", "typ", typ, "ct", contentType)
+		logger.Log("msg", "body", "b", string(b))
 		if contentType == "" || contentType == "message/rfc822" {
 			contentType = typ
 		}
 		contentType = FixContentType(b, contentType, "")
 		logger.Log("msg", "fixed", "contentType", contentType)
-		mp.ContentType = contentType
-		partch <- mp
-		close(partch)
-		return
+		if contentType != messageRFC822 { // sth else
+			mp.ContentType = contentType
+			partch <- mp
+			close(partch)
+			return
+		}
 	}
 	mp.ContentType = messageRFC822
 	err = i18nmail.Walk(
