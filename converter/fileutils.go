@@ -349,7 +349,7 @@ func unsafeFn(fn string, maskPercent bool) string {
 	if maskPercent {
 		res = strings.Replace(fn, "!P!", "%", -1)
 		if res == "" {
-			logger.Info("WARN unsafeFn empty string from "+fn)
+			logger.Info("WARN unsafeFn empty string from " + fn)
 			res = fn
 		}
 	}

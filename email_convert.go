@@ -27,7 +27,6 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/filecache"
-	"github.com/go-logr/logr"
 	"github.com/mholt/archiver/v4"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/iohlp"
@@ -247,7 +246,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	if fh, err := getCached(req.Params, hsh); err == nil {
 		resp.outFn, resp.content = fh.Name(), fh
 		logger.Info("use cached", "file", resp.outFn)
-		err = resp.mergeIfRequested(ctx, req.Params, logger)
+		err = resp.mergeIfRequested(ctx, req.Params)
 		return resp, err
 	}
 	input := io.NewSectionReader(sr, 0, sr.Size())
@@ -255,7 +254,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 		err = converter.MailToPdfZip(ctx, resp.outFn, input, req.Params.ContentType)
 		logger.Info("MailToPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
 		if err == nil {
-			err = resp.mergeIfRequested(ctx, req.Params, logger)
+			err = resp.mergeIfRequested(ctx, req.Params)
 			logger.Info("mergeIfRequested", "error", err)
 		}
 	} else {
@@ -318,7 +317,7 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 	return nil
 }
 
-func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params convertParams, logger logr.Logger) error {
+func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params convertParams) error {
 	if !params.Merged {
 		return nil
 	}

@@ -439,7 +439,24 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 // calls wkhtmltopdf
 func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 	logger := getLogger(ctx)
+	ussFh, err := os.CreateTemp("", "uss-*.css")
+	if err != nil {
+		return err
+	}
+	defer ussFh.Close()
+	ussFn := ussFh.Name()
+	defer func() { _ = os.Remove(ussFn) }()
+	if _, err = ussFh.Write([]byte(`pre {
+	white-space: pre-line;
+}`)); err != nil {
+		return err
+	}
+	if err = ussFh.Close(); err != nil {
+		return err
+	}
+
 	args := []string{
+		"-s", "A4",
 		inpfn,
 		"--allow", "images",
 		"--encoding", "utf-8",
@@ -448,6 +465,7 @@ func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 		"--images",
 		"--enable-local-file-access",
 		"--no-background",
+		"--user-style-sheet", ussFn,
 		outfn}
 	var buf bytes.Buffer
 	cmd := exec.CommandContext(ctx, *ConfWkhtmltopdf, args...)

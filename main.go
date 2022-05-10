@@ -214,6 +214,7 @@ func Main() error {
 		return err
 	}
 	if verbose {
+		zl = zl.Level(zerolog.TraceLevel)
 		i18nmail.SetLogger(logger)
 	} else {
 		i18nmail.SetLogger(logger.V(1))
