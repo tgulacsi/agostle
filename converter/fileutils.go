@@ -113,7 +113,7 @@ func MakeFileLike(r io.Reader) FileLike {
 		Reader: r,
 		Closer: c,
 	}
-	//Log("msg", "MakeFileLike", "r", fmt.Sprintf("%T %#v", r, r))
+	//logger.Info("MakeFileLike", "r", fmt.Sprintf("%T %#v", r, r))
 	if s, ok := r.(Statter); ok {
 		rc.FileInfo, rc.statErr = s.Stat()
 	} else {
@@ -313,7 +313,7 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 		}
 		if err != nil {
 			err = fmt.Errorf("writing %s to zipfile: %w", item.File, err)
-			Log("msg", "ERROR write to zip", "error", err)
+			logger.Info("ERROR write to zip", "error", err)
 			if !skipOnError {
 				return err
 			}
@@ -321,7 +321,7 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 			continue
 		}
 	}
-	Log("msg", "zipFiles", "errors", errs)
+	logger.Info("zipFiles", "errors", errs)
 	if len(errs) == 0 {
 		return nil
 	}
@@ -349,14 +349,14 @@ func unsafeFn(fn string, maskPercent bool) string {
 	if maskPercent {
 		res = strings.Replace(fn, "!P!", "%", -1)
 		if res == "" {
-			Log("msg", "WARN unsafeFn empty string from "+fn)
+			logger.Info("WARN unsafeFn empty string from "+fn)
 			res = fn
 		}
 	}
 	fn = res
 	var err error
 	if res, err = url.QueryUnescape(fn); err != nil {
-		Log("msg", "WARN cannot url.QueryUnescape", "fn", fn, "error", err)
+		logger.Info("WARN cannot url.QueryUnescape", "fn", fn, "error", err)
 		res = fn
 	}
 	return res

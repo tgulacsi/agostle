@@ -1,17 +1,14 @@
-// Copyright 2017, 2020 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2022 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
-	stdlog "log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -23,11 +20,10 @@ import (
 
 	"context"
 
-	"github.com/UNO-SOFT/ulog"
-	"github.com/go-kit/log"
+	"github.com/go-logr/zerologr"
 	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/rs/zerolog"
 	tufclient "github.com/theupdateframework/go-tuf/client"
-	tufdata "github.com/theupdateframework/go-tuf/data"
 
 	"github.com/kardianos/osext"
 	"github.com/tgulacsi/agostle/converter"
@@ -40,11 +36,12 @@ import (
 
 const defaultUpdateURL = "https://www.unosoft.hu/tuf"
 
-var logger = &log.SwapLogger{}
+var zl = zerolog.New(os.Stderr).With().Timestamp().Logger().Level(zerolog.InfoLevel)
+var logger = zerologr.New(&zl)
 
 func main() {
 	if err := Main(); err != nil {
-		logger.Log("error", err)
+		logger.Error(err, "Main")
 		os.Exit(1)
 	}
 }
@@ -58,14 +55,9 @@ var (
 func newFlagSet(name string) *flag.FlagSet { return flag.NewFlagSet(name, flag.ContinueOnError) }
 
 func Main() error {
-	logger.Swap(ulog.New())
-	stdlog.SetFlags(0)
-	stdlog.SetOutput(log.NewStdlibAdapter(logger))
+	converter.SetLogger(logger.WithName("converter"))
 
-	converter.SetLogger(log.With(logger, "lib", "converter"))
-
-	sLog := stdlog.New(log.NewStdlibAdapter(log.With(logger, "lib", "i18nmail")), "", 0)
-	i18nmail.Debugf, i18nmail.Infof = sLog.Printf, sLog.Printf
+	i18nmail.SetLogger(logger.V(1).WithName("i18nmail"))
 
 	updateURL := defaultUpdateURL
 	var (
@@ -100,35 +92,28 @@ func Main() error {
 			if err != nil {
 				return err
 			}
-			logger.Log("msg", "update", "from", updateURL)
+			logger.Info("update", "from", updateURL)
 			remote, err := tufclient.HTTPRemoteStore(updateURL, nil, nil)
 			if err != nil {
 				return err
 			}
-			var rootKeysSrc io.Reader = strings.NewReader(updateRootKeys)
+			rootKeySrc := []byte(updateRootKeys)
 			if updateRootJSON != "" {
-				logger.Log("msg", "using root keys", "from", updateRootJSON)
-				b, readErr := ioutil.ReadFile(updateRootJSON)
-				if readErr != nil {
+				logger.Info("using root keys", "from", updateRootJSON)
+				var readErr error
+				if rootKeySrc, readErr = ioutil.ReadFile(updateRootJSON); readErr != nil {
 					return readErr
 				}
-				rootKeysSrc = bytes.NewReader(b)
-			}
-			var rootKeys []*tufdata.Key
-			if err = json.NewDecoder(rootKeysSrc).Decode(&rootKeys); err != nil {
-				return err
 			}
 			tc := tufclient.NewClient(tufclient.MemoryLocalStore(), remote)
-			if err := tc.Init(rootKeys, len(rootKeys)); err != nil {
+			if err := tc.InitLocal(rootKeySrc); err != nil {
 				return fmt.Errorf("init: %w", err)
 			}
 			targets, err := tc.Update()
 			if err != nil {
 				return fmt.Errorf("update: %w", err)
 			}
-			for f := range targets {
-				logger.Log("target", f)
-			}
+			logger.Info("config", "targets", targets)
 
 			destFh, err := os.Create(
 				filepath.Join(filepath.Dir(self), "."+filepath.Base(self)+".new"),
@@ -137,7 +122,7 @@ func Main() error {
 				return err
 			}
 			defer destFh.Close()
-			logger.Log("msg", "download", "to", destFh.Name())
+			logger.Info("download", "to", destFh.Name())
 			dest := &downloadFile{File: destFh}
 			if err := tc.Download(
 				strings.Replace(strings.Replace(
@@ -151,13 +136,13 @@ func Main() error {
 			_ = os.Chmod(destFh.Name(), 0775)
 
 			old := filepath.Join(filepath.Dir(self), "."+filepath.Base(self)+".old")
-			logger.Log("msg", "rename", "from", self, "to", old)
+			logger.Info("rename", "from", self, "to", old)
 			if err := os.Rename(self, old); err != nil {
 				return err
 			}
-			logger.Log("msg", "rename", "from", destFh.Name(), "to", self)
+			logger.Info("rename", "from", destFh.Name(), "to", self)
 			if err := os.Rename(destFh.Name(), self); err != nil {
-				logger.Log("error", err)
+				logger.Error(err, "rename", "from", destFh.Name(), "to", self)
 			} else {
 				os.Remove(old)
 			}
@@ -182,13 +167,13 @@ func Main() error {
 			if listenAddr == "" && len(listeners) == 0 {
 				listenAddr = *converter.ConfListenAddr
 			}
-			logger.Log("listeners", len(listeners), "listenAddr", listenAddr)
+			logger.Info("serve", "listeners", len(listeners), "listenAddr", listenAddr)
 
 			grp, grpCtx := errgroup.WithContext(ctx)
 			srvs := make([]*http.Server, 0, len(listeners)+1)
 			if listenAddr != "" {
 				grp.Go(func() error {
-					logger.Log("msg", "listening", "address", listenAddr)
+					logger.Info("listening", "address", listenAddr)
 					s := newHTTPServer(listenAddr, savereq)
 					srvs = append(srvs, s)
 					return s.ListenAndServe()
@@ -197,7 +182,7 @@ func Main() error {
 			for _, l := range listeners {
 				l := l
 				grp.Go(func() error {
-					logger.Log("msg", "listening", "listener", l)
+					logger.Info("listening", "listener", l)
 					s := newHTTPServer("", savereq)
 					srvs = append(srvs, s)
 					return s.Serve(l)
@@ -228,20 +213,22 @@ func Main() error {
 	if closeLogfile, err = logToFile(logFile); err != nil {
 		return err
 	}
-	if !verbose {
-		i18nmail.Debugf = nil
+	if verbose {
+		i18nmail.SetLogger(logger)
+	} else {
+		i18nmail.SetLogger(logger.V(1))
 	}
-	logger.Log("leave_tempfiles?", leaveTempFiles)
+	logger.Info("config", "leave_tempfiles?", leaveTempFiles)
 	converter.LeaveTempFiles = leaveTempFiles
 	converter.Concurrency = concurrency
 	if configFile == "" {
 		if self, execErr := osext.Executable(); execErr != nil {
-			logger.Log("msg", "Cannot determine executable file name", "error", execErr)
+			logger.Info("Cannot determine executable file name", "error", execErr)
 		} else {
 			ini := filepath.Join(filepath.Dir(self), "agostle.ini")
 			f, iniErr := os.Open(ini)
 			if iniErr != nil {
-				logger.Log("msg", "Cannot open config", "file", ini, "error", iniErr)
+				logger.Info("Cannot open config", "file", ini, "error", iniErr)
 			} else {
 				_ = f.Close()
 				configFile = ini
@@ -250,23 +237,23 @@ func Main() error {
 	}
 	ctx, cancel := globalctx.Wrap(context.Background())
 	defer cancel()
-	logger.Log("msg", "Loading config", "file", configFile)
+	logger.Info("Loading config", "file", configFile)
 	if err = converter.LoadConfig(ctx, configFile); err != nil {
-		logger.Log("msg", "Parsing config", "file", configFile, "error", err)
+		logger.Info("Parsing config", "file", configFile, "error", err)
 		return err
 	}
 	if timeout > 0 && timeout != *converter.ConfChildTimeout {
-		logger.Log("msg", "Setting timeout", "from", *converter.ConfChildTimeout, "to", timeout)
+		logger.Info("Setting timeout", "from", *converter.ConfChildTimeout, "to", timeout)
 		*converter.ConfChildTimeout = timeout
 	}
 	if closeLogfile == nil {
 		if closeLogfile, err = logToFile(*converter.ConfLogFile); err != nil {
-			logger.Log("error", err)
+			logger.Error(err, "logToFile")
 		}
 	}
 
 	sortBeforeMerge = *converter.ConfSortBeforeMerge
-	logger.Log("msg", "commands",
+	logger.Info("commands",
 		"pdftk", *converter.ConfPdftk,
 		"loffice", *converter.ConfLoffice,
 		"gm", *converter.ConfGm,
@@ -274,7 +261,7 @@ func Main() error {
 		"pdfclean", *converter.ConfPdfClean,
 		"wkhtmltopdf", *converter.ConfWkhtmltopdf,
 	)
-	logger.Log("msg", "parameters",
+	logger.Info("parameters",
 		"sortBeforeMerge", sortBeforeMerge,
 		"workdir", converter.Workdir,
 		"listen", *converter.ConfListenAddr,
@@ -287,7 +274,7 @@ func Main() error {
 
 	if closeLogfile != nil {
 		defer func() {
-			logger.Log("msg", "close log file", "error", closeLogfile())
+			logger.Info("close log file", "error", closeLogfile())
 		}()
 	}
 
@@ -300,12 +287,12 @@ func logToFile(fn string) (func() error, error) {
 	}
 	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
 	if err != nil {
-		logger.Log("error", err)
+		logger.Error(err, "open log file", "file", fn)
 		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
-	logger.Log("msg", "Will log to", "file", fh.Name())
-	logger.Swap(log.NewLogfmtLogger(io.MultiWriter(os.Stderr, fh)))
-	logger.Log("msg", "Logging to", "file", fh.Name())
+	logger.Info("Will log to", "file", fh.Name())
+	zl = zerolog.New(zerolog.MultiLevelWriter(zl, fh)).With().Timestamp().Logger()
+	logger.Info("Logging to", "file", fh.Name())
 	return fh.Close, nil
 }
 

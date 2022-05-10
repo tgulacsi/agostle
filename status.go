@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2022 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -41,11 +41,11 @@ var (
 func onStart() {
 	var err error
 	if self, err = osext.Executable(); err != nil {
-		logger.Log("msg", "error getting the path for self", "error", err)
+		logger.Error(err, "error getting the path for self")
 	} else {
 		var self2 string
 		if self2, err = filepath.Abs(self); err != nil {
-			logger.Log("msg", "error getting the absolute path", "for", self, "error", err)
+			logger.Error(err, "error getting the absolute path", "for", self)
 		} else {
 			self = self2
 		}
@@ -53,7 +53,7 @@ func onStart() {
 
 	var uname string
 	if u, e := user.Current(); e != nil {
-		logger.Log("msg", "cannot get current user", "error", e)
+		logger.Error(e, "cannot get current user")
 		uname = os.Getenv("USER")
 	} else {
 		uname = u.Username
@@ -74,7 +74,7 @@ func getTopOutput() ([]byte, error) {
 	cmd.Stderr = os.Stderr
 	e := cmd.Run()
 	if e != nil {
-		logger.Log("msg", "error calling", "cmd", topCmd, "error", e)
+		logger.Error(e, "error calling", "cmd", topCmd)
 		fmt.Fprintf(topOut, "\n\nerror calling %s: %s\n", topCmd, e)
 	}
 	return topOut.Bytes(), e
@@ -96,7 +96,7 @@ func (st *statInfo) fill() {
 	runtime.ReadMemStats(st.mem)
 	var err error
 	if st.top, err = getTopOutput(); err != nil {
-		logger.Log("msg", "error calling top", "error", err)
+		logger.Error(err, "error calling top")
 	} else {
 		st.top = bytes.Replace(st.top, []byte("\n"), []byte("\n    "), -1)
 	}

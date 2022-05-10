@@ -29,7 +29,7 @@ func (p *PortLock) Lock() {
 		if p.ln, err = net.Listen("tcp", p.hostport); err == nil {
 			return
 		}
-		Log("msg", "spinning lock hostport", "hostport", p.hostport, "error", err)
+		logger.Info("spinning lock hostport", "hostport", p.hostport, "error", err)
 		time.Sleep(t)
 		t = time.Duration(float32(t) * 1.2)
 	}

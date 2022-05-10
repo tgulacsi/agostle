@@ -45,7 +45,7 @@ func PdfPageNum(ctx context.Context, srcfn string) (numberofpages int, err error
 		return
 	}
 	if err = PdfClean(ctx, srcfn); err != nil {
-		Log("msg", "ERROR PdfClean", "file", srcfn, "error", err)
+		logger.Info("ERROR PdfClean", "file", srcfn, "error", err)
 	}
 	numberofpages, _, err = pdfPageNum(ctx, srcfn)
 	return
@@ -120,7 +120,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		err = fmt.Errorf("cannot determine page number of %s: %w", srcfn, e)
 		return
 	} else if pageNum == 0 {
-		Log("msg", "0 pages", "file", srcfn)
+		logger.Info("0 pages", "file", srcfn)
 	} else if pageNum == 1 {
 		filenames = append(filenames, srcfn)
 		return
@@ -153,7 +153,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 	}
 
 	if pdfsep := popplerOk["pdfseparate"]; pdfsep != "" {
-		Log("msg", pdfsep, "src", srcfn, "dest", destdir)
+		logger.Info(pdfsep, "src", srcfn, "dest", destdir)
 		restArgs := []string{srcfn, filepath.Join(destdir, prefix+"%03d.pdf")}
 		if len(pages) != 0 && (len(pages) == 1 || len(pages) <= pageNum/2) {
 			args := append(append(make([]string, 0, 4+len(restArgs)),
@@ -161,21 +161,21 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 			for _, p := range pages {
 				ps := strconv.FormatUint(uint64(p), 10)
 				args[1], args[3] = ps, ps
-				Log("msg", "pdfsep", "at", destdir, "args", args)
+				logger.Info("pdfsep", "at", destdir, "args", args)
 				if err = callAt(ctx, pdfsep, destdir, args...); err != nil {
 					err = fmt.Errorf("executing %s: %w", pdfsep, err)
 					return
 				}
 			}
 		} else {
-			Log("msg", "pdfsep", "at", destdir, "args", restArgs)
+			logger.Info("pdfsep", "at", destdir, "args", restArgs)
 			if err = callAt(ctx, pdfsep, destdir, restArgs...); err != nil {
 				err = fmt.Errorf("executing %s: %w", pdfsep, err)
 				return
 			}
 		}
 	} else {
-		Log("msg", *ConfPdftk, "src", srcfn, "dest", destdir)
+		logger.Info(*ConfPdftk, "src", srcfn, "dest", destdir)
 		if err = callAt(ctx, *ConfPdftk, destdir, srcfn, "burst", "output", prefix+"%03d.pdf"); err != nil {
 			err = fmt.Errorf("executing %s: %w", *ConfPdftk, err)
 			return
@@ -191,7 +191,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		err = fmt.Errorf("listing %s: %w", dh.Name(), err)
 		return
 	}
-	Log("msg", "ls", "destDir", destdir, "files", filenames)
+	logger.Info("ls", "destDir", destdir, "files", filenames)
 	names := make([]string, 0, len(filenames))
 	format := "%d"
 	if n := len(filenames); n > 9999 {
@@ -208,7 +208,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 			continue
 		}
 		if !strings.HasPrefix(fn, prefix) {
-			Log("msg", "mismatch", "fn", fn, "prefix", prefix)
+			logger.Info("mismatch", "fn", fn, "prefix", prefix)
 			continue
 		}
 		var i int
@@ -219,7 +219,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 				break
 			}
 		}
-		//Log("msg", "", "prefix", prefix, "fn", fn, "i", i)
+		//logger.Info("", "prefix", prefix, "fn", fn, "i", i)
 		n, iErr := strconv.Atoi(fn[len(prefix) : len(prefix)+i])
 		if iErr != nil {
 			err = fmt.Errorf("%q: %w", fn, iErr)
@@ -234,7 +234,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 				}
 			}
 			if !found {
-				Log("msg", "skip", "page", u, "file", fn)
+				logger.Info("skip", "page", u, "file", fn)
 				_ = os.Remove(filepath.Join(destdir, fn))
 				continue
 			}
@@ -243,23 +243,23 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		if *ConfGm != "" {
 			nFi, err := os.Stat(filepath.Join(destdir, fn))
 			if err != nil {
-				Log("msg", "stat", "fn", fn, "error", err)
+				logger.Info("stat", "fn", fn, "error", err)
 				continue
 			}
-			Log("msg", "may-resample", "file", fn, "size", nFi.Size(),
+			logger.Info("may-resample", "file", fn, "size", nFi.Size(),
 				"src", srcFi.Name(), "srcSize", srcFi.Size())
 			if nFi.Size() >= srcFi.Size()*9/10 {
 				gFn := fn + ".gm.pdf"
 				if err = callAt(ctx, *ConfGm, destdir,
 					"convert", fn, "-resample", "300x300", gFn,
 				); err != nil {
-					Log("msg", "gm convert", "fn", fn, "error", err)
+					logger.Info("gm convert", "fn", fn, "error", err)
 				} else if gFi, err := os.Stat(filepath.Join(destdir, gFn)); err != nil {
-					Log("msg", "stat", "gFn", gFn, "error", err)
+					logger.Info("stat", "gFn", gFn, "error", err)
 				} else if gFi.Size() >= nFi.Size()/2 {
-					Log("msg", "not smaller", "fn", fn, "oSize", nFi.Size(), "nSize", gFi.Size())
+					logger.Info("not smaller", "fn", fn, "oSize", nFi.Size(), "nSize", gFi.Size())
 				} else {
-					Log("msg", "replace split pdf with gm convert'd", "fn", fn, "oSize", nFi.Size(), "nSize", gFi.Size())
+					logger.Info("replace split pdf with gm convert'd", "fn", fn, "oSize", nFi.Size(), "nSize", gFi.Size())
 					_ = os.Rename(filepath.Join(destdir, gFn), filepath.Join(destdir, fn))
 				}
 			}
@@ -275,7 +275,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 	}
 	filenames = names
 	sort.Strings(filenames)
-	Log("msg", "splitted", "names", filenames)
+	logger.Info("splitted", "names", filenames)
 	for i, fn := range filenames {
 		filenames[i] = filepath.Join(destdir, fn)
 	}
@@ -303,7 +303,7 @@ func PdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 		if n, err := PdfPageNum(ctx, fn); n > 0 && err == nil {
 			fns = append(fns, fn)
 		} else {
-			Log("msg", "merge SKIP", "file", fn, "pages", n, "error", err)
+			logger.Info("merge SKIP", "file", fn, "pages", n, "error", err)
 		}
 	}
 
@@ -328,7 +328,7 @@ func pdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 			return nil
 		}
 		err = fmt.Errorf("%q: %w", cmd.Args, err)
-		Log("msg", "WARN pdfunite failed", "error", err, "errTxt", buf.String())
+		logger.Info("WARN pdfunite failed", "error", err, "errTxt", buf.String())
 	}
 	args := append(append(make([]string, 0, len(filenames)+3), filenames...),
 		"cat", "output", destfn)
@@ -351,14 +351,14 @@ var (
 func getHash(fn string) string {
 	fh, err := os.Open(fn)
 	if err != nil {
-		Log("msg", "WARN getHash open", "fn", fn, "error", err)
+		logger.Info("WARN getHash open", "fn", fn, "error", err)
 		return ""
 	}
 	hsh := sha1.New()
 	_, err = io.Copy(hsh, fh)
 	_ = fh.Close()
 	if err != nil {
-		Log("msg", "WARN getHash reading", "fn", fn, "error", err)
+		logger.Info("WARN getHash reading", "fn", fn, "error", err)
 	}
 	return base64.URLEncoding.EncodeToString(hsh.Sum(nil))
 }
@@ -367,7 +367,7 @@ func isAlreadyCleaned(fn string) bool {
 	var err error
 	if !filepath.IsAbs(fn) {
 		if fn, err = filepath.Abs(fn); err != nil {
-			Log("msg", "WARN cannot absolutize filename", "fn", fn, "error", err)
+			logger.Info("WARN cannot absolutize filename", "fn", fn, "error", err)
 		}
 	}
 	cleanMtx.Lock()
@@ -393,7 +393,7 @@ func PdfClean(ctx context.Context, fn string) (err error) {
 		}
 	}
 	if ok := isAlreadyCleaned(fn); ok {
-		Log("msg", "PdfClean already cleaned.", "file", fn)
+		logger.Info("PdfClean already cleaned.", "file", fn)
 		return nil
 	}
 	cleanMtx.Lock()
@@ -401,14 +401,14 @@ func PdfClean(ctx context.Context, fn string) (err error) {
 		pdfCleanStatus = pcNothing
 		if ConfPdfClean != nil && *ConfPdfClean != "" {
 			if _, e := exec.LookPath(*ConfPdfClean); e != nil {
-				Log("msg", "no pdfclean exists?", "pdfclean", *ConfPdfClean, "error", e)
+				logger.Info("no pdfclean exists?", "pdfclean", *ConfPdfClean, "error", e)
 			} else {
 				pdfCleanStatus = pcPdfClean
 			}
 		}
 		if ConfMutool != nil && *ConfMutool != "" {
 			if _, e := exec.LookPath(*ConfMutool); e != nil {
-				Log("msg", "no mutool exists?", "mutool", *ConfMutool, "error", e)
+				logger.Info("no mutool exists?", "mutool", *ConfMutool, "error", e)
 			} else {
 				if pdfCleanStatus == pcNothing {
 					pdfCleanStatus = pcMutool
@@ -440,7 +440,7 @@ func PdfClean(ctx context.Context, fn string) (err error) {
 		cleaned = true
 		_, encrypted, _ = pdfPageNum(ctx, fn+"-cleaned.pdf")
 		if encrypted {
-			Log("msg", "WARN "+cleaner+": encrypted!", "file", fn)
+			logger.Info("WARN "+cleaner+": encrypted!", "file", fn)
 		}
 	}
 	if !cleaned || encrypted {
@@ -489,7 +489,7 @@ func execute(cmd *exec.Cmd) error {
 		return fmt.Errorf("%#v while converting %s: %w", cmd, errout.Bytes(), err)
 	}
 	if len(errout.Bytes()) > 0 {
-		Log("msg", "WARN executes", "cmd", cmd, "error", errout.String())
+		logger.Info("WARN executes", "cmd", cmd, "error", errout.String())
 	}
 	return nil
 }
@@ -617,7 +617,7 @@ func getFdf(ctx context.Context, inpfn string) (fieldParts, error) {
 		if err == nil {
 			return fp, nil
 		}
-		Log("msg", "decoding", "file", f.Name(), "error", err)
+		logger.Info("decoding", "file", f.Name(), "error", err)
 	}
 
 	fdf, fdfErr := os.ReadFile(fdfFn)
@@ -636,20 +636,20 @@ func getFdf(ctx context.Context, inpfn string) (fieldParts, error) {
 	}
 
 	fp = splitFdf(fdf)
-	//Log("msg", "fdf", "len", len(fdf), "split", fp)
+	//logger.Info("fdf", "len", len(fdf), "split", fp)
 
 	f, err := os.OpenFile(fdfFn+".gob", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
-		Log("msg", "cannot create", "file", fdfFn+".gob", "error", err)
+		logger.Info("cannot create", "file", fdfFn+".gob", "error", err)
 	} else {
 		fillFdfMu.Lock()
 		err = gob.NewEncoder(f).Encode(fp)
 		fillFdfMu.Unlock()
 		if err != nil {
-			Log("msg", "encode gobv", "file", f.Name(), "error", err)
+			logger.Info("encode gobv", "file", f.Name(), "error", err)
 		} else {
 			if err = f.Close(); err != nil {
-				Log("msg", "close", "file", f.Name(), "error", err)
+				logger.Info("close", "file", f.Name(), "error", err)
 				_ = os.Remove(f.Name())
 			}
 		}
@@ -712,7 +712,7 @@ func (fp fieldParts) WriteTo(w io.Writer) (n int64, err error) {
 
 func (fp fieldParts) Set(key, value string) error {
 	if _, ok := fp.Values[key]; !ok {
-		Log("msg", "unknown field", "field", fp.Fields)
+		logger.Info("unknown field", "field", fp.Fields)
 		return fmt.Errorf("field %s not exist", key)
 	}
 	fp.Values[key] = value

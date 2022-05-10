@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2022 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -215,7 +215,7 @@ func fillFdf(ctx context.Context, outfn, inpfn string, kv ...string) error {
 	for _, txt := range kv {
 		i := strings.IndexByte(txt, '=')
 		if i < 0 {
-			logger.Log("no = in key=value arg!")
+			logger.Info("no = in key=value arg!")
 			continue
 		}
 		values[txt[:i]] = txt[i+1:]

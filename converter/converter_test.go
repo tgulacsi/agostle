@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/UNO-SOFT/ulog"
-	"github.com/go-kit/log"
+	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/testr"
 )
 
 func TestTextToHTML(t *testing.T) {
@@ -34,8 +34,8 @@ func TestTextToHTML(t *testing.T) {
 }
 
 func setTestLogger(t *testing.T) func() {
-	SetLogger(ulog.NewTestLogger(t))
-	return func() { SetLogger(log.NewNopLogger()) }
+	SetLogger(testr.New(t))
+	return func() { SetLogger(logr.Discard()) }
 }
 
 var testDir string

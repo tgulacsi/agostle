@@ -177,7 +177,7 @@ func NewQuoPriDecoder(r io.Reader) io.Reader {
 			return i, data[:i], nil
 		}
 		if b, err = readHexByte(data[i+1 : i+3]); err != nil {
-			Log("msg", "readHexByte", "i", i, "error", err)
+			logger.Info("readHexByte", "i", i, "error", err)
 			return i + 3, data[:i+3], nil
 		}
 		return i + 3, append(data[:i], b), nil
@@ -231,7 +231,7 @@ func NewB64QuoPriDecoder(r io.Reader) io.Reader {
 		//log.Printf("i=%d j=%d key=%s n=%d buf=%s err=%s", i, j, data[i+1:j],
 		//	n, buf, err)
 		if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
-			Log("msg", "NewQuoPriDecode cannot decode", "msg", data[i:j+1])
+			logger.Info("NewQuoPriDecode cannot decode", "msg", data[i:j+1])
 			return j + 1, data[:j+1], nil
 		}
 		return j + 1, append(data[:i], buf[:n]...), nil

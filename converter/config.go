@@ -6,22 +6,21 @@
 package converter
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
 
-	"context"
-
 	"github.com/UNO-SOFT/filecache"
-	"github.com/go-kit/log"
+	"github.com/go-logr/logr"
 	config "github.com/stvp/go-toml-config"
 	"github.com/tgulacsi/go/osgroup"
 )
 
-var globalLogger = &log.SwapLogger{}
+var logger = logr.Discard()
 
-func SetLogger(logger log.Logger) { globalLogger.Swap(logger) }
+func SetLogger(lgr logr.Logger) { logger = lgr }
 
 func lookPath(fn string) string {
 	path, err := exec.LookPath(fn)
@@ -93,13 +92,13 @@ func LoadConfig(ctx context.Context, fn string) error {
 		return err
 	}
 	if err := config.Parse(fn); err != nil {
-		Log("msg", "WARN Cannot open config file", "file", fn, "error", err)
+		logger.Info("WARN Cannot open config file", "file", fn, "error", err)
 	}
 	if *ConfLoffice != "" {
 		if _, err := exec.LookPath(*ConfLoffice); err != nil {
-			Log("msg", "WARN cannot use as loffice!", "loffice", *ConfLoffice)
+			logger.Info("WARN cannot use as loffice!", "loffice", *ConfLoffice)
 			if fn, err := exec.LookPath("soffice"); err == nil {
-				Log("msg", "Will use as loffice instead.", "soffice", fn)
+				logger.Info("Will use as loffice instead.", "soffice", fn)
 				*ConfLoffice = fn
 			}
 		}
@@ -127,7 +126,7 @@ func LoadConfig(ctx context.Context, fn string) error {
 			popplerOk[k] = prefix + k
 		}
 	}
-	Log("popplerOk", popplerOk)
+	logger.V(1).Info("LoadConfig", "popplerOk", popplerOk)
 
 	if !*ConfLofficeUsePortLock {
 		lofficeMu.Lock()
@@ -179,15 +178,9 @@ var SaveOriginalHTML = false
 // name of errors list in resulting archive
 const ErrTextFn = "ZZZ-errors.txt"
 
-func getLogger(ctx context.Context) log.Logger {
-	if ctx != nil {
-		if logger, ok := ctx.Value("logger").(log.Logger); ok {
-			return logger
-		}
+func getLogger(ctx context.Context) logr.Logger {
+	if lgr, err := logr.FromContext(ctx); err == nil {
+		return lgr
 	}
-	return globalLogger
-}
-
-func Log(keyvals ...interface{}) {
-	globalLogger.Log(keyvals...)
+	return logger
 }

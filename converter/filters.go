@@ -95,23 +95,23 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 		}
 	}
 
-	logger.Log("msg", "MailToSplittedPdfZip", "error", errs)
+	logger.Info("MailToSplittedPdfZip", "error", errs)
 	if len(errs) > 0 {
 		efn := destfn + "-errors.txt"
 		efh, e := os.Create(efn)
 		if e != nil {
-			logger.Log("msg", "Cannot create errors file", "dest", efn, "error", e)
+			logger.Info("Cannot create errors file", "dest", efn, "error", e)
 			return err
 		}
 		for _, s := range errs {
 			if _, e = efh.WriteString(s); e != nil {
 				_ = efh.Close()
-				logger.Log("msg", "Error writing errors file", "dest", efh.Name(), "error", e)
+				logger.Info("Error writing errors file", "dest", efh.Name(), "error", e)
 				return err
 			}
 		}
 		if e = efh.Close(); e != nil {
-			logger.Log("msg", "closing errors file", "dest", efh.Name(), "error", e)
+			logger.Info("closing errors file", "dest", efh.Name(), "error", e)
 		}
 		tbz = append(tbz, ArchFileItem{
 			Filename: efn, Archive: ErrTextFn, Error: errors.New(""),
@@ -179,7 +179,7 @@ func cleanupFiles(ctx context.Context, files []ArchFileItem, tbz []ArchFileItem)
 		}
 		_ = dh.Close()
 		if n == 0 {
-			logger.Log("msg", "Removing empty directory", "directory", dn)
+			logger.Info("Removing empty directory", "directory", dn)
 			_ = os.Remove(dn)
 		}
 	}
@@ -207,17 +207,17 @@ func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string,
 		}
 		sfiles, _, err = PdfSplit(ctx, fn, pages)
 		if err != nil || len(sfiles) == 0 {
-			logger.Log("msg", "Splitting", "file", fn, "error", err)
+			logger.Info("Splitting", "file", fn, "error", err)
 			if err = PdfRewrite(ctx, fn, fn); err != nil {
-				logger.Log("msg", "Cannot clean", "file", fn, "error", err)
+				logger.Info("Cannot clean", "file", fn, "error", err)
 			} else {
 				if sfiles, _, err = PdfSplit(ctx, fn, pages); err != nil || len(sfiles) == 0 {
-					logger.Log("msg", "splitting CLEANED", "file", fn, "error", err)
+					logger.Info("splitting CLEANED", "file", fn, "error", err)
 				}
 			}
 		}
 		if err != nil {
-			logger.Log("msg", "splitting", "file", fn, "error", err)
+			logger.Info("splitting", "file", fn, "error", err)
 			rch <- maybeArchItems{Error: err}
 			continue
 		}
@@ -231,7 +231,7 @@ func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string,
 			continue
 		}
 		if ifiles, err = PdfToImageMulti(ctx, sfiles, imgmime, imgsize); err != nil {
-			logger.Log("msg", "converting to image", "error", err)
+			logger.Info("converting to image", "error", err)
 		}
 		//log.Printf("sfiles=%s err=%s", sfiles, err)
 		if !LeaveTempFiles && len(sfiles) > 1 {
@@ -319,7 +319,7 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 	for _, sfn := range sfiles {
 		rfh, e := os.Open(sfn)
 		if e != nil {
-			logger.Log("msg", "open PDF for reading", "file", sfn, "error", e)
+			logger.Info("open PDF for reading", "file", sfn, "error", e)
 			errch <- fmt.Errorf("open pdf file %s for reading: %w", sfn, e)
 			continue
 		}
@@ -328,7 +328,7 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 		ifh, e := os.Create(ifn)
 		if e != nil {
 			_ = rfh.Close()
-			logger.Log("msg", "create image file", "file", sfn, "error", e)
+			logger.Info("create image file", "file", sfn, "error", e)
 			errch <- fmt.Errorf("create image file %s: %w", ifn, e)
 			continue
 		}
@@ -348,7 +348,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	logger := getLogger(ctx)
 	var head [4096]byte
 
-	logger.Log("SlurpMail", contentType)
+	logger.Info("SlurpMail", "ct", contentType)
 	mp := i18nmail.MailPart{ContentType: contentType}
 	var err error
 	if mp.Body, err = i18nmail.MakeSectionReader(body, bodyThreshold); err != nil {
@@ -360,13 +360,13 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	if typ, _ := MIMEMatch(b); typ != "" &&
 		!(bytes.Contains(b, []byte("\nTo:")) || bytes.Contains(b, []byte("\nReceived:")) ||
 			bytes.Contains(b, []byte("\nFrom: ")) || bytes.Contains(b, []byte("\nMIME-Version: "))) {
-		logger.Log("msg", "not email!", "typ", typ, "ct", contentType)
-		logger.Log("msg", "body", "b", string(b))
+		logger.Info("not email!", "typ", typ, "ct", contentType)
+		logger.Info("body", "b", string(b))
 		if contentType == "" || contentType == "message/rfc822" {
 			contentType = typ
 		}
 		contentType = FixContentType(b, contentType, "")
-		logger.Log("msg", "fixed", "contentType", contentType)
+		logger.Info("fixed", "contentType", contentType)
 		if contentType != messageRFC822 { // sth else
 			mp.ContentType = contentType
 			partch <- mp
@@ -395,12 +395,12 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 						n, _ = strconv.Atoi(s)
 						ok = n <= 64
 					}
-					Log("msg", "read 0", "size", s, "n", n, "ok", ok)
+					logger.Info("read 0", "size", s, "n", n, "ok", ok)
 				}
 				if !ok {
-					Log("warn", "cannot read", "body", mp, "error", err)
+					logger.Error(err, "cannot read", "body", mp)
 				}
-				Log("msg", "SKIP", "Seq", mp.Seq)
+				logger.Info("SKIP", "Seq", mp.Seq)
 				return nil // Skip
 			}
 			mp.ContentType = FixContentType(head[:n], mp.ContentType, fn)
@@ -410,7 +410,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 		},
 		false)
 	if err != nil {
-		logger.Log("msg", "Walk finished", "error", err)
+		logger.Info("Walk finished", "error", err)
 		errch <- err
 	}
 	close(partch)
@@ -450,7 +450,7 @@ func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files
 	logger := getLogger(ctx)
 	hsh := sha1.New()
 	sr, e := iohlp.MakeSectionReader(io.TeeReader(r, hsh), 1<<20)
-	logger.Log("msg", "MailToPdfFiles", "input", sr.Size(), "error", e)
+	logger.Info("MailToPdfFiles", "input", sr.Size(), "error", e)
 	if e != nil {
 		err = fmt.Errorf("MailToPdfFiles: %w", e)
 		return
@@ -559,7 +559,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 		_, _ = mp.Body.Seek(0, 0)
 		plus, e := MailToPdfFiles(ctx, mp.Body, mp.ContentType)
 		if e != nil {
-			logger.Log("msg", "MailToPdfFiles", "seq", mp.Seq, "error", e)
+			logger.Info("MailToPdfFiles", "seq", mp.Seq, "error", e)
 			err = fmt.Errorf("convertPart(%02d): %w", mp.Seq, e)
 			return
 		}
@@ -581,7 +581,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 		return nil
 	}
 	_ = unlink(fn, "MailToPdfFiles dest part") // ignore error
-	logger.Log("msg", "converting to pdf", "ct", mp.ContentType, "fn", fn, "seq", mp.Seq, "error", err)
+	logger.Info("converting to pdf", "ct", mp.ContentType, "fn", fn, "seq", mp.Seq, "error", err)
 	j := strings.Index(mp.ContentType, "/")
 	_, _ = mp.Body.Seek(0, 0)
 	resultch <- ArchFileItem{
@@ -624,7 +624,7 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 	logger := getLogger(ctx)
 	for mp := range partch {
 		fn = mpName(mp)
-		logger.Log("part", mp.Seq, "ct", mp.ContentType)
+		logger.Info("part", "seq", mp.Seq, "ct", mp.ContentType)
 		dn, ok = dirs[mp.Seq]
 		up = up[:0]
 		for p := mp.Parent; dn == ""; p = p.Parent {
@@ -765,11 +765,11 @@ func ExtractingFilter(ctx context.Context,
 		if err = format.Extract(ctx, rsc, nil, func(ctx context.Context, f archiver.File) error {
 			name := f.Name()
 			if name == "__MACOSX" {
-				logger.Log("msg", "skip", "item", name)
+				logger.Info("skip", "item", name)
 				return nil
 			}
 			if zfh, ok := f.Header.(zip.FileHeader); ok && strings.HasPrefix(zfh.Name, "__MACOSX/") {
-				logger.Log("msg", "skip", "item", zfh.Name)
+				logger.Info("skip", "item", zfh.Name)
 				return nil
 			}
 
@@ -780,7 +780,7 @@ func ExtractingFilter(ctx context.Context,
 			}
 			chunk, cErr := ioutil.ReadAll(z)
 			_ = z.Close()
-			logger.Log("msg", "read zip element", "i", archRowCount, "fi", name, "error", err)
+			logger.Info("read zip element", "i", archRowCount, "fi", name, "error", err)
 			if cErr != nil {
 				return nil
 			}
@@ -798,7 +798,7 @@ func ExtractingFilter(ctx context.Context,
 		wg.Done()
 		continue
 	Error:
-		logger.Log("msg", "ExtractingFilter", "ct", part.ContentType, "error", err)
+		logger.Info("ExtractingFilter", "ct", part.ContentType, "error", err)
 		if err != nil {
 			errch <- err
 		}
@@ -853,7 +853,7 @@ func DupFilter(ctx context.Context,
 			cnt++
 			seen[hsh] = cnt
 			if cnt > 10 {
-				logger.Log("msg", "DupFilter DROPs", "hash", hsh)
+				logger.Info("DupFilter DROPs", "hash", hsh)
 				continue
 			}
 		}

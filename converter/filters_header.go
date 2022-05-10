@@ -1,4 +1,4 @@
-// Copyright 2017, 2021 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2022 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -7,6 +7,7 @@ package converter
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"io"
@@ -14,8 +15,6 @@ import (
 	"net/mail"
 	"net/textproto"
 	"os"
-
-	"context"
 
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/htmlindex"
@@ -40,7 +39,7 @@ func PrependHeaderFilter(ctx context.Context,
 	headersBuf := bytes.NewBuffer(make([]byte, 0, 128))
 
 	for part := range inch {
-		//Log("msg", "PrependHeaderFilter receives", "seq", part.Seq, "ct", part.ContentType, "header", part.Header, "inch", inch)
+		//logger.Info("PrependHeaderFilter receives", "seq", part.Seq, "ct", part.ContentType, "header", part.Header, "inch", inch)
 		if len(mailHeader["From"]) == 0 || mailHeader.Get("Subject") == "" {
 			hdrs := make([]textproto.MIMEHeader, 0, 4)
 			parent := &part
@@ -55,7 +54,7 @@ func PrependHeaderFilter(ctx context.Context,
 			}
 			if len(hdrs) > 0 {
 				hdr := hdrs[len(hdrs)-1]
-				logger.Log("msg", "filling mailHeader", "header", hdr)
+				logger.Info("filling mailHeader", "header", hdr)
 				for _, k := range PrependHeaders {
 					if v, ok := hdr[k]; ok {
 						mailHeader[k] = v
@@ -69,10 +68,10 @@ func PrependHeaderFilter(ctx context.Context,
 		}
 		headersBuf.Reset()
 		if err := writeHeaders(ctx, headersBuf, mailHeader, part.ContentType); err != nil {
-			logger.Log("msg", "error writing headers", "error", err)
+			logger.Info("error writing headers", "error", err)
 			goto Skip
 		}
-		//Log("msg", "headers written", "buf", headersBuf.String())
+		//logger.Info("headers written", "buf", headersBuf.String())
 
 		if part.ContentType != textHtml {
 			part.Body, _ = i18nmail.MakeSectionReader(
@@ -84,10 +83,11 @@ func PrependHeaderFilter(ctx context.Context,
 
 		part.Body, _ = i18nmail.MakeSectionReader(
 			decodeHTML(ctx, part.Body, *ConfWkhtmltopdf == ""), bodyThreshold)
+		logger.V(1).Info("PrependHeaderFilter", "wkhtmltopdf", *ConfWkhtmltopdf, "body", part.Body, "threshold", bodyThreshold)
 		if *ConfWkhtmltopdf == "" {
 			b, err := ioutil.ReadAll(part.Body)
 			if err != nil {
-				logger.Log("msg", "cannot read", "body", part.Body, "error", err)
+				logger.Info("cannot read", "body", part.Body, "error", err)
 			}
 			// add some garbage to each line ending!
 			b = bytes.TrimSpace(
@@ -153,7 +153,7 @@ func PrependHeaderFilter(ctx context.Context,
 				if len(c) > 4096 {
 					c = c[len(c)-4096:]
 				}
-				logger.Log("msg", "no body in", "b", string(c))
+				logger.Info("no body in", "b", string(c))
 				part.Body, _ = i18nmail.MakeSectionReader(io.MultiReader(
 					bytes.NewReader(headersBuf.Bytes()),
 					bytes.NewReader(b),
@@ -222,7 +222,7 @@ func decodeHTML(ctx context.Context, r io.Reader, deleteMETA bool) io.Reader {
 		}
 		var err error
 		if enc, err = htmlindex.Get(charset); err != nil {
-			logger.Log("msg", "cannot find encoding", "charset", charset)
+			logger.Info("cannot find encoding", "charset", charset)
 			continue
 		}
 		if !deleteMETA && len(charset) >= 5 {
@@ -250,7 +250,7 @@ func writeToFile(ctx context.Context, fn string, r io.Reader, contentType string
 	br := bufio.NewReader(r)
 
 	logger := getLogger(ctx)
-	logger.Log("msg", "writeToPdfFile", "file", fn, "ct", contentType)
+	logger.Info("writeToPdfFile", "file", fn, "ct", contentType)
 	if _, err = io.Copy(fh, br); err != nil {
 		_ = fh.Close()
 		return fmt.Errorf("save to %s: %w", fn, err)
@@ -291,7 +291,7 @@ func writeHeaders(ctx context.Context, w io.Writer, mailHeader mail.Header, cont
 		addr, err := mh.AddressList(k)
 		if err != nil {
 			if a, err := i18nmail.ParseAddress(mh.Get(k)); err != nil {
-				logger.Log("msg", "parsing address", "of", k, "value", mh.Get(k), "error", err)
+				logger.Info("parsing address", "of", k, "value", mh.Get(k), "error", err)
 				_, _ = io.WriteString(ew, escape(mh.Get(k)))
 			} else {
 				addr = append(addr, a)

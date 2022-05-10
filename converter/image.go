@@ -45,7 +45,7 @@ func ImageToPdfGm(ctx context.Context, w io.Writer, r io.Reader, contentType str
 		return fmt.Errorf("gm convert converting %s: %s: %w", r, errout.Bytes(), err)
 	}
 	if len(errout.Bytes()) > 0 {
-		Log("msg", "WARN gm convert", "r", r, "error", errout.String())
+		logger.Info("WARN gm convert", "r", r, "error", errout.String())
 	}
 	return nil
 }
@@ -62,7 +62,7 @@ func PdfToImage(ctx context.Context, w io.Writer, r io.Reader, contentType, size
 		_, err = io.Copy(w, dst)
 		return err
 	}
-	Log("msg", "ERROR PdfToImageCairo", "error", err)
+	logger.Info("ERROR PdfToImageCairo", "error", err)
 	return PdfToImageGm(ctx, w, io.MultiReader(src, r), contentType, size)
 }
 
@@ -93,7 +93,7 @@ func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType,
 	}
 	tfh, err := ioutil.TempFile("", "PdfToImageGm-")
 	if err != nil {
-		Log("msg", "ERROR cannot create temp file", "error", err)
+		logger.Info("ERROR cannot create temp file", "error", err)
 		return err
 	}
 	tfh.Close()
@@ -110,7 +110,7 @@ func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType,
 		return fmt.Errorf("%q: %w", cmd.Args, err)
 	}
 	if tfh, err = os.Open(fn); err != nil {
-		Log("msg", "ERROR cannot open temp", "file", fn, "error", err)
+		logger.Info("ERROR cannot open temp", "file", fn, "error", err)
 		return err
 	}
 	defer tfh.Close()
@@ -144,7 +144,7 @@ func PdfToImageGm(ctx context.Context, w io.Writer, r io.Reader, contentType, si
 	}
 	tfh, err := ioutil.TempFile("", "PdfToImageGm-")
 	if err != nil {
-		Log("msg", "ERROR cannot create temp file", "error", err)
+		logger.Info("ERROR cannot create temp file", "error", err)
 		return err
 	}
 	args = append(args, imgtyp+":"+tfh.Name()) // this MUST be : (colon)!
@@ -159,7 +159,7 @@ func PdfToImageGm(ctx context.Context, w io.Writer, r io.Reader, contentType, si
 	fn := tfh.Name()
 	tfh.Close()
 	if tfh, err = os.Open(fn); err != nil {
-		Log("msg", "ERROR cannot open temp file", "file", fn, "error", err)
+		logger.Info("ERROR cannot open temp file", "file", fn, "error", err)
 		return err
 	}
 	_ = os.Remove(fn)

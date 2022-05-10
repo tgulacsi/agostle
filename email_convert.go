@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2022 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -27,7 +27,7 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/filecache"
-	"github.com/go-kit/log"
+	"github.com/go-logr/logr"
 	"github.com/mholt/archiver/v4"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/iohlp"
@@ -157,7 +157,7 @@ func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, erro
 }
 
 func emailConvertEP(ctx context.Context, request interface{}) (response interface{}, err error) {
-	logger := log.With(getLogger(ctx), "f", "emailConvertEP")
+	logger := getLogger(ctx).WithValues("f", "emailConvertEP")
 	req := request.(emailConvertRequest)
 	defer func() { _ = req.Input.Close() }()
 
@@ -193,7 +193,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 			defer func() {
 				if err != nil {
 					outFh.Close()
-					logger.Log("msg", "Removing stale result", "file", outFn)
+					logger.Info("Removing stale result", "file", outFn)
 					_ = os.Remove(outFn)
 				}
 			}()
@@ -234,7 +234,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 
 	h := sha256.New()
 	sr, err := iohlp.MakeSectionReader(io.TeeReader(req.Input, h), 1<<20)
-	logger.Log("msg", "readerToFile", "error", err)
+	logger.Info("readerToFile", "error", err)
 	if err != nil {
 		return resp, fmt.Errorf("cannot read input file: %w", err)
 	}
@@ -243,26 +243,26 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	var head [1024]byte
 	n, _ := sr.ReadAt(head[:], 0)
 	req.Params.ContentType = converter.FixContentType(head[:n], req.Params.ContentType, req.Input.Filename)
-	logger.Log("msg", "fixed", "params", req.Params)
+	logger.Info("fixed", "params", req.Params)
 	if fh, err := getCached(req.Params, hsh); err == nil {
 		resp.outFn, resp.content = fh.Name(), fh
-		logger.Log("msg", "use cached", "file", resp.outFn)
+		logger.Info("use cached", "file", resp.outFn)
 		err = resp.mergeIfRequested(ctx, req.Params, logger)
 		return resp, err
 	}
 	input := io.NewSectionReader(sr, 0, sr.Size())
 	if !req.Params.Splitted && req.Params.OutImg == "" {
 		err = converter.MailToPdfZip(ctx, resp.outFn, input, req.Params.ContentType)
-		logger.Log("msg", "MailToPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
+		logger.Info("MailToPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
 		if err == nil {
 			err = resp.mergeIfRequested(ctx, req.Params, logger)
-			logger.Log("msg", "mergeIfRequested", "error", err)
+			logger.Info("mergeIfRequested", "error", err)
 		}
 	} else {
 		err = converter.MailToSplittedPdfZip(ctx, resp.outFn, input, req.Params.ContentType,
 			req.Params.Splitted, req.Params.OutImg, req.Params.ImgSize,
 			req.Params.Pages)
-		logger.Log("msg", "MailToSplittedPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
+		logger.Info("MailToSplittedPdfZip from", "from", input, "out", resp.outFn, "params", req.Params, "error", err)
 	}
 	if err == nil {
 		var fh *os.File
@@ -273,7 +273,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 			}
 		}
 	}
-	logger.Log("msg", "end", "contentNil", resp.content == nil, "fn", resp.outFn, "error", err)
+	logger.Info("end", "contentNil", resp.content == nil, "fn", resp.outFn, "error", err)
 	return resp, err
 }
 
@@ -296,7 +296,7 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 	if !ok {
 		return fmt.Errorf("wanted emailConvertResponse, got %T", response)
 	}
-	logger.Log("msg", "emailConvertEncode", "notModified", resp.NotModified, "fn", resp.outFn, "contentNil", resp.content == nil)
+	logger.Info("emailConvertEncode", "notModified", resp.NotModified, "fn", resp.outFn, "contentNil", resp.content == nil)
 	if resp.NotModified {
 		w.WriteHeader(http.StatusNotModified)
 	} else {
@@ -318,7 +318,7 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 	return nil
 }
 
-func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params convertParams, logger log.Logger) error {
+func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params convertParams, logger logr.Logger) error {
 	if !params.Merged {
 		return nil
 	}
@@ -327,7 +327,7 @@ func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params c
 		return err
 	}
 	defer fh.Close()
-	format, err := archiver.Identify(fh.Name(), fh)
+	format, _, err := archiver.Identify(fh.Name(), fh)
 	if err != nil {
 		return err
 	}

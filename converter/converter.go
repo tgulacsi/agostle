@@ -24,7 +24,6 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/filecache"
-	"github.com/go-kit/log"
 	"github.com/tgulacsi/go/iohlp"
 	"golang.org/x/net/html"
 )
@@ -40,7 +39,7 @@ var (
 )
 
 func (c Converter) WithCache(ctx context.Context, destfn string, r io.Reader, sourceContentType, destContentType string) error {
-	logger := log.With(getLogger(ctx), "f", "convertWithCache", "sct", sourceContentType, "dct", destContentType, "dest", destfn)
+	logger := getLogger(ctx).WithValues("f", "convertWithCache", "sct", sourceContentType, "dct", destContentType, "dest", destfn)
 	hsh := filecache.NewHash()
 	if destContentType == "" {
 		destContentType = "application/pdf"
@@ -69,10 +68,10 @@ func (c Converter) WithCache(ctx context.Context, destfn string, r io.Reader, so
 			return fmt.Errorf("create temp image file %s: %w", inpfn, err)
 		}
 		if _, err = io.Copy(io.MultiWriter(ifh, hsh), r); err != nil {
-			logger.Log("msg", "reading", "file", ifh.Name(), "error", err)
+			logger.Info("reading", "file", ifh.Name(), "error", err)
 		}
 		if err = ifh.Close(); err != nil {
-			logger.Log("msg", "writing", "dest", ifh.Name(), "error", err)
+			logger.Info("writing", "dest", ifh.Name(), "error", err)
 		}
 		if ifh, err = os.Open(inpfn); err != nil {
 			return fmt.Errorf("open inp %s: %w", inpfn, err)
@@ -86,10 +85,10 @@ func (c Converter) WithCache(ctx context.Context, destfn string, r io.Reader, so
 	key := filecache.ActionID(hsh.SumID())
 	if fn, _, err := Cache.GetFile(key); err == nil {
 		if err = copyFile(fn, destfn); err == nil {
-			logger.Log("msg", "served from cache")
+			logger.Info("served from cache")
 			return nil
 		}
-		logger.Log("msg", "copy from cache", "source", fn, "dest", destfn, "error", err)
+		logger.Info("copy from cache", "source", fn, "dest", destfn, "error", err)
 	}
 
 	if _, err := ifh.Seek(0, 0); err != nil {
@@ -114,13 +113,13 @@ func (c Converter) WithCache(ctx context.Context, destfn string, r io.Reader, so
 
 	_, _, err = Cache.Put(key, ofh)
 	ofh.Close()
-	logger.Log("msg", "store into cache", "dest", ofh.Name(), "key", hex.EncodeToString(key[:]), "error", err)
+	logger.Info("store into cache", "dest", ofh.Name(), "key", hex.EncodeToString(key[:]), "error", err)
 	return nil
 }
 
 // TextToPdf converts text (text/plain) to PDF
 func TextToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
-	getLogger(ctx).Log("msg", "Converting into", "ct", contentType, "dest", destfn)
+	getLogger(ctx).Info("Converting into", "ct", contentType, "dest", destfn)
 	return HTMLToPdf(ctx, destfn, textToHTML(r), textHtml)
 }
 
@@ -128,7 +127,7 @@ func textToHTML(r io.Reader) io.Reader {
 	pr, pw := io.Pipe()
 	go func() {
 		if _, err := io.Copy(&htmlEscaper{w: pw}, iohlp.WrappingReader(r, 80)); err != nil {
-			Log("msg", "escape", "error", err)
+			logger.Info("escape", "error", err)
 			_ = pw.CloseWithError(err)
 			return
 		}
@@ -150,7 +149,7 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 }
 func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	logger := getLogger(ctx)
-	logger.Log("msg", "converting image", "ct", contentType, "dest", destfn)
+	logger.Info("converting image", "ct", contentType, "dest", destfn)
 	imgtyp := contentType[strings.Index(contentType, "/")+1:]
 	destfn = strings.TrimSuffix(destfn, ".pdf")
 
@@ -167,10 +166,10 @@ func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 			return fmt.Errorf("create temp image file %s: %w", inpfn, err)
 		}
 		if _, err = io.Copy(ifh, r); err != nil {
-			logger.Log("msg", "ImageToPdf reading", "file", ifh.Name(), "error", err)
+			logger.Info("ImageToPdf reading", "file", ifh.Name(), "error", err)
 		}
 		if err = ifh.Close(); err != nil {
-			logger.Log("msg", "ImageToPdf writing", "dest", ifh.Name(), "error", err)
+			logger.Info("ImageToPdf writing", "dest", ifh.Name(), "error", err)
 		}
 		if ifh, err = os.Open(inpfn); err != nil {
 			return fmt.Errorf("open inp %s: %w", inpfn, err)
@@ -187,7 +186,7 @@ func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 	}
 
 	if err = ImageToPdfGm(ctx, w, ifh, contentType); err != nil {
-		Log("msg", "ImageToPdfGm", "error", err)
+		logger.Info("ImageToPdfGm", "error", err)
 	}
 	closeErr := w.Close()
 	if err != nil {
@@ -201,7 +200,7 @@ func OfficeToPdf(ctx context.Context, destfn string, r io.Reader, contentType st
 	return Converter(officeToPdf).WithCache(ctx, destfn, r, contentType, "application/pdf")
 }
 func officeToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
-	getLogger(ctx).Log("msg", "Converting into", "ct", contentType, "dest", destfn)
+	getLogger(ctx).Info("Converting into", "ct", contentType, "dest", destfn)
 	destfn = strings.TrimSuffix(destfn, ".pdf")
 	inpfn := destfn + ".raw"
 	fh, err := os.Create(inpfn)
@@ -220,7 +219,7 @@ var OtherToPdf = OfficeToPdf
 
 // PdfToPdf "converts" PDF (application/pdf) to PDF (just copies)
 func PdfToPdf(ctx context.Context, destfn string, r io.Reader, _ string) error {
-	getLogger(ctx).Log("msg", `"Converting" pdf into`, "dest", destfn)
+	getLogger(ctx).Info(`"Converting" pdf into`, "dest", destfn)
 	fh, err := os.Create(destfn)
 	if err != nil {
 		return err
@@ -262,7 +261,7 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 	return Converter(htmlToPdf).WithCache(ctx, destfn, r, contentType, "application/pdf")
 }
 func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
-	logger := log.With(getLogger(ctx), "func", "HTMLToPdf", "dest", destfn)
+	logger := getLogger(ctx).WithValues("func", "HTMLToPdf", "dest", destfn)
 	var inpfn string
 	if fh, ok := r.(*os.File); ok && fileExists(fh.Name()) {
 		inpfn = fh.Name()
@@ -325,10 +324,10 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 				}
 				buf.Reset()
 				if err = html.Render(&buf, img); err != nil {
-					logger.Log("msg", "html.Render", "img", img, "error", err)
+					logger.Info("html.Render", "img", img, "error", err)
 					continue
 				}
-				logger.Log("old", string(line), "new", buf.String())
+				logger.Info("htmlToPdf", "old", string(line), "new", buf.String())
 				i := pos[0] + copy(b[pos[0]:pos[1]], buf.Bytes())
 				for i < pos[1] {
 					b[i] = ' '
@@ -346,7 +345,7 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 		if err == nil {
 			return nil
 		}
-		Log("msg", "wkhtmltopdf", "error", err)
+		logger.Info("wkhtmltopdf", "error", err)
 	}
 
 	dn := filepath.Dir(destfn)
@@ -365,7 +364,7 @@ func OutlookToEML(ctx context.Context, destfn string, r io.Reader, contentType s
 }
 func outlookToEML(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	rc, err := NewOLEStorageReader(ctx, r)
-	Log("msg", "OutlookToEML", "ct", contentType, "error", err)
+	logger.Info("OutlookToEML", "ct", contentType, "error", err)
 	if err != nil {
 		return err
 	}
@@ -415,7 +414,7 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 			lcAll = "en_US.UTF-8"
 		}
 		cmd.Env[0] = lcAll
-		logger.Log("msg", "env LC_ALL="+lcAll)
+		logger.Info("env LC_ALL=" + lcAll)
 		// delete LC_* LANG* env vars.
 		for _, s := range os.Environ() {
 			if strings.HasPrefix(s, "LC_") || s == "LANG" || s == "LANGUAGE" {
@@ -455,13 +454,13 @@ func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 	cmd.Dir = filepath.Dir(inpfn)
 	cmd.Stderr = &buf
 	cmd.Stdout = os.Stdout
-	Log("start", "wkhtmltopdf", "args", cmd.Args)
+	logger.Info("start", "wkhtmltopdf", "args", cmd.Args)
 	if err := cmd.Run(); err != nil {
 		err = fmt.Errorf("%q: %w", cmd.Args, err)
 		if bytes.HasSuffix(buf.Bytes(), []byte("ContentNotFoundError\n")) ||
 			bytes.HasSuffix(buf.Bytes(), []byte("ProtocolUnknownError\n")) ||
 			bytes.HasSuffix(buf.Bytes(), []byte("HostNotFoundError\n")) { // K-MT11422:99503
-			logger.Log("msg", buf.String())
+			logger.Info(buf.String())
 		} else {
 			return fmt.Errorf("%s: %w", buf.String(), err)
 		}
@@ -517,7 +516,7 @@ const mimeOutlook = "application/vnd.ms-outlook"
 
 func fixCT(contentType, fileName string) (ct string) {
 	//defer func() {
-	//	Log("msg", "fixCT", "ct", contentType, "fn", fileName, "result", ct)
+	//	logger.Info("fixCT", "ct", contentType, "fn", fileName, "result", ct)
 	//}()
 
 	switch contentType {
@@ -549,7 +548,7 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	ext := strings.ToLower(filepath.Ext(fileName))
 	defer func() {
 		if contentType != ct {
-			Log("msg", "FixContentType", "ct", contentType, "fn", fileName, "ext", ext, "result", ct, "where", where)
+			logger.Info("FixContentType", "ct", contentType, "fn", fileName, "ext", ext, "result", ct, "where", where)
 		}
 	}()
 

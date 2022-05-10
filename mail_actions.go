@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2022 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -12,7 +12,6 @@ import (
 
 	"context"
 
-	"github.com/go-kit/log"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/tgulacsi/agostle/converter"
 )
@@ -43,7 +42,7 @@ func mailToTree(ctx context.Context, outdir, inpfn string) error {
 }
 
 func outlookToEmail(ctx context.Context, outfn, inpfn string) error {
-	logger := log.With(logger, "fn", "outlookToEmail")
+	logger := logger.WithValues("fn", "outlookToEmail")
 	inp, err := openIn(inpfn)
 	if err != nil {
 		return err
@@ -54,7 +53,7 @@ func outlookToEmail(ctx context.Context, outfn, inpfn string) error {
 	}
 	defer func() {
 		if closeErr := out.Close(); closeErr != nil {
-			logger.Log("msg", "Close", "error", err)
+			logger.Info("msg", "Close")
 			if err == nil {
 				err = closeErr
 			}

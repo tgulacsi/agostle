@@ -21,7 +21,7 @@ func NewTextReader(ctx context.Context, r io.Reader, charset string) io.Reader {
 	}
 	enc := text.GetEncoding(charset)
 	if enc == nil {
-		getLogger(ctx).Log("msg", "no decoder for", "charset", charset)
+		getLogger(ctx).Info("no decoder for", "charset", charset)
 		return r
 	}
 	return text.NewReader(r, enc)

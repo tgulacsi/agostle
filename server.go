@@ -30,12 +30,12 @@ import (
 
 	"github.com/UNO-SOFT/otel"
 	"github.com/VictoriaMetrics/metrics"
+	"github.com/go-logr/logr"
 	"github.com/google/renameio"
 	"github.com/oklog/ulid/v2"
 	"github.com/tgulacsi/agostle/converter"
 
 	kithttp "github.com/go-kit/kit/transport/http"
-	"github.com/go-kit/log"
 )
 
 var (
@@ -92,7 +92,7 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 	mux.Handle("/_admin/stop", mkAdminStopHandler(s))
 	mux.Handle("/", http.DefaultServeMux)
 
-	tp, err := otel.LogTraceProvider(logger.Log)
+	tp, err := otel.LogTraceProvider(logger)
 	if err != nil {
 		panic(err)
 	}
@@ -106,7 +106,6 @@ type ctxKey string
 const (
 	ctxKeyReqID  = ctxKey("reqid")
 	ctxKeyCancel = ctxKey("cancel")
-	ctxKeyLogger = ctxKey("logger")
 )
 
 func SetRequestID(ctx context.Context, name ctxKey) context.Context {
@@ -138,15 +137,15 @@ func prepareContext(ctx context.Context, r *http.Request) context.Context {
 	ctx = context.WithValue(ctx, ctxKeyCancel, cancel)
 	ctx = SetRequestID(ctx, "")
 	lgr := getLogger(ctx)
-	lgr = log.With(lgr,
-		"reqid", GetRequestID(ctx, ""),
+	lgr = lgr.WithValues(
+		"reqID", GetRequestID(ctx, ""),
 		"path", r.URL.Path,
 		"method", r.Method,
 	)
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		lgr = log.With(lgr, "ip", host)
+		lgr = lgr.WithValues("ip", host)
 	}
-	ctx = context.WithValue(ctx, ctxKeyLogger, lgr)
+	ctx = logr.NewContext(ctx, lgr)
 	logAccept(ctx, r)
 	return ctx
 }
@@ -158,15 +157,15 @@ func dumpRequest(ctx context.Context, req *http.Request) context.Context {
 	prefix := filepath.Join(converter.Workdir, time.Now().Format("20060102_150405")+"-")
 	var reqSeq uint64
 	b, err := httputil.DumpRequest(req, true)
-	logger := log.With(getLogger(ctx), "fn", "dumpRequest")
+	logger := getLogger(ctx).WithValues("fn", "dumpRequest")
 	if err != nil {
-		logger.Log("msg", "dumping request", "error", err)
+		logger.Error(err, "dumping request")
 	}
 	fn := fmt.Sprintf("%s%06d.dmp", prefix, atomic.AddUint64(&reqSeq, 1))
 	if err = ioutil.WriteFile(fn, b, 0660); err != nil {
-		logger.Log("msg", "writing", "dumpfile", fn, "error", err)
+		logger.Error(err, "writing", "dumpfile", fn)
 	} else {
-		logger.Log("msg", "Request has been dumped into "+fn)
+		logger.Info("Request has been dumped into " + fn)
 	}
 	return ctx
 }
@@ -175,12 +174,12 @@ func mkAdminStopHandler(s interface{ Shutdown(context.Context) error }) http.Han
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Refresh", "3;URL=/")
 		w.WriteHeader(200)
-		logger.Log("msg", "/_admin/stop", "header", r.Header, "from", r.RemoteAddr)
+		logger.Info("/_admin/stop", "header", r.Header, "from", r.RemoteAddr)
 		fmt.Fprintf(w, `Stopping...`)
 		_ = s.Shutdown(r.Context())
 		go func() {
 			time.Sleep(time.Millisecond * 500)
-			logger.Log("msg", "SUICIDE for ask!")
+			logger.Info("SUICIDE for ask!")
 			os.Exit(3)
 		}()
 	})
@@ -200,11 +199,11 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 	f := reqFile{ReadCloser: r.Body}
 	contentType := r.Header.Get("Content-Type")
 	logger := getLogger(ctx)
-	logger.Log("msg", "readRequestOneFile", "content-type", contentType)
+	logger.Info("readRequestOneFile", "content-type", contentType)
 	if !strings.HasPrefix(contentType, "multipart/") {
 		f.FileHeader.Header = textproto.MIMEHeader(r.Header)
 		_, params, _ := mime.ParseMediaType(r.Header.Get("Content-Disposition"))
-		logger.Log("content-disposition", r.Header.Get("Content-Disposition"), "params", params)
+		logger.Info("getOneRequestFile", "content-disposition", r.Header.Get("Content-Disposition"), "params", params)
 		f.FileHeader.Filename = params["filename"]
 		return f, nil
 	}
@@ -279,7 +278,7 @@ func readerToFile(r io.Reader, prefix string) (pendingFile, error) {
 	}
 	var buf bytes.Buffer
 	if _, err = io.Copy(dfh, io.TeeReader(r, &buf)); err != nil {
-		logger.Log("msg", "readerToFile renameio.TempFile", "error", err)
+		logger.Error(err, "readerToFile renameio.TempFile")
 		_ = dfh.Cleanup()
 		if dfh, err := os.CreateTemp("", pat); err == nil {
 			if _, err = io.Copy(dfh, io.MultiReader(bytes.NewReader(buf.Bytes()), r)); err == nil {
@@ -318,10 +317,10 @@ func tempFilename(prefix string) (filename string, err error) {
 
 func logAccept(ctx context.Context, r *http.Request) {
 	if r == nil {
-		getLogger(ctx).Log("msg", "EMPTY REQUEST")
+		getLogger(ctx).Info("EMPTY REQUEST")
 		return
 	}
-	getLogger(ctx).Log("msg", "ACCEPT", "method", r.Method, "uri", r.RequestURI, "remote", r.RemoteAddr)
+	getLogger(ctx).Info("ACCEPT", "method", r.Method, "uri", r.RequestURI, "remote", r.RemoteAddr)
 }
 
 func baseName(fileName string) string {
@@ -334,11 +333,8 @@ func baseName(fileName string) string {
 	}
 	return fileName
 }
-func getLogger(ctx context.Context) log.Logger {
-	if ctx == nil {
-		return logger
-	}
-	if lgr, ok := ctx.Value(ctxKeyLogger).(log.Logger); ok {
+func getLogger(ctx context.Context) logr.Logger {
+	if lgr, err := logr.FromContext(ctx); err == nil {
 		return lgr
 	}
 	return logger
