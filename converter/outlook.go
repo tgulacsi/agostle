@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -59,7 +58,7 @@ func newOLEStorageReaderDirect(ctx context.Context, r io.Reader) (io.ReadCloser,
 	if ok {
 		defer in.Close()
 	} else {
-		in, err = ioutil.TempFile("", ".msg")
+		in, err = os.CreateTemp("", ".msg")
 		if err != nil {
 			return nil, err
 		}

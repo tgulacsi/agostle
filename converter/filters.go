@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net/textproto"
 	"os"
@@ -677,7 +676,7 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 // MailToZip dumps mail and all parts into ZIP
 func MailToZip(ctx context.Context, destfn string, body io.Reader, contentType string) error {
 	ctx, wd := prepareContext(ctx, "")
-	dn, err := ioutil.TempDir(wd, "zip-")
+	dn, err := os.MkdirTemp(wd, "zip-")
 	if err != nil {
 		return err
 	}
@@ -778,7 +777,7 @@ func ExtractingFilter(ctx context.Context,
 			if err != nil {
 				return err
 			}
-			chunk, cErr := ioutil.ReadAll(z)
+			chunk, cErr := io.ReadAll(z)
 			_ = z.Close()
 			logger.Info("read zip element", "i", archRowCount, "fi", name, "error", err)
 			if cErr != nil {

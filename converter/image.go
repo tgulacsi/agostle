@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -91,7 +90,7 @@ func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType,
 			args = append(args, "-scale-to-y", size[i+1:])
 		}
 	}
-	tfh, err := ioutil.TempFile("", "PdfToImageGm-")
+	tfh, err := os.CreateTemp("", "PdfToImageGm-")
 	if err != nil {
 		logger.Info("ERROR cannot create temp file", "error", err)
 		return err
@@ -142,7 +141,7 @@ func PdfToImageGm(ctx context.Context, w io.Writer, r io.Reader, contentType, si
 		args[2] = "-resize"
 		args = append(args, size)
 	}
-	tfh, err := ioutil.TempFile("", "PdfToImageGm-")
+	tfh, err := os.CreateTemp("", "PdfToImageGm-")
 	if err != nil {
 		logger.Info("ERROR cannot create temp file", "error", err)
 		return err

@@ -10,7 +10,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,7 +26,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	tmpdir, err := ioutil.TempDir("", "agostle-docker-")
+	tmpdir, err := os.MkdirTemp("", "agostle-docker-")
 	if err != nil {
 		Log("msg", "create temp dir", "error", err)
 		os.Exit(2)

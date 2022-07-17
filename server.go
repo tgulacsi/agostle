@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net"
@@ -162,7 +161,7 @@ func dumpRequest(ctx context.Context, req *http.Request) context.Context {
 		logger.Error(err, "dumping request")
 	}
 	fn := fmt.Sprintf("%s%06d.dmp", prefix, atomic.AddUint64(&reqSeq, 1))
-	if err = ioutil.WriteFile(fn, b, 0660); err != nil {
+	if err = os.WriteFile(fn, b, 0660); err != nil {
 		logger.Error(err, "writing", "dumpfile", fn)
 	} else {
 		logger.Info("Request has been dumped into " + fn)
@@ -305,7 +304,7 @@ func (f dummyPendingFile) Cleanup() error {
 }
 
 func tempFilename(prefix string) (filename string, err error) {
-	fh, e := ioutil.TempFile("", prefix)
+	fh, e := os.CreateTemp("", prefix)
 	if e != nil {
 		err = e
 		return

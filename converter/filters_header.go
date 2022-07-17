@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"net/mail"
 	"net/textproto"
 	"os"
@@ -85,7 +84,7 @@ func PrependHeaderFilter(ctx context.Context,
 			decodeHTML(ctx, part.Body, *ConfWkhtmltopdf == ""), bodyThreshold)
 		logger.V(1).Info("PrependHeaderFilter", "wkhtmltopdf", *ConfWkhtmltopdf, "body", part.Body, "threshold", bodyThreshold)
 		if *ConfWkhtmltopdf == "" {
-			b, err := ioutil.ReadAll(part.Body)
+			b, err := io.ReadAll(part.Body)
 			if err != nil {
 				logger.Info("cannot read", "body", part.Body, "error", err)
 			}

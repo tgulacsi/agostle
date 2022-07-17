@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"os"
@@ -101,7 +100,7 @@ func Main() error {
 			if updateRootJSON != "" {
 				logger.Info("using root keys", "from", updateRootJSON)
 				var readErr error
-				if rootKeySrc, readErr = ioutil.ReadFile(updateRootJSON); readErr != nil {
+				if rootKeySrc, readErr = os.ReadFile(updateRootJSON); readErr != nil {
 					return readErr
 				}
 			}
