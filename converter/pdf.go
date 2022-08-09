@@ -290,9 +290,11 @@ func PdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 		os.Remove(destfn)
 		return temp.LinkOrCopy(filenames[0], destfn)
 	}
-	if err := pdfMerge(ctx, destfn, filenames...); err == nil {
-		return err
+	err := pdfMerge(ctx, destfn, filenames...)
+	if err == nil {
+		return nil
 	}
+	logger.Error(err, "pdfMerge")
 
 	// filter out bad PDFs
 	fns := make([]string, 0, len(filenames))
