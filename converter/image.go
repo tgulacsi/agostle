@@ -22,6 +22,7 @@ func command(ctx context.Context, prg string, args ...string) *exec.Cmd {
 	if prg == "" {
 		prg, args = args[0], args[1:]
 	}
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 	return exec.CommandContext(ctx, prg, args...)
 }
 

@@ -7,7 +7,7 @@ package converter
 import (
 	"archive/zip"
 	"bytes"
-	"crypto/sha1"
+	"crypto/sha512"
 	"errors"
 	"fmt"
 	"hash"
@@ -159,8 +159,7 @@ func (a ArchFileItem) ArchiveName() string {
 		return a.Filename
 	}
 	if a.File != nil {
-		fi, err := a.File.Stat()
-		if err != nil {
+		if fi, err := a.File.Stat(); err == nil {
 			return fi.Name()
 		}
 	}
@@ -256,7 +255,8 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 				continue
 			}
 			openedHere = true
-			if item.File, err = os.Open(item.Filename); err != nil {
+			f, err := os.Open(item.Filename)
+			if err != nil {
 				err = fmt.Errorf("zip cannot open %q: %w", item.Filename, err)
 				if !skipOnError {
 					return err
@@ -264,6 +264,7 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 				appendErr(err)
 				continue
 			}
+			item.File = f
 		}
 		if fi, err = item.File.Stat(); err != nil {
 			if openedHere {
@@ -376,7 +377,7 @@ func fileContentHash(fn string) (hash.Hash, error) {
 	if err != nil {
 		return nil, err
 	}
-	hsh := sha1.New()
+	hsh := sha512.New384()
 	_, err = io.Copy(hsh, f)
 	f.Close()
 	return hsh, err

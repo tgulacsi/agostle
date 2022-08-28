@@ -23,10 +23,11 @@ func NewPortLock(port int) *PortLock {
 
 // Lock locks on port
 func (p *PortLock) Lock() {
-	var err error
 	t := 1 * time.Second
 	for {
-		if p.ln, err = net.Listen("tcp", p.hostport); err == nil {
+		ln, err := net.Listen("tcp", p.hostport)
+		if err == nil {
+			p.ln = ln
 			return
 		}
 		logger.Info("spinning lock hostport", "hostport", p.hostport, "error", err)

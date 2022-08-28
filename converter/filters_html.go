@@ -47,7 +47,8 @@ func HTMLPartFilter(ctx context.Context,
 		alter      = ""
 		converter  = GetConverter(textHtml, nil)
 		aConverter Converter
-		tbd        = make(map[string]struct{}, 4)
+		// nosemgrep
+		tbd = make(map[string]struct{}, 4)
 	)
 	if !LeaveTempFiles {
 		defer func() {
@@ -76,11 +77,12 @@ func HTMLPartFilter(ctx context.Context,
 			err = converter(ctx, destfn, fh, textHtml)
 			fh.Close()
 			if err == nil {
-				return destfn, err
+				return destfn, nil
 			}
 			err = fmt.Errorf("converting %s to %s: %w", fn, destfn, err)
 		}
 		logger.Info("html2pdf", "error", err)
+		// nosemgrep: go.lang.correctness.useless-eqeq.eqeq-is-bad
 		if alter != "" && aConverter != nil {
 			logger.Info("html2pdf using alternative content " + alter)
 			if fh, err = os.Open(alter); err != nil {
@@ -140,6 +142,7 @@ func HTMLPartFilter(ctx context.Context,
 			} else {
 				dn = wd
 			}
+			// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
 			_ = os.Mkdir(dn, 0755) //ignore errors
 			fn = ""
 			if parent != nil {
@@ -213,6 +216,7 @@ func HTMLPartFilter(ctx context.Context,
 			}
 			fn = filepath.Join(filepath.Dir(cg.htmlFn), fn)
 
+			// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
 			_ = os.Mkdir(filepath.Dir(fn), 0755) // ignore error
 			logger.Info("save", "file", fn, "cid", cid, "htmlFn", cg.htmlFn)
 			_, _ = part.Body.Seek(0, 0)

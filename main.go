@@ -132,7 +132,8 @@ func Main() error {
 			); err != nil {
 				return fmt.Errorf("download: %w", err)
 			}
-			_ = os.Chmod(destFh.Name(), 0775)
+			// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
+			_ = os.Chmod(destFh.Name(), 0755)
 
 			old := filepath.Join(filepath.Dir(self), "."+filepath.Base(self)+".old")
 			logger.Info("rename", "from", self, "to", old)
@@ -285,6 +286,7 @@ func logToFile(fn string) (func() error, error) {
 	if fn == "" {
 		return nil, nil
 	}
+	// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
 	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
 	if err != nil {
 		logger.Error(err, "open log file", "file", fn)
@@ -300,7 +302,9 @@ func ensureFilename(fn string, out bool) (string, bool) {
 	if !(fn == "" || fn == "-") {
 		return fn, false
 	}
+	// nosemgrep: go.lang.security.audit.crypto.math_random.math-random-used
 	fn = filepath.Join(converter.Workdir,
+		// nosemgrep: go.lang.security.audit.crypto.math_random.math-random-used
 		strconv.Itoa(os.Getpid())+"-"+strconv.Itoa(rand.Int())) //nolint:gas
 	fmt.Fprintf(os.Stderr, "fn=%s out? %t\n", fn, out)
 	if out {

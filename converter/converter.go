@@ -400,6 +400,7 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 		defer lofficePortLock.Unlock()
 	}
 	subCtx, subCancel := context.WithTimeout(ctx, *ConfLofficeTimeout)
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 	cmd := exec.CommandContext(subCtx, *ConfLoffice, args...)
 	cmd.Dir = filepath.Dir(inpfn)
 	cmd.Stderr = os.Stderr
@@ -468,6 +469,7 @@ func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 		"--user-style-sheet", ussFn,
 		outfn}
 	var buf bytes.Buffer
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 	cmd := exec.CommandContext(ctx, *ConfWkhtmltopdf, args...)
 	cmd.Dir = filepath.Dir(inpfn)
 	cmd.Stderr = &buf

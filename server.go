@@ -132,6 +132,7 @@ var defaultBeforeFuncs = []kithttp.RequestFunc{
 }
 
 func prepareContext(ctx context.Context, r *http.Request) context.Context {
+	// nosemgrep: dgryski.semgrep-go.contextcancelable.cancelable-context-not-systematically-cancelled
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	ctx = context.WithValue(ctx, ctxKeyCancel, cancel)
 	ctx = SetRequestID(ctx, "")
@@ -217,10 +218,11 @@ func getOneRequestFile(ctx context.Context, r *http.Request) (reqFile, error) {
 
 	for _, fileHeaders := range r.MultipartForm.File {
 		for _, fileHeader := range fileHeaders {
-			var err error
-			if f.ReadCloser, err = fileHeader.Open(); err != nil {
+			rc, err := fileHeader.Open()
+			if err != nil {
 				return f, fmt.Errorf("error opening part %q: %w", fileHeader.Filename, err)
 			}
+			f.ReadCloser = rc
 			if fileHeader != nil {
 				f.FileHeader = *fileHeader
 				return f, nil
@@ -247,10 +249,11 @@ func getRequestFiles(r *http.Request) ([]reqFile, error) {
 	files := make([]reqFile, 0, len(r.MultipartForm.File))
 	for _, fileHeaders := range r.MultipartForm.File {
 		for _, fileHeader := range fileHeaders {
-			f := reqFile{FileHeader: *fileHeader}
-			if f.ReadCloser, err = fileHeader.Open(); err != nil {
+			rc, err := fileHeader.Open()
+			if err != nil {
 				return nil, fmt.Errorf("error reading part %q: %w", fileHeader.Filename, err)
 			}
+			f := reqFile{ReadCloser: rc, FileHeader: *fileHeader}
 			files = append(files, f)
 		}
 	}

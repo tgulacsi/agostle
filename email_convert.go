@@ -129,11 +129,11 @@ func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, erro
 			break
 		}
 	}
-	var err error
-	req.Input, err = getOneRequestFile(ctx, r)
+	inp, err := getOneRequestFile(ctx, r)
 	if err != nil {
 		return nil, err
 	}
+	req.Input = inp
 	//getLogger(ctx).Log("input", req.Input)
 	contentType := req.Input.Header.Get("Content-Type")
 	if contentType == "" || contentType == "application/octet-stream" {

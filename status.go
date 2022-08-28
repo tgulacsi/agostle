@@ -9,6 +9,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -69,7 +70,10 @@ func onStart() {
 // getTopOut returns the output of the topCmd - shall be protected with a mutex
 func getTopOutput() ([]byte, error) {
 	topOut.Reset()
-	cmd := exec.Command(topCmd[0], topCmd[1:]...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
+	cmd := exec.CommandContext(ctx, topCmd[0], topCmd[1:]...)
 	cmd.Stdout = topOut
 	cmd.Stderr = os.Stderr
 	e := cmd.Run()
@@ -94,11 +98,11 @@ func (st *statInfo) fill() {
 	}
 	st.last = now
 	runtime.ReadMemStats(st.mem)
-	var err error
-	if st.top, err = getTopOutput(); err != nil {
+	top, err := getTopOutput()
+	if err != nil {
 		logger.Error(err, "error calling top")
 	} else {
-		st.top = bytes.Replace(st.top, []byte("\n"), []byte("\n    "), -1)
+		st.top = bytes.Replace(top, []byte("\n"), []byte("\n    "), -1)
 	}
 }
 
@@ -110,6 +114,7 @@ func statusPage(w http.ResponseWriter, r *http.Request) {
 	stats.fill()
 	w.Header().Add("Content-Type", "text/html")
 	w.WriteHeader(200)
+	// nosemgrep: go.lang.security.audit.xss.no-fprintf-to-responsewriter.no-fprintf-to-responsewriter
 	fmt.Fprintf(w, `<!DOCTYPE html>
 <html>
   <head><title>Agostle</title></head>
@@ -127,6 +132,7 @@ func statusPage(w http.ResponseWriter, r *http.Request) {
 		os.Getpid(), stats.startedAt,
 		float64(stats.mem.Alloc)/1024/1024, float64(stats.mem.Sys)/1024/1024)
 	//io.WriteString(w, stats.top)
+	// nosemgrep: go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter
 	_, _ = w.Write(stats.top)
 	_, _ = io.WriteString(w, `</pre></body></html>`)
 }

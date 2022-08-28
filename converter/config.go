@@ -109,6 +109,7 @@ func LoadConfig(ctx context.Context, fn string) error {
 	}
 	var err error
 	cd := filepath.Join(Workdir, "agostle-filecache")
+	// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
 	_ = os.MkdirAll(cd, 0700)
 	if Cache, err = filecache.Open(cd); err != nil {
 		var tErr error
@@ -122,6 +123,7 @@ func LoadConfig(ctx context.Context, fn string) error {
 	bn := filepath.Base(*ConfPdfseparate)
 	prefix := (*ConfPdfseparate)[:len(*ConfPdfseparate)-len(bn)]
 	for k := range popplerOk {
+		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 		if err := exec.CommandContext(ctx, prefix+k, "-h").Run(); err == nil {
 			popplerOk[k] = prefix + k
 		}
@@ -144,10 +146,10 @@ var Cache *filecache.Cache
 // LeaveTempFiles should be true only for debugging purposes (leaves temp files)
 var LeaveTempFiles = false
 
-type ctxKey string
+type ctxKeyWorkDir struct{}
 
 func prepareContext(ctx context.Context, subdir string) (context.Context, string) {
-	const wdKey = ctxKey("workdir")
+	var wdKey ctxKeyWorkDir
 	odir, _ := ctx.Value(wdKey).(string)
 	if odir != "" {
 		if subdir != "" {
@@ -162,6 +164,7 @@ func prepareContext(ctx context.Context, subdir string) (context.Context, string
 	}
 	ndir, ok := ctx.Value(wdKey).(string)
 	if ok && odir != ndir {
+		// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
 		if err := os.MkdirAll(ndir, 0750); err != nil {
 			panic("cannot create workdir " + ndir + ": " + err.Error())
 		}

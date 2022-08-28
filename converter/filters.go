@@ -7,7 +7,7 @@ package converter
 import (
 	"archive/zip"
 	"bytes"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -348,11 +348,11 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	var head [4096]byte
 
 	logger.Info("SlurpMail", "ct", contentType)
-	mp := i18nmail.MailPart{ContentType: contentType}
-	var err error
-	if mp.Body, err = i18nmail.MakeSectionReader(body, bodyThreshold); err != nil {
+	sr, err := i18nmail.MakeSectionReader(body, bodyThreshold)
+	if err != nil {
 		return
 	}
+	mp := i18nmail.MailPart{Body: sr, ContentType: contentType}
 	b := make([]byte, 2048)
 	n, _ := mp.Body.ReadAt(b, 0)
 	b = b[:n]
@@ -416,7 +416,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	//close(errch)
 }
 
-const ctxSeen = ctxKey("seen")
+type ctxKeySeen struct{}
 
 // SetupFilters applies filters on parts received on inch, and returns them on outch
 func SetupFilters(
@@ -428,7 +428,7 @@ func SetupFilters(
 	if len(Filters) == 0 {
 		return inch
 	}
-	ctx = context.WithValue(ctx, ctxSeen, make(map[string]int, 32))
+	ctx = context.WithValue(ctx, ctxKeySeen{}, make(map[string]int, 32))
 
 	in := inch
 	var out chan i18nmail.MailPart
@@ -447,7 +447,7 @@ const maxErrLen = 1 << 20
 // all mail part goes through all filter in Filters, in reverse order (last first)
 func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files []ArchFileItem, err error) {
 	logger := getLogger(ctx)
-	hsh := sha1.New()
+	hsh := sha256.New()
 	sr, e := iohlp.MakeSectionReader(io.TeeReader(r, hsh), 1<<20)
 	logger.Info("MailToPdfFiles", "input", sr.Size(), "error", e)
 	if e != nil {
@@ -613,6 +613,7 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 			strings.Replace(mp.ContentType, "/", "--", -1), xfn)
 	}
 
+	// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
 	if err = os.MkdirAll(outdir, 0750); err != nil {
 		return fmt.Errorf("MailToTree(%q): %w", outdir, err)
 	}
@@ -639,6 +640,7 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 					upr = append(upr, up[i])
 				}
 				dn = filepath.Join(upr...)
+				// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
 				_ = os.MkdirAll(dn, 0750)
 				break
 			}
@@ -706,6 +708,7 @@ func ExtractingFilter(ctx context.Context,
 	}()
 
 	allIn := make(chan i18nmail.MailPart, 1024)
+	// nosemgrep: trailofbits.go.waitgroup-add-called-inside-goroutine.waitgroup-add-called-inside-goroutine
 	var wg sync.WaitGroup // for waiting all input to finish
 	go func() {
 		for part := range inch {
@@ -733,9 +736,12 @@ func ExtractingFilter(ctx context.Context,
 			}
 			child := part.Spawn()
 			child.ContentType = messageRFC822
-			if child.Body, err = i18nmail.MakeSectionReader(r, bodyThreshold); err != nil {
+			body, bodyErr := i18nmail.MakeSectionReader(r, bodyThreshold)
+			if err != nil {
+				err = bodyErr
 				goto Error
 			}
+			child.Body = body
 			fn := headerGetFileName(part.Header)
 			if fn == "" {
 				fn = ".eml"
@@ -842,7 +848,7 @@ func DupFilter(ctx context.Context,
 	defer func() {
 		close(outch)
 	}()
-	seen := ctx.Value(ctxSeen).(map[string]int)
+	seen := ctx.Value(ctxKeySeen{}).(map[string]int)
 	if seen == nil {
 		seen = make(map[string]int, 32)
 	}

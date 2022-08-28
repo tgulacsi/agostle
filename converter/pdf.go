@@ -6,7 +6,7 @@ package converter
 
 import (
 	"bytes"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/gob"
 	"errors"
@@ -64,9 +64,11 @@ func pdfPageNum(ctx context.Context, srcfn string) (numberofpages int, encrypted
 	pdfinfo := false
 	var cmd *exec.Cmd
 	if popplerOk["pdfinfo"] != "" {
+		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 		cmd = exec.CommandContext(ctx, popplerOk["pdfinfo"], srcfn)
 		pdfinfo = true
 	} else {
+		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 		cmd = exec.CommandContext(ctx, *ConfPdftk, srcfn, "dump_data_utf8")
 	}
 	out, e := cmd.CombinedOutput()
@@ -220,7 +222,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 			}
 		}
 		//logger.Info("", "prefix", prefix, "fn", fn, "i", i)
-		n, iErr := strconv.Atoi(fn[len(prefix) : len(prefix)+i])
+		n, iErr := strconv.ParseUint(fn[len(prefix):len(prefix)+i], 10, 16)
 		if iErr != nil {
 			err = fmt.Errorf("%q: %w", fn, iErr)
 			return
@@ -322,6 +324,7 @@ func pdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 	if pdfunite != "" {
 		args := append(append(make([]string, 0, len(filenames)+1), filenames...),
 			destfn)
+		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 		cmd := exec.CommandContext(ctx, pdfunite, args...)
 		cmd.Stdout = io.MultiWriter(&buf, os.Stdout)
 		cmd.Stderr = io.MultiWriter(&buf, os.Stderr)
@@ -334,6 +337,7 @@ func pdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 	}
 	args := append(append(make([]string, 0, len(filenames)+3), filenames...),
 		"cat", "output", destfn)
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 	cmd := exec.CommandContext(ctx, *ConfPdftk, args...)
 	cmd.Stdout = io.MultiWriter(&buf, os.Stdout)
 	cmd.Stderr = io.MultiWriter(&buf, os.Stderr)
@@ -356,7 +360,7 @@ func getHash(fn string) string {
 		logger.Info("WARN getHash open", "fn", fn, "error", err)
 		return ""
 	}
-	hsh := sha1.New()
+	hsh := sha256.New()
 	_, err = io.Copy(hsh, fh)
 	_ = fh.Close()
 	if err != nil {
@@ -366,11 +370,12 @@ func getHash(fn string) string {
 }
 
 func isAlreadyCleaned(fn string) bool {
-	var err error
 	if !filepath.IsAbs(fn) {
-		if fn, err = filepath.Abs(fn); err != nil {
+		afn, err := filepath.Abs(fn)
+		if err != nil {
 			logger.Info("WARN cannot absolutize filename", "fn", fn, "error", err)
 		}
+		fn = afn
 	}
 	cleanMtx.Lock()
 	defer cleanMtx.Unlock()
@@ -466,6 +471,7 @@ func PdfClean(ctx context.Context, fn string) (err error) {
 }
 
 func call(ctx context.Context, what string, args ...string) error {
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 	cmd := exec.CommandContext(ctx, what, args...)
 	if cmd.Stderr == nil {
 		cmd.Stderr = os.Stderr
@@ -477,6 +483,7 @@ func call(ctx context.Context, what string, args ...string) error {
 }
 
 func callAt(ctx context.Context, what, where string, args ...string) error {
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 	cmd := exec.CommandContext(ctx, what, args...)
 	cmd.Stderr = os.Stderr
 	cmd.Dir = where
@@ -558,6 +565,7 @@ func PdfRewrite(ctx context.Context, destfn, srcfn string) error {
 // PdfDumpFields dumps the field names from the given PDF.
 func PdfDumpFields(ctx context.Context, inpfn string) ([]string, error) {
 	var buf bytes.Buffer
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 	cmd := exec.CommandContext(ctx, *ConfPdftk, inpfn, "dump_data_fields_utf8", "output", "-")
 	cmd.Stdout = &buf
 	if err := cmd.Run(); err != nil {
@@ -601,6 +609,7 @@ func PdfFillFdf(ctx context.Context, destfn, inpfn string, values map[string]str
 		return err
 	}
 
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 	cmd := exec.CommandContext(ctx, *ConfPdftk, inpfn, "fill_form", "-", "output", destfn)
 	cmd.Stdin = bytes.NewReader(buf.Bytes())
 	return execute(cmd)

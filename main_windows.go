@@ -102,9 +102,11 @@ func doServiceWindows(ctx context.Context, todo string, args []string) error {
 		return fmt.Errorf("start service %s: %w", name, err)
 	}
 	errs := make(chan error, 5)
-	if p.Logger, err = s.Logger(errs); err != nil {
+	lgr, err := s.Logger(errs)
+	if err != nil {
 		return fmt.Errorf("get logger: %w", err)
 	}
+	p.Logger = lgr
 	go func() {
 		for err := range errs {
 			if err == nil {
