@@ -21,7 +21,7 @@ require (
 	github.com/peterbourgon/ff/v3 v3.1.2
 	github.com/rs/zerolog v1.26.1
 	github.com/stvp/go-toml-config v0.0.0-20170523163211-314328849d78
-	github.com/tgulacsi/go v0.23.0
+	github.com/tgulacsi/go v0.23.1
 	github.com/theupdateframework/go-tuf v0.3.2
 	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9
 	golang.org/x/net v0.0.0-20220812174116-3211cb980234
@@ -72,6 +72,5 @@ go 1.17
 
 //replace github.com/UNO-SOFT/filecache => ../../UNO-SOFT/filecache
 
-//replace github.com/tgulacsi/go => ../go
-
 //replace github.com/UNO-SOFT/ulog => ../../UNO-SOFT/ulog
+//replace github.com/tgulacsi/go => ../go

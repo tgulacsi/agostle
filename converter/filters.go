@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mime"
 	"net/textproto"
 	"os"
 	"path/filepath"
@@ -394,9 +393,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 			n, err := mp.GetBody().ReadAt(head[:], 0)
 			if err != nil && (!errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) || n == 0) {
 				var ok bool
-				if _, params, _ := mime.ParseMediaType(
-					mp.Header.Get("Content-Disposition"),
-				); params != nil {
+				if _, params, _ := mp.Entity().Header.ContentDisposition(); params != nil {
 					s := params["size"]
 					if s != "" {
 						n, _ = strconv.Atoi(s)
@@ -410,7 +407,9 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 				logger.Info("SKIP", "Seq", mp.Seq)
 				return nil // Skip
 			}
+			oldCt := mp.ContentType
 			mp.ContentType = FixContentType(head[:n], mp.ContentType, fn)
+			logger.V(1).Info("Walk", "ct", oldCt, "fixedCt", mp.ContentType)
 			//_, _ = mp.Body.Seek(0, 0)
 			partch <- mp
 			return nil

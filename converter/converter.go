@@ -645,6 +645,10 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 	case "application/x-pkcs7-signature":
 		converter = Skip
 	default:
+		if strings.HasPrefix(contentType, "multipart/") {
+			converter = MailToPdfZip
+			break
+		}
 		// from http://www.openoffice.org/framework/documentation/mimetypes/mimetypes.html
 		if strings.HasPrefix(contentType, "application/vnd.oasis.") ||
 			//ODF

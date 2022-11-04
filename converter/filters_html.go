@@ -378,7 +378,7 @@ func SaveOriHTMLFilter(ctx context.Context,
 					logger.Info("reopen", "file", orifh.Name(), "error", err)
 					errch <- err
 					continue
-				} else if part, err = part.Spawn().WithBody(fh); err != nil {
+				} else if part, err = part.WithBody(fh); err != nil {
 					errch <- err
 					continue
 				}

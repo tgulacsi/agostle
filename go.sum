@@ -686,6 +686,8 @@ github.com/tgulacsi/go v0.22.3-0.20221104073527-5d76912324d3 h1:IuAhUKtjwUUEL1IR
 github.com/tgulacsi/go v0.22.3-0.20221104073527-5d76912324d3/go.mod h1:KRGV1SClB1qY3e2WdH9HLuXhCcMiUkj9hdOs/l9yXcA=
 github.com/tgulacsi/go v0.23.0 h1:ESrFBm/yEJvoWl7MXg5xz951x/JSZZog7jD+nt3ujFY=
 github.com/tgulacsi/go v0.23.0/go.mod h1:KRGV1SClB1qY3e2WdH9HLuXhCcMiUkj9hdOs/l9yXcA=
+github.com/tgulacsi/go v0.23.1 h1:Su2V6hGRnGHzcm4GtsJbhTtt7trwQwOPeQEDxYrZc2k=
+github.com/tgulacsi/go v0.23.1/go.mod h1:KRGV1SClB1qY3e2WdH9HLuXhCcMiUkj9hdOs/l9yXcA=
 github.com/tgulacsi/picago v0.0.0-20171229130838-9e1ac2306c70/go.mod h1:YOW4MCz1GRh0aqedyC48A1CRXSHngOB/O/4+1rUjDQg=
 github.com/therootcompany/xz v1.0.1 h1:CmOtsn1CbtmyYiusbfmhmkpAAETj0wBIH6kCYaX+xzw=
 github.com/therootcompany/xz v1.0.1/go.mod h1:3K3UH1yCKgBneZYhuQUvJ9HPD19UEXEI0BWbMn8qNMY=
