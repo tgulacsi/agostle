@@ -33,25 +33,28 @@ func TextDecodeFilter(ctx context.Context,
 			// QUOTED-PRINTABLE
 			if part.Header.Get(cet) != "quoted-printable" &&
 				strings.ToLower(part.Header.Get(cet)) == "quoted-printable" {
-				part.Body, _ = i18nmail.MakeSectionReader(NewQuoPriDecoder(part.Body), bodyThreshold)
 				part.Header.Del(cet)
+				part, _ = part.WithBody(NewQuoPriDecoder(part.GetBody()))
 			}
 
-			br := bufio.NewReader(part.Body)
-			var r = io.Reader(br)
+			br := bufio.NewReader(part.GetBody())
+			r := io.Reader(br)
+			var changed bool
 			buf, _ := br.Peek(1024)
 			i := bytes.Index(buf, []byte("+A"))
 			if i >= 0 && bytes.IndexByte(buf[i+2:], '-') >= 0 {
 				r = NewB64QuoPriDecoder(r)
+				changed = true
 			} else if bytes.Contains(buf, []byte("=0A=")) {
 				r = NewQuoPriDecoder(r)
+				changed = true
 			}
-			part.Body, _ = i18nmail.MakeSectionReader(r, bodyThreshold)
+			if changed {
+				part, _ = part.WithBody(r)
+			}
 
 			if part.ContentType == textPlain {
-				part.Body, _ = i18nmail.MakeSectionReader(
-					NewTextReader(ctx, part.Body, part.MediaType["charset"]),
-					bodyThreshold)
+				part, _ = part.WithBody(NewTextReader(ctx, part.GetBody(), part.MediaType["charset"]))
 				if part.MediaType == nil {
 					part.MediaType = map[string]string{"charset": "utf-8"}
 				} else {

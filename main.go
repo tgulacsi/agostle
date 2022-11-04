@@ -105,7 +105,7 @@ func Main() error {
 				}
 			}
 			tc := tufclient.NewClient(tufclient.MemoryLocalStore(), remote)
-			if err := tc.InitLocal(rootKeySrc); err != nil {
+			if err := tc.Init(rootKeySrc); err != nil {
 				return fmt.Errorf("init: %w", err)
 			}
 			targets, err := tc.Update()

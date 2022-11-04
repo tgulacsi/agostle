@@ -38,6 +38,19 @@ func PrependHeaderFilter(ctx context.Context,
 	headersBuf := bytes.NewBuffer(make([]byte, 0, 128))
 
 	for part := range inch {
+		spawn := func(header, body io.Reader) (i18nmail.MailPart, error) {
+			entity, err := i18nmail.NewEntityFromReaders(header, body)
+			if err != nil {
+				logger.Error(err, "parse header")
+				return i18nmail.MailPart{}, fmt.Errorf("parse header: %w", err)
+			}
+			mp, err := part.Spawn().WithEntity(entity)
+			if err != nil {
+				logger.Error(err, "WithEntity")
+			}
+			return mp, err
+		}
+
 		//logger.Info("PrependHeaderFilter receives", "seq", part.Seq, "ct", part.ContentType, "header", part.Header, "inch", inch)
 		if len(mailHeader["From"]) == 0 || mailHeader.Get("Subject") == "" {
 			hdrs := make([]textproto.MIMEHeader, 0, 4)
@@ -67,26 +80,22 @@ func PrependHeaderFilter(ctx context.Context,
 		}
 		headersBuf.Reset()
 		if err := writeHeaders(ctx, headersBuf, mailHeader, part.ContentType); err != nil {
-			logger.Info("error writing headers", "error", err)
+			logger.Error(err, "error writing headers")
 			goto Skip
 		}
 		//logger.Info("headers written", "buf", headersBuf.String())
 
 		if part.ContentType != textHtml {
-			part.Body, _ = i18nmail.MakeSectionReader(
-				io.MultiReader(bytes.NewReader(headersBuf.Bytes()), part.Body),
-				bodyThreshold,
-			)
+			part, _ = spawn(bytes.NewReader(headersBuf.Bytes()), part.GetBody())
 			goto Skip
 		}
 
-		part.Body, _ = i18nmail.MakeSectionReader(
-			decodeHTML(ctx, part.Body, *ConfWkhtmltopdf == ""), bodyThreshold)
-		logger.V(1).Info("PrependHeaderFilter", "wkhtmltopdf", *ConfWkhtmltopdf, "body", part.Body, "threshold", bodyThreshold)
+		part, _ = part.Spawn().WithBody(decodeHTML(ctx, part.GetBody(), *ConfWkhtmltopdf == ""))
+		logger.V(1).Info("PrependHeaderFilter", "wkhtmltopdf", *ConfWkhtmltopdf, "threshold", bodyThreshold)
 		if *ConfWkhtmltopdf == "" {
-			b, err := io.ReadAll(part.Body)
+			b, err := io.ReadAll(part.GetBody())
 			if err != nil {
-				logger.Info("cannot read", "body", part.Body, "error", err)
+				logger.Error(err, "read")
 			}
 			// add some garbage to each line ending!
 			b = bytes.TrimSpace(
@@ -125,39 +134,37 @@ func PrependHeaderFilter(ctx context.Context,
 				b = append(b, 'm', 'l', '>')
 			}
 			if _, j := tagIndex(b, "body"); j >= 0 {
-				part.Body, _ = i18nmail.MakeSectionReader(io.MultiReader(
+				part, _ = part.Spawn().WithReader(io.MultiReader(
 					bytes.NewReader(b[:j]),
 					bytes.NewReader(headersBuf.Bytes()),
 					bytes.NewReader(b[j:]),
-				), bodyThreshold)
+				))
 			} else {
-				part.Body, _ = i18nmail.MakeSectionReader(io.MultiReader(
-					bytes.NewReader(headersBuf.Bytes()),
-					bytes.NewReader(b),
-				), bodyThreshold)
+				part, _ = spawn(bytes.NewReader(headersBuf.Bytes()), bytes.NewReader(b))
 			}
 		} else {
 			b := make([]byte, 1<<20)
-			n, _ := io.ReadAtLeast(part.Body, b, len(b)/2)
+			body := part.GetBody()
+			n, _ := io.ReadAtLeast(body, b, len(b)/2)
 			b = b[:n]
 			if _, j := tagIndex(b, "body"); j >= 0 {
-				part.Body, _ = i18nmail.MakeSectionReader(io.MultiReader(
+				part, _ = part.Spawn().WithReader(io.MultiReader(
 					bytes.NewReader(b[:j]),
 					bytes.NewReader(headersBuf.Bytes()),
 					bytes.NewReader(b[j:]),
-					part.Body,
-				), bodyThreshold)
+					body,
+				))
 			} else {
 				c := b
 				if len(c) > 4096 {
 					c = c[len(c)-4096:]
 				}
 				logger.Info("no body in", "b", string(c))
-				part.Body, _ = i18nmail.MakeSectionReader(io.MultiReader(
+				part, _ = part.Spawn().WithReader(io.MultiReader(
 					bytes.NewReader(headersBuf.Bytes()),
 					bytes.NewReader(b),
-					part.Body,
-				), bodyThreshold)
+					part.GetBody(),
+				))
 			}
 		}
 

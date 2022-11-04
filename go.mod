@@ -4,7 +4,7 @@ require (
 	bitbucket.org/zombiezen/gopdf v0.0.0-20190421151423-ab3d04824694
 	github.com/KarpelesLab/reflink v0.0.2
 	github.com/UNO-SOFT/filecache v0.0.5
-	github.com/UNO-SOFT/otel v0.2.0
+	github.com/UNO-SOFT/otel v0.3.4
 	github.com/VictoriaMetrics/metrics v1.18.1
 	github.com/coreos/go-systemd/v22 v22.3.2
 	github.com/gabriel-vasile/mimetype v1.4.0
@@ -21,10 +21,10 @@ require (
 	github.com/peterbourgon/ff/v3 v3.1.2
 	github.com/rs/zerolog v1.26.1
 	github.com/stvp/go-toml-config v0.0.0-20170523163211-314328849d78
-	github.com/tgulacsi/go v0.20.2
+	github.com/tgulacsi/go v0.22.3-0.20221104073527-5d76912324d3
 	github.com/theupdateframework/go-tuf v0.3.2
 	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9
-	golang.org/x/net v0.0.0-20220607020251-c690dde0001d
+	golang.org/x/net v0.0.0-20220812174116-3211cb980234
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/text v0.3.7
 )
@@ -33,6 +33,8 @@ require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
+	github.com/emersion/go-message v0.16.0 // indirect
+	github.com/emersion/go-textwrapper v0.0.0-20200911093747-65d896831594 // indirect
 	github.com/go-kit/log v0.2.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -53,16 +55,16 @@ require (
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
-	go.opentelemetry.io/otel v1.7.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v0.30.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.7.0 // indirect
-	go.opentelemetry.io/otel/metric v0.30.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.7.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v0.30.0 // indirect
-	go.opentelemetry.io/otel/trace v1.7.0 // indirect
+	go.opentelemetry.io/otel v1.10.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v0.31.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.10.0 // indirect
+	go.opentelemetry.io/otel/metric v0.31.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.10.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v0.31.0 // indirect
+	go.opentelemetry.io/otel/trace v1.10.0 // indirect
 	golang.org/x/crypto v0.0.0-20220507011949-2cf3adece122 // indirect
-	golang.org/x/exp v0.0.0-20220428152302-39d4317da171 // indirect
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
+	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d // indirect
+	golang.org/x/sys v0.0.0-20220915200043-7b5979e65e41 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
@@ -70,6 +72,6 @@ go 1.17
 
 //replace github.com/UNO-SOFT/filecache => ../../UNO-SOFT/filecache
 
-//replace github.com/tgulacsi/go => ../go
+replace github.com/tgulacsi/go => ../go
 
 //replace github.com/UNO-SOFT/ulog => ../../UNO-SOFT/ulog

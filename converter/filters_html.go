@@ -161,14 +161,16 @@ func HTMLPartFilter(ctx context.Context,
 			if part.ContentType == textPlain {
 				fn = fn + ".txt"
 			} else {
-				part.Body, _ = i18nmail.MakeSectionReader(fixXMLCharset(ctx, fixXMLHeader(part.Body)), bodyThreshold)
+				body := fixXMLHeader(part.GetBody())
 				cids = make(map[string]string, 4)
-				part.Body, _ = i18nmail.MakeSectionReader(NewCidMapper(cids, "images", part.Body), bodyThreshold)
+				body = NewCidMapper(cids, "images", body)
+				entity, _ := i18nmail.NewEntity(part.Header, body)
+				part, _ = part.WithEntity(entity)
 				fn = fmt.Sprintf("%s-%02d.html", fn, this)
 			}
 			fn = filepath.Join(dn, fn)
-			_, _ = part.Body.Seek(0, 0)
-			if err = writeToFile(ctx, fn, part.Body, part.ContentType /*, mailHeader*/); err != nil {
+			//_, _ = part.Body.Seek(0, 0)
+			if err = writeToFile(ctx, fn, part.GetBody(), part.ContentType /*, mailHeader*/); err != nil {
 				goto Error
 			}
 			tbd[fn] = struct{}{}
@@ -219,8 +221,8 @@ func HTMLPartFilter(ctx context.Context,
 			// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
 			_ = os.Mkdir(filepath.Dir(fn), 0755) // ignore error
 			logger.Info("save", "file", fn, "cid", cid, "htmlFn", cg.htmlFn)
-			_, _ = part.Body.Seek(0, 0)
-			if err = writeToFile(ctx, fn, part.Body, part.ContentType /*, mailHeader*/); err != nil {
+			//_, _ = part.Body.Seek(0, 0)
+			if err = writeToFile(ctx, fn, part.GetBody(), part.ContentType /*, mailHeader*/); err != nil {
 				goto Error
 			}
 			tbd[filepath.Dir(fn)] = struct{}{}
@@ -308,8 +310,8 @@ func SaveOriHTMLFilter(ctx context.Context,
 			fn := filepath.Join(wd, fmt.Sprintf("%02d#%03d.ori.html", part.Level, part.Seq))
 			logger.Info("saving original html " + fn)
 			if orifh, e := os.Create(fn); e == nil {
-				_, _ = part.Body.Seek(0, 0)
-				if _, e = io.Copy(orifh, part.Body); e != nil {
+				//_, _ = part.Body.Seek(0, 0)
+				if _, e = io.Copy(orifh, part.GetBody()); e != nil {
 					logger.Info("write ori to", "dest", orifh.Name(), "error", e)
 				}
 				orifh.Close()
@@ -317,12 +319,9 @@ func SaveOriHTMLFilter(ctx context.Context,
 					logger.Info("reopen", "file", orifh.Name(), "error", err)
 					errch <- err
 					continue
-				} else {
-					fi, err := fh.Stat()
-					if err != nil {
-						errch <- err
-					}
-					part.Body = io.NewSectionReader(fh, 0, fi.Size())
+				} else if part, err = part.Spawn().WithBody(fh); err != nil {
+					errch <- err
+					continue
 				}
 
 			}

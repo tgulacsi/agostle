@@ -348,13 +348,13 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	var head [4096]byte
 
 	logger.Info("SlurpMail", "ct", contentType)
-	sr, err := i18nmail.MakeSectionReader(body, bodyThreshold)
+	mp, err := i18nmail.NewMailPart(body)
 	if err != nil {
+		errch <- err
 		return
 	}
-	mp := i18nmail.MailPart{Body: sr, ContentType: contentType}
 	b := make([]byte, 2048)
-	n, _ := mp.Body.ReadAt(b, 0)
+	n, _ := mp.GetBody().ReadAt(b, 0)
 	b = b[:n]
 	if typ, _ := MIMEMatch(b); typ != "" &&
 		!(bytes.Contains(b, []byte("\nTo:")) || bytes.Contains(b, []byte("\nReceived:")) ||
@@ -383,7 +383,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 			default:
 			}
 			fn := headerGetFileName(mp.Header)
-			n, err := mp.Body.ReadAt(head[:], 0)
+			n, err := mp.GetBody().ReadAt(head[:], 0)
 			if err != nil && (!errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) || n == 0) {
 				var ok bool
 				if _, params, _ := mime.ParseMediaType(
@@ -403,7 +403,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 				return nil // Skip
 			}
 			mp.ContentType = FixContentType(head[:n], mp.ContentType, fn)
-			_, _ = mp.Body.Seek(0, 0)
+			//_, _ = mp.Body.Seek(0, 0)
 			partch <- mp
 			return nil
 		},
@@ -555,8 +555,8 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 	if messageRFC822 != mp.ContentType {
 		converter = GetConverter(mp.ContentType, mp.MediaType)
 	} else {
-		_, _ = mp.Body.Seek(0, 0)
-		plus, e := MailToPdfFiles(ctx, mp.Body, mp.ContentType)
+		//_, _ = mp.Body.Seek(0, 0)
+		plus, e := MailToPdfFiles(ctx, mp.GetBody(), mp.ContentType)
 		if e != nil {
 			logger.Info("MailToPdfFiles", "seq", mp.Seq, "error", e)
 			err = fmt.Errorf("convertPart(%02d): %w", mp.Seq, e)
@@ -570,7 +570,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 	if converter == nil { // no converter for this!?
 		err = fmt.Errorf("no converter for %s", mp.ContentType)
 	} else {
-		err = converter(ctx, fn+".pdf", mp.Body, mp.ContentType)
+		err = converter(ctx, fn+".pdf", mp.GetBody(), mp.ContentType)
 	}
 	if err == nil {
 		resultch <- ArchFileItem{Filename: fn + ".pdf"}
@@ -582,9 +582,9 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 	_ = unlink(fn, "MailToPdfFiles dest part") // ignore error
 	logger.Info("converting to pdf", "ct", mp.ContentType, "fn", fn, "seq", mp.Seq, "error", err)
 	j := strings.Index(mp.ContentType, "/")
-	_, _ = mp.Body.Seek(0, 0)
+	//_, _ = mp.Body.Seek(0, 0)
 	resultch <- ArchFileItem{
-		File:    MakeFileLike(mp.Body),
+		File:    MakeFileLike(mp.GetBody()),
 		Archive: mp.ContentType[:j+1] + filepath.Base(fn),
 		Error:   err}
 	return nil
@@ -654,8 +654,8 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 		if fh, err = os.Create(fn); err != nil {
 			return fmt.Errorf("create %s: %w", fn, err)
 		}
-		_, _ = mp.Body.Seek(0, 0)
-		if _, err = io.Copy(fh, mp.Body); err != nil {
+		//_, _ = mp.Body.Seek(0, 0)
+		if _, err = io.Copy(fh, mp.GetBody()); err != nil {
 			_ = fh.Close()
 			return fmt.Errorf("read into%s: %w", fn, err)
 		}
@@ -727,21 +727,19 @@ func ExtractingFilter(ctx context.Context,
 			err          error
 			archRowCount int
 		)
-		body := part.Body
+		body := part.GetBody()
 		if part.ContentType == "application/x-ole-storage" || part.ContentType == "application/vnd.ms-outlook" {
 			r, oleErr := NewOLEStorageReader(ctx, body)
 			if oleErr != nil {
 				err = oleErr
 				goto Error
 			}
-			child := part.Spawn()
-			child.ContentType = messageRFC822
-			body, bodyErr := i18nmail.MakeSectionReader(r, bodyThreshold)
-			if err != nil {
+			child, bodyErr := part.Spawn().WithReader(r)
+			if bodyErr != nil {
 				err = bodyErr
 				goto Error
 			}
-			child.Body = body
+			child.ContentType = messageRFC822
 			fn := headerGetFileName(part.Header)
 			if fn == "" {
 				fn = ".eml"
@@ -789,11 +787,20 @@ func ExtractingFilter(ctx context.Context,
 			if cErr != nil {
 				return nil
 			}
-			child := part.Spawn()
-			child.ContentType = FixContentType(chunk, "application/octet-stream", name)
-			child.Body = io.NewSectionReader(bytes.NewReader(chunk), 0, int64(len(chunk)))
-			child.Header = textproto.MIMEHeader(make(map[string][]string, 1))
-			child.Header.Add("X-FileName", safeFn(name, true))
+			entity, eErr := i18nmail.NewEntity(
+				map[string][]string{
+					"Content-Type": []string{FixContentType(chunk, "application/octet-stream", name)},
+					"X-FileName":   []string{safeFn(name, true)},
+				},
+				bytes.NewReader(chunk),
+			)
+			if eErr != nil {
+				return eErr
+			}
+			child, rErr := part.Spawn().WithEntity(entity)
+			if rErr != nil {
+				return rErr
+			}
 			wg.Add(1)
 			allIn <- child
 			return nil
