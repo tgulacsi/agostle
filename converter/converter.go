@@ -564,6 +564,9 @@ func fixCT(contentType, fileName string) (ct string) {
 // FixContentType ensures proper content-type
 // (uses magic for "" and application/octet-stream)
 func FixContentType(body []byte, contentType, fileName string) (ct string) {
+	if strings.HasPrefix(contentType, "multipart/") {
+		return contentType
+	}
 	where := "0"
 	ext := strings.ToLower(filepath.Ext(fileName))
 	defer func() {

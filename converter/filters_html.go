@@ -5,7 +5,9 @@
 package converter
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -63,19 +65,34 @@ func HTMLPartFilter(ctx context.Context,
 		}()
 	}
 
-	html2pdf := func(fn string) (string, error) {
+	html2pdf := func(cg cidGroup) (string, error) {
+		fn := cg.htmlFn
 		if fn == "" {
 			logger.Info("empty filename!!!")
 			return "", errors.New("empty filename")
 		}
+		logger := logger.WithName("html2pdf").WithValues("html", fn)
 		tbd[fn] = struct{}{}
 		destfn := filepath.Join(wd, filepath.Base(fn)+".pdf")
 		fh, err := os.Open(fn)
 		if err != nil {
+			logger.Error(err, "open", "file", fn)
 			err = fmt.Errorf("open html %s: %w", fn, err)
 		} else {
-			err = converter(ctx, destfn, fh, textHtml)
+			r := io.Reader(fh)
+			sr, srErr := i18nmail.MakeSectionReader(fh, 1<<20)
 			fh.Close()
+			if srErr != nil {
+				logger.Error(err, "read", "file", fh.Name())
+			} else {
+				r = sr
+				if cr, err := newCidEmbedder(io.NewSectionReader(sr, 0, sr.Size()), filepath.Dir(cg.htmlFn), cg.cids); err != nil {
+					logger.Error(err, "newCidEmbedder", "root", filepath.Dir(cg.htmlFn), "cids", cg.cids)
+				} else {
+					r = cr
+				}
+			}
+			err = converter(ctx, destfn, r, textHtml)
 			if err == nil {
 				return destfn, nil
 			}
@@ -129,7 +146,7 @@ func HTMLPartFilter(ctx context.Context,
 			}
 			if this != last && last > -1 && len(groups[last]) > 0 {
 				for _, cg := range groups[last] {
-					if fn, err = html2pdf(cg.htmlFn); err != nil {
+					if fn, err = html2pdf(cg); err != nil {
 						goto Error
 					}
 					files <- ArchFileItem{Filename: fn}
@@ -226,6 +243,7 @@ func HTMLPartFilter(ctx context.Context,
 				goto Error
 			}
 			tbd[filepath.Dir(fn)] = struct{}{}
+			cg.cids[cid] = fn
 		}
 
 		continue
@@ -240,12 +258,53 @@ func HTMLPartFilter(ctx context.Context,
 
 	for _, vv := range groups {
 		for _, v := range vv {
-			if fn, err = html2pdf(v.htmlFn); err != nil {
+			if fn, err = html2pdf(v); err != nil {
 				errch <- err
 			}
 			files <- ArchFileItem{Filename: fn}
 		}
 	}
+}
+func newCidEmbedder(r io.Reader, root string, cids map[string]string) (io.Reader, error) {
+	data := make(map[string][]byte, len(cids))
+	for k, v := range cids {
+		fn := filepath.Join(root, v)
+		fh, err := os.Open(fn)
+		if err != nil {
+			return nil, fmt.Errorf("open cid=%q: %w", k, err)
+		}
+		var a [1024]byte
+		n, err := fh.Read(a[:])
+		if n == 0 {
+			if err != nil && !errors.Is(err, io.EOF) {
+				return r, err
+			}
+			continue
+		}
+		ct, _ := MIMEMatch(a[:n])
+		var buf bytes.Buffer
+		buf.WriteString(`src="data:`)
+		buf.WriteString(ct)
+		buf.WriteString(";base64,")
+		if _, err := io.Copy(base64.NewEncoder(base64.StdEncoding, &buf), fh); err != nil {
+			return nil, fmt.Errorf("read cid=%q: %w", k, err)
+		}
+		data[`src="cid:`+k+`"`] = buf.Bytes()
+	}
+	var buf bytes.Buffer
+	br := bufio.NewReader(r)
+	for {
+		b, err := br.ReadSlice('>')
+		for k, v := range data {
+			b = bytes.ReplaceAll(b, []byte(k), v)
+			buf.Write(b)
+		}
+		if err != nil {
+			break
+		}
+	}
+	os.Stdout.Write(buf.Bytes())
+	return bytes.NewReader(buf.Bytes()), nil
 }
 
 // fixXMLHeader fixes <?xml version="1.0" encoding=...?> to <?xml version="1.0" charset=...?>

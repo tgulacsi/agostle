@@ -348,32 +348,40 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	var head [4096]byte
 
 	logger.Info("SlurpMail", "ct", contentType)
-	mp, err := i18nmail.NewMailPart(body)
+	sr, err := i18nmail.MakeSectionReader(body, bodyThreshold)
 	if err != nil {
+		logger.Error(err, "slurp")
 		errch <- err
 		return
 	}
-	b := make([]byte, 2048)
-	n, _ := mp.GetBody().ReadAt(b, 0)
-	b = b[:n]
-	if typ, _ := MIMEMatch(b); typ != "" &&
-		!(bytes.Contains(b, []byte("\nTo:")) || bytes.Contains(b, []byte("\nReceived:")) ||
-			bytes.Contains(b, []byte("\nFrom: ")) || bytes.Contains(b, []byte("\nMIME-Version: "))) {
-		logger.Info("not email!", "typ", typ, "ct", contentType)
-		logger.Info("body", "b", string(b))
-		if contentType == "" || contentType == "message/rfc822" {
-			contentType = typ
+	mp, err := i18nmail.NewMailPart(io.NewSectionReader(sr, 0, sr.Size()))
+	if err != nil {
+		logger.Error(err, "NewMailPart")
+		b := make([]byte, 2048)
+		n, _ := sr.ReadAt(b, 0)
+		b = b[:n]
+		if typ, _ := MIMEMatch(b); typ != "" &&
+			!(bytes.Contains(b, []byte("\nTo:")) || bytes.Contains(b, []byte("\nReceived:")) ||
+				bytes.Contains(b, []byte("\nFrom: ")) || bytes.Contains(b, []byte("\nMIME-Version: "))) {
+			logger.Info("not email!", "typ", typ, "ct", contentType)
+			logger.Info("body", "b", string(b))
+			if contentType == "" || contentType == "message/rfc822" {
+				contentType = typ
+			}
+			contentType = FixContentType(b, contentType, "")
+			logger.Info("fixed", "contentType", contentType)
+			if contentType != messageRFC822 { // sth else
+				mp.ContentType = contentType
+				entity, _ := i18nmail.NewEntity(nil, sr)
+				mp, _ = mp.WithEntity(entity)
+				partch <- mp
+				close(partch)
+				return
+			}
 		}
-		contentType = FixContentType(b, contentType, "")
-		logger.Info("fixed", "contentType", contentType)
-		if contentType != messageRFC822 { // sth else
-			mp.ContentType = contentType
-			partch <- mp
-			close(partch)
-			return
-		}
+		errch <- err
+		return
 	}
-	mp.ContentType = messageRFC822
 	err = i18nmail.Walk(
 		mp,
 		func(mp i18nmail.MailPart) error {
@@ -552,7 +560,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 
 	fn = savePart(ctx, &mp)
 
-	if messageRFC822 != mp.ContentType {
+	if messageRFC822 != mp.ContentType && !strings.HasPrefix(mp.ContentType, "multipart/") {
 		converter = GetConverter(mp.ContentType, mp.MediaType)
 	} else {
 		//_, _ = mp.Body.Seek(0, 0)
