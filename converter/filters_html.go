@@ -24,11 +24,6 @@ import (
 	"github.com/tgulacsi/go/i18nmail"
 )
 
-type cidGroup struct {
-	cids   map[string]string
-	htmlFn string
-}
-
 // HTMLPartFilter reads multipart/alternative (text/plain + text/html), preferring the html
 // part + groups the multipart/related images which are referred in the html.
 //
@@ -45,9 +40,14 @@ func HTMLPartFilter(ctx context.Context,
 	}()
 	ctx, wd := prepareContext(ctx, "")
 
+	type withAlternate struct {
+		body            io.Reader
+		alter, fileName string
+		aConverter      Converter
+	}
+
 	var (
 		alter      = ""
-		converter  = GetConverter(textHtml, nil)
 		aConverter Converter
 		// nosemgrep
 		tbd = make(map[string]struct{}, 4)
@@ -65,77 +65,22 @@ func HTMLPartFilter(ctx context.Context,
 		}()
 	}
 
-	html2pdf := func(cg cidGroup) (string, error) {
-		fn := cg.htmlFn
-		if fn == "" {
-			logger.Info("empty filename!!!")
-			return "", errors.New("empty filename")
-		}
-		logger := logger.WithName("html2pdf").WithValues("html", fn)
-		tbd[fn] = struct{}{}
-		destfn := filepath.Join(wd, filepath.Base(fn)+".pdf")
-		fh, err := os.Open(fn)
-		if err != nil {
-			logger.Error(err, "open", "file", fn)
-			err = fmt.Errorf("open html %s: %w", fn, err)
-		} else {
-			r := io.Reader(fh)
-			sr, srErr := i18nmail.MakeSectionReader(fh, 1<<20)
-			fh.Close()
-			if srErr != nil {
-				logger.Error(err, "read", "file", fh.Name())
-			} else {
-				r = sr
-				if cr, err := newCidEmbedder(io.NewSectionReader(sr, 0, sr.Size()), filepath.Dir(cg.htmlFn), cg.cids); err != nil {
-					logger.Error(err, "newCidEmbedder", "root", filepath.Dir(cg.htmlFn), "cids", cg.cids)
-				} else {
-					r = cr
-				}
-			}
-			err = converter(ctx, destfn, r, textHtml)
-			if err == nil {
-				return destfn, nil
-			}
-			err = fmt.Errorf("converting %s to %s: %w", fn, destfn, err)
-		}
-		logger.Info("html2pdf", "error", err)
-		// nosemgrep: go.lang.correctness.useless-eqeq.eqeq-is-bad
-		if alter != "" && aConverter != nil {
-			logger.Info("html2pdf using alternative content " + alter)
-			if fh, err = os.Open(alter); err != nil {
-				err = fmt.Errorf("open txt %s: %w", alter, err)
-			} else {
-				err = aConverter(ctx, destfn, fh, textPlain)
-				fh.Close()
-				if err != nil {
-					err = fmt.Errorf("converting %s to %s: %w", alter, destfn, err)
-				}
-			}
-			alter, aConverter = "", nil
-		}
-		return destfn, err
-	}
-
-	groups := make(map[int][]cidGroup, 4)
+	cids := make(map[string]*io.SectionReader)
+	var htmlParts []withAlternate
 	var (
-		this, last      int
 		err             error
-		ok              bool
-		fn, dn, cid     string
 		parent, grandpa *i18nmail.MailPart
 	)
 	seen := make(map[string]struct{})
-	last = -1
+	this := -1
 	for part := range inch {
-
-		this = -1
 		parent = part.Parent
 		if parent == nil {
 			grandpa = nil
 		} else {
 			grandpa = parent.Parent
 		}
-		logger.Info("part", "seq", part.Seq, "ct", part.ContentType, "groups", groups)
+		logger.Info("part", "seq", part.Seq, "ct", part.ContentType, "cids", cids)
 		if part.ContentType == textPlain || part.ContentType == textHtml {
 			//if part.Parent.ContentType != "multipart/alternative" || part.Parent.ContentType != "multipart/related" {
 			if part.ContentType == textPlain && part.Parent != nil && part.Parent.ContentType != "multipart/alternative" {
@@ -144,24 +89,16 @@ func HTMLPartFilter(ctx context.Context,
 			if grandpa != nil {
 				this = grandpa.Seq
 			}
-			if this != last && last > -1 && len(groups[last]) > 0 {
-				for _, cg := range groups[last] {
-					if fn, err = html2pdf(cg); err != nil {
-						goto Error
-					}
-					files <- ArchFileItem{Filename: fn}
-				}
-			}
 
+			dn := wd
 			if grandpa != nil {
 				dn = filepath.Join(wd,
 					fmt.Sprintf("%02d#%03d.text--html", grandpa.Level, grandpa.Seq))
-			} else {
-				dn = wd
+				_ = os.Mkdir(dn, 0755) //ignore errors
+				tbd[dn] = struct{}{}
 			}
 			// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
-			_ = os.Mkdir(dn, 0755) //ignore errors
-			fn = ""
+			var fn string
 			if parent != nil {
 				fn = fmt.Sprintf("%02d#%03d.index", parent.Level, parent.Seq)
 				if _, ok := seen[fn]; ok {
@@ -173,78 +110,35 @@ func HTMLPartFilter(ctx context.Context,
 			if fn == "" {
 				fn = fmt.Sprintf("%02d#%03d.index", part.Level, part.Seq)
 			}
-
-			var cids map[string]string
-			if part.ContentType == textPlain {
-				fn = fn + ".txt"
-			} else {
-				body := fixXMLHeader(part.GetBody())
-				cids = make(map[string]string, 4)
-				body = NewCidMapper(cids, "images", body)
-				entity, _ := i18nmail.NewEntity(part.Header, body)
-				part, _ = part.WithEntity(entity)
-				fn = fmt.Sprintf("%s-%02d.html", fn, this)
-			}
 			fn = filepath.Join(dn, fn)
-			//_, _ = part.Body.Seek(0, 0)
-			if err = writeToFile(ctx, fn, part.GetBody(), part.ContentType /*, mailHeader*/); err != nil {
-				goto Error
-			}
-			tbd[fn] = struct{}{}
-			if part.ContentType == textPlain {
+			if part.ContentType == textHtml {
+				fn += fmt.Sprintf("-%02d.html", this)
+				htmlParts = append(htmlParts, withAlternate{
+					body:     part.GetBody(),
+					fileName: fn,
+					alter:    alter, aConverter: aConverter,
+				})
+				alter, aConverter = "", nil
+			} else {
+				fn += ".txt"
+				//_, _ = part.Body.Seek(0, 0)
+				if err = writeToFile(ctx, fn, part.GetBody(), part.ContentType /*, mailHeader*/); err != nil {
+					goto Error
+				}
+				tbd[fn] = struct{}{}
 				alter = fn
 				aConverter = GetConverter(textPlain, part.MediaType)
-			} else if part.ContentType == textHtml {
-				//log.Printf("last==this? %b  cidmap: %s", last == this, cids)
-				groups[this] = append(groups[this], cidGroup{htmlFn: fn, cids: cids})
 			}
-			last = this
 			continue
-		}
-		if !strings.HasPrefix(part.ContentType, "image/") {
+		} else if !strings.HasPrefix(part.ContentType, "image/") {
 			goto Skip
-		}
-		cid = strings.Trim(part.Header.Get("Content-ID"), "<>")
-		if cid == "" {
+		} else if cid := strings.Trim(part.Header.Get("Content-ID"), "<>"); cid == "" {
 			goto Skip
+		} else {
+			cids[cid] = part.GetBody()
 		}
+
 		this = parent.Seq
-
-		{
-			found := false
-			if len(groups) > 0 {
-				for act := &part; act != nil; act = act.Parent {
-					if _, ok = groups[act.Seq]; ok {
-						found = true
-						this = act.Seq
-						break
-					}
-				}
-			}
-			if !found {
-				err = fmt.Errorf("WARN this=%d not in %v", part.Seq, groups)
-				logger.Info("SKIP not found", "error", err)
-				goto Skip
-			}
-		}
-
-		// K-MT9641 skip images which aren't in the .html
-		for _, cg := range groups[this] {
-			if fn, ok = cg.cids[cid]; !ok {
-				goto Skip
-			}
-			fn = filepath.Join(filepath.Dir(cg.htmlFn), fn)
-
-			// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
-			_ = os.Mkdir(filepath.Dir(fn), 0755) // ignore error
-			logger.Info("save", "file", fn, "cid", cid, "htmlFn", cg.htmlFn)
-			//_, _ = part.Body.Seek(0, 0)
-			if err = writeToFile(ctx, fn, part.GetBody(), part.ContentType /*, mailHeader*/); err != nil {
-				goto Error
-			}
-			tbd[filepath.Dir(fn)] = struct{}{}
-			cg.cids[cid] = fn
-		}
 
 		continue
 	Error:
@@ -256,55 +150,146 @@ func HTMLPartFilter(ctx context.Context,
 		outch <- part
 	}
 
-	for _, vv := range groups {
-		for _, v := range vv {
-			if fn, err = html2pdf(v); err != nil {
-				errch <- err
-			}
-			files <- ArchFileItem{Filename: fn}
+	for _, part := range htmlParts {
+		body := fixXMLHeader(part.body)
+		//body = NewCidMapper(cids, "images", body)
+		if body, err = embedCids(body, cids); err != nil {
+			logger.Error(err, "embedCids")
 		}
-	}
-}
-func newCidEmbedder(r io.Reader, root string, cids map[string]string) (io.Reader, error) {
-	data := make(map[string][]byte, len(cids))
-	for k, v := range cids {
-		fn := filepath.Join(root, v)
-		fh, err := os.Open(fn)
-		if err != nil {
-			return nil, fmt.Errorf("open cid=%q: %w", k, err)
-		}
-		var a [1024]byte
-		n, err := fh.Read(a[:])
-		if n == 0 {
-			if err != nil && !errors.Is(err, io.EOF) {
-				return r, err
-			}
+		fn := part.fileName
+		logger.Info("save", "file", fn)
+		//_, _ = part.Body.Seek(0, 0)
+		if err = writeToFile(ctx, fn, body, "text/html" /*, mailHeader*/); err != nil {
+			logger.Error(err, "writeToFile", "file", fn)
+			errch <- err
 			continue
 		}
-		ct, _ := MIMEMatch(a[:n])
+		tbd[fn] = struct{}{}
+		if fn, err = html2pdf(ctx, fn, part.alter, part.aConverter); err != nil {
+			logger.Error(err, "html2pdf", "file", fn)
+			errch <- err
+			continue
+		}
+		files <- ArchFileItem{Filename: fn}
+	}
+}
+
+var htmlConverter Converter
+
+func html2pdf(ctx context.Context, fn string, alter string, aConverter Converter) (string, error) {
+	if fn == "" {
+		logger.Info("empty filename!!!")
+		return "", errors.New("empty filename")
+	}
+	logger := logger.WithName("html2pdf").WithValues("html", fn)
+	dn, bn := filepath.Split(fn)
+	destfn := filepath.Join(dn, bn+".pdf")
+	fh, err := os.Open(fn)
+	if err != nil {
+		logger.Error(err, "open", "file", fn)
+		err = fmt.Errorf("open html %s: %w", fn, err)
+	} else {
+		if htmlConverter == nil {
+			htmlConverter = GetConverter(textHtml, nil)
+		}
+		err = htmlConverter(ctx, destfn, fh, textHtml)
+		fh.Close()
+		if err == nil {
+			return destfn, nil
+		}
+		err = fmt.Errorf("converting %s to %s: %w", fn, destfn, err)
+	}
+	logger.Info("html2pdf", "error", err)
+	// nosemgrep: go.lang.correctness.useless-eqeq.eqeq-is-bad
+	if alter != "" && aConverter != nil {
+		logger.Info("html2pdf using alternative content " + alter)
+		if fh, err = os.Open(alter); err != nil {
+			err = fmt.Errorf("open txt %s: %w", alter, err)
+		} else {
+			err = aConverter(ctx, destfn, fh, textPlain)
+			fh.Close()
+			if err != nil {
+				err = fmt.Errorf("converting %s to %s: %w", alter, destfn, err)
+			}
+		}
+		alter, aConverter = "", nil
+	}
+	return destfn, err
+}
+func embedCids(r io.Reader, cids map[string]*io.SectionReader) (io.Reader, error) {
+	mimes := make(map[string]string, len(cids))
+	for k, v := range cids {
+		if _, ok := mimes[k]; !ok {
+			var a [1024]byte
+			n, err := v.ReadAt(a[:], 0)
+			if n == 0 {
+				if err != nil && !errors.Is(err, io.EOF) {
+					return r, err
+				}
+				continue
+			}
+			ct, _ := MIMEMatch(a[:n])
+			mimes[k] = ct
+		}
+	}
+	pr, pw := io.Pipe()
+	go func() {
+		defer pw.Close()
+		out := bufio.NewWriter(pw)
+		defer out.Flush()
 		var buf bytes.Buffer
-		buf.WriteString(`src="data:`)
-		buf.WriteString(ct)
-		buf.WriteString(";base64,")
-		if _, err := io.Copy(base64.NewEncoder(base64.StdEncoding, &buf), fh); err != nil {
-			return nil, fmt.Errorf("read cid=%q: %w", k, err)
+		br := bufio.NewReader(r)
+		for {
+			b, err := br.ReadSlice('>')
+
+			buf.Reset()
+			for {
+				i := bytes.Index(b, []byte(`src="cid:`))
+				if i < 0 {
+					out.Write(buf.Bytes())
+					out.Write(b)
+					break
+				}
+				i += 5
+				buf.Write(b[:i])
+				b = b[i:]
+				j := bytes.IndexByte(b, '"')
+				if j < 0 {
+					out.Write(buf.Bytes())
+					out.Write(b)
+					break
+				}
+				k := string(b[4:j])
+				b = b[j+1:]
+				r := cids[k]
+				if r == nil {
+					logger.Info("cid not found", "k", k)
+					buf.WriteString("cid:" + k + `"`)
+					continue
+				}
+				out.Write(buf.Bytes())
+				buf.Reset()
+				out.WriteString(`data:`)
+				out.WriteString(mimes[k])
+				out.WriteString(";base64,")
+				if _, err := io.Copy(base64.NewEncoder(base64.StdEncoding, out), r); err != nil {
+					pw.CloseWithError(fmt.Errorf("read cid=%q: %w", k, err))
+					return
+				}
+				out.WriteByte('"')
+			}
+
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				logger.Error(err, "readslice")
+				pw.CloseWithError(err)
+				return
+			}
 		}
-		data[`src="cid:`+k+`"`] = buf.Bytes()
-	}
-	var buf bytes.Buffer
-	br := bufio.NewReader(r)
-	for {
-		b, err := br.ReadSlice('>')
-		for k, v := range data {
-			b = bytes.ReplaceAll(b, []byte(k), v)
-			buf.Write(b)
-		}
-		if err != nil {
-			break
-		}
-	}
-	os.Stdout.Write(buf.Bytes())
-	return bytes.NewReader(buf.Bytes()), nil
+	}()
+	return pr, nil
 }
 
 // fixXMLHeader fixes <?xml version="1.0" encoding=...?> to <?xml version="1.0" charset=...?>

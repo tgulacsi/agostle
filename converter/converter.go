@@ -324,10 +324,10 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 				}
 				buf.Reset()
 				if err = html.Render(&buf, img); err != nil {
-					logger.Info("html.Render", "img", img, "error", err)
+					logger.Error(err, "html.Render", "img", img)
 					continue
 				}
-				logger.Info("htmlToPdf", "old", string(line), "new", buf.String())
+				logger.V(2).Info("htmlToPdf", "old", string(line), "new", buf.String())
 				i := pos[0] + copy(b[pos[0]:pos[1]], buf.Bytes())
 				for i < pos[1] {
 					b[i] = ' '
