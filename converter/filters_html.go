@@ -255,7 +255,7 @@ func embedCids(r io.Reader, cids map[string]*usedPart) (io.Reader, error) {
 		out := bufio.NewWriter(pw)
 		defer out.Flush()
 		var buf bytes.Buffer
-		br := bufio.NewReader(r)
+		br := bufio.NewReaderSize(r, 16<<20)
 		for {
 			b, err := br.ReadSlice('>')
 
