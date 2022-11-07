@@ -5,7 +5,6 @@
 package converter
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -235,20 +234,25 @@ func decodeHTML(ctx context.Context, r io.Reader, deleteMETA bool) io.Reader {
 // PrependHeaders are the headers which should be prepended to the printed mail
 var PrependHeaders = []string{"From", "To", "Cc", "Subject", "Date"}
 
-func writeToFile(ctx context.Context, fn string, r io.Reader, contentType string /*, mailHeader mail.Header*/) error {
+func writeToFile(ctx context.Context, fn string, r io.Reader /*contentType string , mailHeader mail.Header*/) error {
+	logger := getLogger(ctx).WithValues("file", fn)
+
 	fh, err := os.Create(fn)
 	if err != nil {
+		logger.Error(err, "writeToFile create")
 		return fmt.Errorf("create file %s: %w", fn, err)
 	}
-	br := bufio.NewReader(r)
-
-	logger := getLogger(ctx)
-	logger.Info("writeToPdfFile", "file", fn, "ct", contentType)
-	if _, err = io.Copy(fh, br); err != nil {
+	if _, err = io.Copy(fh, r); err != nil {
+		logger.Error(err, "writeToFile Copy")
 		_ = fh.Close()
 		return fmt.Errorf("save to %s: %w", fn, err)
 	}
-	return fh.Close()
+	if err = fh.Close(); err != nil {
+		logger.Error(err, "writeToFile Close")
+	} else {
+		logger.Info("writeToFile OK")
+	}
+	return err
 }
 
 func writeHeaders(ctx context.Context, w io.Writer, mailHeader mail.Header, contentType string) error {

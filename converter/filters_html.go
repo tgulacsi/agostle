@@ -65,7 +65,7 @@ func HTMLPartFilter(ctx context.Context,
 		}()
 	}
 
-	cids := make(map[string]*io.SectionReader)
+	cids := make(map[string]*usedPart)
 	var htmlParts []withAlternate
 	var (
 		err             error
@@ -80,7 +80,7 @@ func HTMLPartFilter(ctx context.Context,
 		} else {
 			grandpa = parent.Parent
 		}
-		logger.Info("part", "seq", part.Seq, "ct", part.ContentType, "cids", cids)
+		logger.Info("part", "seq", part.Seq, "ct", part.ContentType)
 		if part.ContentType == textPlain || part.ContentType == textHtml {
 			//if part.Parent.ContentType != "multipart/alternative" || part.Parent.ContentType != "multipart/related" {
 			if part.ContentType == textPlain && part.Parent != nil && part.Parent.ContentType != "multipart/alternative" {
@@ -122,7 +122,7 @@ func HTMLPartFilter(ctx context.Context,
 			} else {
 				fn += ".txt"
 				//_, _ = part.Body.Seek(0, 0)
-				if err = writeToFile(ctx, fn, part.GetBody(), part.ContentType /*, mailHeader*/); err != nil {
+				if err = writeToFile(ctx, fn, part.GetBody() /*part.ContentType , mailHeader*/); err != nil {
 					goto Error
 				}
 				tbd[fn] = struct{}{}
@@ -135,21 +135,24 @@ func HTMLPartFilter(ctx context.Context,
 		} else if cid := strings.Trim(part.Header.Get("Content-ID"), "<>"); cid == "" {
 			goto Skip
 		} else {
-			cids[cid] = part.GetBody()
+			cids[cid] = &usedPart{MailPart: &part}
 		}
 
 		this = parent.Seq
 
 		continue
 	Error:
-		logger.Error(err, "HTMLPartFilter")
 		if err != nil {
-			errch <- err
+			logger.Error(err, "HTMLPartFilter")
+			if err != nil {
+				errch <- err
+			}
 		}
 	Skip:
 		outch <- part
 	}
 
+	logger.Info("write htmlParts", "htmlParts", len(htmlParts))
 	for _, part := range htmlParts {
 		body := fixXMLHeader(part.body)
 		//body = NewCidMapper(cids, "images", body)
@@ -157,9 +160,8 @@ func HTMLPartFilter(ctx context.Context,
 			logger.Error(err, "embedCids")
 		}
 		fn := part.fileName
-		logger.Info("save", "file", fn)
-		//_, _ = part.Body.Seek(0, 0)
-		if err = writeToFile(ctx, fn, body, "text/html" /*, mailHeader*/); err != nil {
+		_ = os.MkdirAll(filepath.Dir(fn), 0700)
+		if err = writeToFile(ctx, fn, body /*"text/html" , mailHeader*/); err != nil {
 			logger.Error(err, "writeToFile", "file", fn)
 			errch <- err
 			continue
@@ -171,6 +173,15 @@ func HTMLPartFilter(ctx context.Context,
 			continue
 		}
 		files <- ArchFileItem{Filename: fn}
+	}
+
+	logger.Info("Save unused cids", "cids", len(cids))
+	// Add unused
+	for _, part := range cids {
+		logger.Info("cid", "used", part.used)
+		if !part.used {
+			outch <- *part.MailPart
+		}
 	}
 }
 
@@ -216,12 +227,18 @@ func html2pdf(ctx context.Context, fn string, alter string, aConverter Converter
 	}
 	return destfn, err
 }
-func embedCids(r io.Reader, cids map[string]*io.SectionReader) (io.Reader, error) {
+
+type usedPart struct {
+	*i18nmail.MailPart
+	used bool
+}
+
+func embedCids(r io.Reader, cids map[string]*usedPart) (io.Reader, error) {
 	mimes := make(map[string]string, len(cids))
 	for k, v := range cids {
 		if _, ok := mimes[k]; !ok {
 			var a [1024]byte
-			n, err := v.ReadAt(a[:], 0)
+			n, err := v.GetBody().ReadAt(a[:], 0)
 			if n == 0 {
 				if err != nil && !errors.Is(err, io.EOF) {
 					return r, err
@@ -267,12 +284,13 @@ func embedCids(r io.Reader, cids map[string]*io.SectionReader) (io.Reader, error
 					buf.WriteString("cid:" + k + `"`)
 					continue
 				}
+				r.used = true
 				out.Write(buf.Bytes())
 				buf.Reset()
 				out.WriteString(`data:`)
 				out.WriteString(mimes[k])
 				out.WriteString(";base64,")
-				if _, err := io.Copy(base64.NewEncoder(base64.StdEncoding, out), r); err != nil {
+				if _, err := io.Copy(base64.NewEncoder(base64.StdEncoding, out), r.GetBody()); err != nil {
 					pw.CloseWithError(fmt.Errorf("read cid=%q: %w", k, err))
 					return
 				}

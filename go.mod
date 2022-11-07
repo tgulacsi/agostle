@@ -21,7 +21,7 @@ require (
 	github.com/peterbourgon/ff/v3 v3.3.0
 	github.com/rs/zerolog v1.28.0
 	github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c
-	github.com/tgulacsi/go v0.23.1
+	github.com/tgulacsi/go v0.23.2
 	github.com/theupdateframework/go-tuf v0.5.1
 	golang.org/x/image v0.1.0
 	golang.org/x/net v0.1.0

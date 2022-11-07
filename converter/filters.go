@@ -355,7 +355,54 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	}
 	mp, err := i18nmail.NewMailPart(io.NewSectionReader(sr, 0, sr.Size()))
 	if err != nil {
+		body := io.NewSectionReader(sr, 0, sr.Size())
 		logger.Error(err, "NewMailPart")
+		// Strip boundary from the beginning and the end.
+		// "Boundary delimiters must not appear within the encapsulated material, and must be no longer than 70 characters, not counting the two leading hyphens."
+		// -- https://www.rfc-editor.org/rfc/rfc2046#section-5.1.1
+		// The preceeding -- is mandatory for every boundary used in the message and the trailing -- is mandatory for the closing boundary (close-delimiter).
+		var pa, sa [128]byte
+		n, _ := body.ReadAt(pa[:], 0)
+		prefix := pa[:n]
+		if bytes.HasPrefix(prefix, []byte("--")) {
+			if i := bytes.Index(prefix, []byte("\r\n")); i >= 0 {
+				if prefix = prefix[:i]; body.Size() >= 2*int64(len(prefix))+4 {
+					n, _ = body.ReadAt(sa[:], body.Size()-int64(len(prefix))-4)
+					suffix := append(prefix, '-', '-')
+					if j := bytes.Index(sa[:n], suffix); j >= 0 {
+						if logger.V(1).Enabled() {
+							logger.V(1).Info("strip MIME boundary delimiters",
+								"prefixLen", len(prefix),
+								"prefixPos", i,
+								"prefix", string(prefix),
+								"suffixLen", len(suffix),
+								"suffixPos", body.Size()-int64(n+j),
+								"suffix", string(suffix),
+								"start", len(prefix)+2,
+								"oldLength", body.Size(),
+								"newLength", body.Size()-
+									((int64(len(prefix))+2)+
+										(int64(n-j))),
+							)
+						}
+						body = io.NewSectionReader(body, int64(len(prefix))+2,
+							body.Size()-
+								((int64(len(prefix))+2)+
+									0), //(int64(n-j))),
+						)
+						sr = body
+						if logger.V(1).Enabled() {
+							n, _ = body.ReadAt(pa[:], 0)
+							i, _ = body.ReadAt(sa[:], body.Size()-int64(cap(sa)))
+							logger.V(1).Info("after strip", "begin", string(pa[:n]), "end", string(sa[:i]))
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if mp, err = i18nmail.NewMailPart(io.NewSectionReader(sr, 0, sr.Size())); err != nil {
 		b := make([]byte, 2048)
 		n, _ := sr.ReadAt(b, 0)
 		b = b[:n]
