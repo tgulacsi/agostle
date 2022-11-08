@@ -386,6 +386,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 		func(mp i18nmail.MailPart) error {
 			select {
 			case <-ctx.Done():
+				logger.Error(ctx.Err(), "i18nmail.Walk")
 				return ctx.Err()
 			default:
 			}
@@ -534,6 +535,7 @@ Collect:
 				}
 			}
 		case <-ctx.Done():
+			logger.Error(ctx.Err(), "MailToPdfFiles Collect")
 			return files, ctx.Err()
 		}
 	}
@@ -726,6 +728,7 @@ func ExtractingFilter(ctx context.Context,
 			select {
 			case allIn <- part:
 			case <-ctx.Done():
+				logger.Error(ctx.Err(), "ExtractingFilter inch")
 				return
 			}
 		}
@@ -762,6 +765,7 @@ func ExtractingFilter(ctx context.Context,
 			select {
 			case allIn <- child:
 			case <-ctx.Done():
+				logger.Error(ctx.Err(), "ExtractingFilter child")
 				return
 			}
 			continue
@@ -819,6 +823,7 @@ func ExtractingFilter(ctx context.Context,
 			select {
 			case allIn <- child:
 			case <-ctx.Done():
+				logger.Error(err, "ExtractingFilter extract")
 				return ctx.Err()
 			}
 			return nil

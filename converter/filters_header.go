@@ -185,7 +185,12 @@ func PrependHeaderFilter(ctx context.Context,
 		}
 
 	Skip:
-		outch <- part
+		select {
+		case outch <- part:
+		case <-ctx.Done():
+			logger.Error(ctx.Err(), "PrependHeaderFilter out")
+			return
+		}
 	}
 }
 

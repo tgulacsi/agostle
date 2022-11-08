@@ -63,7 +63,12 @@ func TextDecodeFilter(ctx context.Context,
 			}
 		}
 
-		outch <- part
+		select {
+		case outch <- part:
+		case <-ctx.Done():
+			logger.Error(ctx.Err(), "TextDecodeFilter out")
+			return
+		}
 	}
 
 }

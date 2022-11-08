@@ -67,39 +67,20 @@ func HTMLPartFilter(ctx context.Context,
 
 	cids := make(map[string]*usedPart)
 	var htmlParts []withAlternate
-	var (
-		err             error
-		parent, grandpa *i18nmail.MailPart
-	)
+	var err error
 	seen := make(map[string]struct{})
-	this := -1
 	for part := range inch {
-		parent = part.Parent
-		if parent == nil {
-			grandpa = nil
-		} else {
-			grandpa = parent.Parent
-		}
 		logger.Info("part", "seq", part.Seq, "ct", part.ContentType)
 		if part.ContentType == textPlain || part.ContentType == textHtml {
-			//if part.Parent.ContentType != "multipart/alternative" || part.Parent.ContentType != "multipart/related" {
 			if part.ContentType == textPlain && part.Parent != nil && part.Parent.ContentType != "multipart/alternative" {
 				goto Skip
 			}
-			if grandpa != nil {
-				this = grandpa.Seq
-			}
 
 			dn := wd
-			if grandpa != nil {
-				dn = filepath.Join(wd,
-					fmt.Sprintf("%02d#%03d.text--html", grandpa.Level, grandpa.Seq))
-				_ = os.Mkdir(dn, 0755) //ignore errors
-				tbd[dn] = struct{}{}
-			}
 			// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
 			var fn string
-			if parent != nil {
+			this := part.Seq
+			if parent := part.Parent; parent != nil {
 				fn = fmt.Sprintf("%02d#%03d.index", parent.Level, parent.Seq)
 				if _, ok := seen[fn]; ok {
 					fn = ""
@@ -138,8 +119,6 @@ func HTMLPartFilter(ctx context.Context,
 			cids[cid] = &usedPart{MailPart: part}
 		}
 
-		this = parent.Seq
-
 		continue
 	Error:
 		if err != nil {
@@ -152,6 +131,7 @@ func HTMLPartFilter(ctx context.Context,
 		select {
 		case outch <- part:
 		case <-ctx.Done():
+			logger.Error(ctx.Err(), "HTMLPartFilter skip")
 			return
 		}
 	}
@@ -187,6 +167,7 @@ func HTMLPartFilter(ctx context.Context,
 			select {
 			case outch <- part.MailPart:
 			case <-ctx.Done():
+				logger.Error(ctx.Err(), "HTMLPartFilter unused cid")
 				return
 			}
 		}
@@ -373,6 +354,7 @@ func SaveOriHTMLFilter(ctx context.Context,
 			select {
 			case outch <- part:
 			case <-ctx.Done():
+				logger.Error(ctx.Err(), "SaveOriHTMLFilter inch")
 				return
 			}
 		}
@@ -403,6 +385,7 @@ func SaveOriHTMLFilter(ctx context.Context,
 		select {
 		case outch <- part:
 		case <-ctx.Done():
+			logger.Error(ctx.Err(), "SaveOriHTMLFilter out")
 			return
 		}
 	}

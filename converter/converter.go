@@ -200,6 +200,10 @@ func OfficeToPdf(ctx context.Context, destfn string, r io.Reader, contentType st
 	return Converter(officeToPdf).WithCache(ctx, destfn, r, contentType, "application/pdf")
 }
 func officeToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	r, ok := isReaderPDF(r)
+	if ok {
+		return PdfToPdf(ctx, destfn, r, "")
+	}
 	getLogger(ctx).Info("Converting into", "ct", contentType, "dest", destfn)
 	destfn = strings.TrimSuffix(destfn, ".pdf")
 	inpfn := destfn + ".raw"
@@ -261,6 +265,11 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 	return Converter(htmlToPdf).WithCache(ctx, destfn, r, contentType, "application/pdf")
 }
 func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	r, ok := isReaderPDF(r)
+	if ok {
+		return PdfToPdf(ctx, destfn, r, "")
+	}
+
 	logger := getLogger(ctx).WithValues("func", "HTMLToPdf", "dest", destfn)
 	var inpfn string
 	if fh, ok := r.(*os.File); ok && fileExists(fh.Name()) {
@@ -681,4 +690,13 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 		}
 	}
 	return
+}
+func isReaderPDF(r io.Reader) (io.Reader, bool) {
+	var a [1024]byte
+	n, _ := io.ReadAtLeast(r, a[:], 7)
+	if n == 0 {
+		return r, false
+	}
+	b := a[:n]
+	return io.MultiReader(bytes.NewReader(b), r), bytes.HasPrefix(b, []byte("%PDF-1."))
 }
