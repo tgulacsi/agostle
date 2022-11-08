@@ -34,7 +34,7 @@ func HTMLPartFilter(ctx context.Context,
 	inch <-chan i18nmail.MailPart, outch chan<- i18nmail.MailPart,
 	files chan<- ArchFileItem, errch chan<- error,
 ) {
-	logger := getLogger(ctx)
+	logger := getLogger(ctx).WithName("HTMLPartFilter")
 	defer func() {
 		close(outch)
 	}()
@@ -343,13 +343,12 @@ func SaveOriHTMLFilter(ctx context.Context,
 	inch <-chan i18nmail.MailPart, outch chan<- i18nmail.MailPart,
 	files chan<- ArchFileItem, errch chan<- error,
 ) {
-	logger := getLogger(ctx)
+	logger := getLogger(ctx).WithName("SaveOriHTMLFilter")
 	defer func() {
 		close(outch)
 	}()
-	_, wd := prepareContext(ctx, "")
-
 	if !SaveOriginalHTML {
+		// Just copy over
 		for part := range inch {
 			select {
 			case outch <- part:
@@ -360,6 +359,8 @@ func SaveOriHTMLFilter(ctx context.Context,
 		}
 		return
 	}
+
+	_, wd := prepareContext(ctx, "")
 
 	for part := range inch {
 		if part.ContentType == textHtml {

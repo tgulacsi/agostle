@@ -28,7 +28,7 @@ func PrependHeaderFilter(ctx context.Context,
 	inch <-chan i18nmail.MailPart, outch chan<- i18nmail.MailPart,
 	files chan<- ArchFileItem, errch chan<- error,
 ) {
-	logger := getLogger(ctx)
+	logger := getLogger(ctx).WithName("PrependHeaderFilter")
 	defer func() {
 		close(outch)
 	}()

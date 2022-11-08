@@ -344,7 +344,8 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 
 // SlurpMail splits mail to parts, returns parts and/or error on the given channels
 func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<- error, body io.Reader, contentType string) {
-	logger := getLogger(ctx)
+	defer close(partch)
+	logger := getLogger(ctx).WithName("SlurpMail")
 	var head [4096]byte
 
 	logger.Info("SlurpMail", "ct", contentType)
@@ -373,8 +374,11 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 				mp.ContentType = contentType
 				entity, _ := i18nmail.NewEntity(nil, sr)
 				mp, _ = mp.WithEntity(entity)
-				partch <- mp
-				close(partch)
+				select {
+				case partch <- mp:
+				case <-ctx.Done():
+					logger.Error(ctx.Err(), "SlurpMail not email")
+				}
 				return
 			}
 		}
@@ -412,7 +416,11 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 			mp.ContentType = FixContentType(head[:n], mp.ContentType, fn)
 			logger.V(1).Info("Walk", "ct", oldCt, "fixedCt", mp.ContentType)
 			//_, _ = mp.Body.Seek(0, 0)
-			partch <- mp
+			select {
+			case partch <- mp:
+			case <-ctx.Done():
+				logger.Error(ctx.Err(), "SlurpMail partch")
+			}
 			return nil
 		},
 		false)
@@ -420,7 +428,6 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 		logger.Info("Walk finished", "error", err)
 		errch <- err
 	}
-	close(partch)
 	//close(errch)
 }
 
@@ -454,7 +461,7 @@ const maxErrLen = 1 << 20
 // MailToPdfFiles converts email to PDF files
 // all mail part goes through all filter in Filters, in reverse order (last first)
 func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files []ArchFileItem, err error) {
-	logger := getLogger(ctx)
+	logger := getLogger(ctx).WithName("MailToPdfFiles")
 	hsh := sha256.New()
 	sr, e := iohlp.MakeSectionReader(io.TeeReader(r, hsh), 1<<20)
 	logger.Info("MailToPdfFiles", "input", sr.Size(), "error", e)
@@ -475,6 +482,7 @@ func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files
 	resultch := make(chan ArchFileItem)
 	rawch := make(chan i18nmail.MailPart)
 	errch := make(chan error)
+	defer close(errch)
 
 	go SlurpMail(ctx, rawch, errch, sr, contentType) // SlurpMail sends read parts to partch
 	partch := SetupFilters(ctx, rawch, resultch, errch)
@@ -509,7 +517,6 @@ Collect:
 		select {
 		case item, ok = <-resultch:
 			if !ok {
-				close(errch)
 				break Collect
 			}
 			if ok {
@@ -566,7 +573,7 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 
 	fn = savePart(ctx, &mp)
 
-	if messageRFC822 != mp.ContentType && !strings.HasPrefix(mp.ContentType, "multipart/") {
+	if true || messageRFC822 != mp.ContentType && !strings.HasPrefix(mp.ContentType, "multipart/") {
 		converter = GetConverter(mp.ContentType, mp.MediaType)
 	} else {
 		//_, _ = mp.Body.Seek(0, 0)
@@ -716,7 +723,7 @@ func ExtractingFilter(ctx context.Context,
 	inch <-chan i18nmail.MailPart, outch chan<- i18nmail.MailPart,
 	files chan<- ArchFileItem, errch chan<- error,
 ) {
-	logger := getLogger(ctx)
+	logger := getLogger(ctx).WithName("ExtractingFilter")
 	defer func() {
 		close(outch)
 	}()
@@ -837,7 +844,12 @@ func ExtractingFilter(ctx context.Context,
 			errch <- err
 		}
 	Skip:
-		outch <- part
+		select {
+		case outch <- part:
+		case <-ctx.Done():
+			logger.Error(ctx.Err(), "ExtractingFilter skip")
+			return
+		}
 	}
 }
 
@@ -859,20 +871,22 @@ type FilterFunc func(context.Context, <-chan i18nmail.MailPart, chan<- i18nmail.
 var Filters = make([]FilterFunc, 0, 6)
 
 func init() {
-	Filters = append(Filters, ExtractingFilter)
-	Filters = append(Filters, DupFilter)
-	Filters = append(Filters, TextDecodeFilter)
-	Filters = append(Filters, SaveOriHTMLFilter)
-	Filters = append(Filters, PrependHeaderFilter)
-	Filters = append(Filters, HTMLPartFilter)
-	Filters = append(Filters, DupFilter)
+	Filters = append(Filters, ExtractingFilter,
+		DupFilter,
+		TextDecodeFilter,
+		SaveOriHTMLFilter,
+		PrependHeaderFilter,
+		HTMLPartFilter,
+		DupFilter,
+	)
+
 }
 
 func DupFilter(ctx context.Context,
 	inch <-chan i18nmail.MailPart, outch chan<- i18nmail.MailPart,
 	files chan<- ArchFileItem, errch chan<- error,
 ) {
-	logger := getLogger(ctx)
+	logger := getLogger(ctx).WithName("DupFilter")
 	defer func() {
 		close(outch)
 	}()
@@ -890,6 +904,11 @@ func DupFilter(ctx context.Context,
 				continue
 			}
 		}
-		outch <- part
+		select {
+		case outch <- part:
+		case <-ctx.Done():
+			logger.Error(ctx.Err(), "DupFilter")
+			return
+		}
 	}
 }

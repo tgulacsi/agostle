@@ -20,7 +20,7 @@ func TextDecodeFilter(ctx context.Context,
 	inch <-chan i18nmail.MailPart, outch chan<- i18nmail.MailPart,
 	files chan<- ArchFileItem, errch chan<- error,
 ) {
-	//Log := getLogger(ctx).Log
+	logger := getLogger(ctx).WithName("TextDecodeFilter")
 	defer func() {
 		close(outch)
 	}()
