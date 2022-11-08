@@ -21,7 +21,7 @@ require (
 	github.com/peterbourgon/ff/v3 v3.1.2
 	github.com/rs/zerolog v1.26.1
 	github.com/stvp/go-toml-config v0.0.0-20170523163211-314328849d78
-	github.com/tgulacsi/go v0.20.2
+	github.com/tgulacsi/go v0.24.0
 	github.com/theupdateframework/go-tuf v0.3.2
 	golang.org/x/image v0.0.0-20220413100746-70e8d0d3baa9
 	golang.org/x/net v0.0.0-20220607020251-c690dde0001d
@@ -61,8 +61,8 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v0.30.0 // indirect
 	go.opentelemetry.io/otel/trace v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20220507011949-2cf3adece122 // indirect
-	golang.org/x/exp v0.0.0-20220428152302-39d4317da171 // indirect
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
+	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d // indirect
+	golang.org/x/sys v0.0.0-20220702020025-31831981b65f // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
