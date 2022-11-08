@@ -272,74 +272,70 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 		if err != nil {
 			return err
 		}
-		if !LeaveTempFiles {
-			defer func() { _ = unlink(inpfn, "HtmlToPdf") }()
-		}
 		if _, err = io.Copy(fh, r); err != nil {
 			return err
 		}
-	} else {
-
-		b, err := os.ReadFile(inpfn)
-		if err == nil {
-			var f func(*html.Node) *html.Node
-			f = func(n *html.Node) *html.Node {
-				if n == nil || n.Type == html.ElementNode && n.Data == "img" {
+	}
+	b, err := os.ReadFile(inpfn)
+	if err == nil {
+		var f func(*html.Node) *html.Node
+		f = func(n *html.Node) *html.Node {
+			if n == nil || n.Type == html.ElementNode && n.Data == "img" {
+				return n
+			}
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if n := f(c); n != nil {
 					return n
 				}
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					if n := f(c); n != nil {
-						return n
-					}
-				}
-				return nil
 			}
-			var buf bytes.Buffer
-			for _, pos := range reHtmlImg.FindAllIndex(b, -1) {
-				line := b[pos[0]:pos[1]]
-				img, _ := html.Parse(bytes.NewReader(line))
-				if img = f(img); img == nil {
-					continue
-				}
-				// delete height, modify width
-				for i := 0; i < len(img.Attr); i++ {
-					switch strings.ToLower(img.Attr[i].Key) {
-					case "height", "style":
-						img.Attr[i] = img.Attr[0]
-						img.Attr = img.Attr[1:]
-						i--
-					case "width":
-						if len(img.Attr[i].Val) > 3 {
-							img.Attr[i].Val = "100%"
-						}
-					case "src":
-						if !*ConfKeepRemoteImage {
-							if s := img.Attr[i].Val; strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "http://") {
-								img.Attr[i] = img.Attr[0]
-								img.Attr = img.Attr[1:]
-								i--
-							}
+			return nil
+		}
+		var buf bytes.Buffer
+		for _, pos := range reHtmlImg.FindAllIndex(b, -1) {
+			line := b[pos[0]:pos[1]]
+			img, _ := html.Parse(bytes.NewReader(line))
+			if img = f(img); img == nil {
+				continue
+			}
+			// delete height, modify width
+			for i := 0; i < len(img.Attr); i++ {
+				switch strings.ToLower(img.Attr[i].Key) {
+				case "height", "style":
+					img.Attr[i] = img.Attr[0]
+					img.Attr = img.Attr[1:]
+					i--
+				case "width":
+					if len(img.Attr[i].Val) > 3 {
+						img.Attr[i].Val = "100%"
+					}
+				case "src":
+					if !*ConfKeepRemoteImage {
+						if s := img.Attr[i].Val; strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "http://") {
+							img.Attr[i] = img.Attr[0]
+							img.Attr = img.Attr[1:]
+							i--
 						}
 					}
 				}
-				buf.Reset()
-				if err = html.Render(&buf, img); err != nil {
-					logger.Error(err, "html.Render", "img", img)
-					continue
-				}
-				logger.V(2).Info("htmlToPdf", "old", string(line), "new", buf.String())
-				i := pos[0] + copy(b[pos[0]:pos[1]], buf.Bytes())
-				for i < pos[1] {
-					b[i] = ' '
-					i++
-				}
 			}
-
-			if err = os.WriteFile(inpfn, b, 0644); err != nil {
-				return fmt.Errorf("overwrite %s: %w", inpfn, err)
+			buf.Reset()
+			if err = html.Render(&buf, img); err != nil {
+				logger.Error(err, "html.Render", "img", img)
+				continue
+			}
+			logger.V(2).Info("htmlToPdf", "old", string(line), "new", buf.String())
+			i := pos[0] + copy(b[pos[0]:pos[1]], buf.Bytes())
+			for i < pos[1] {
+				b[i] = ' '
+				i++
 			}
 		}
+
+		if err = os.WriteFile(inpfn, b, 0644); err != nil {
+			return fmt.Errorf("overwrite %s: %w", inpfn, err)
+		}
 	}
+
 	if *ConfWkhtmltopdf != "" {
 		err := wkhtmltopdf(ctx, destfn, inpfn)
 		if err == nil {
@@ -387,6 +383,11 @@ var (
 // calls loffice converter with only one instance at a time,
 // in the input file's directory
 func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
+	fi, err := os.Stat(inpfn)
+	if err != nil {
+		return err
+	}
+	logger.Info("lofficeConvert", "file", fi.Name(), "size", fi.Size())
 	if outDir == "" {
 		return errors.New("outDir is required")
 	}
@@ -425,14 +426,14 @@ func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
 		}
 	}
 
-	err := cmd.Run()
+	err = cmd.Run()
 	subCancel()
 	if err != nil {
 		return fmt.Errorf("%q: %w", cmd.Args, err)
 	}
 	outfn := filepath.Join(outDir, filepath.Base(nakeFilename(inpfn))+".pdf")
 	if _, err := os.Stat(outfn); err != nil {
-		return fmt.Errorf("%v no output for %s: %w", cmd.Args, filepath.Base(inpfn), err)
+		return fmt.Errorf("%v no output for %s", cmd.Args, filepath.Base(inpfn))
 	}
 	return nil
 }

@@ -149,7 +149,11 @@ func HTMLPartFilter(ctx context.Context,
 			}
 		}
 	Skip:
-		outch <- part
+		select {
+		case outch <- part:
+		case <-ctx.Done():
+			return
+		}
 	}
 
 	logger.Info("write htmlParts", "htmlParts", len(htmlParts))
@@ -180,7 +184,11 @@ func HTMLPartFilter(ctx context.Context,
 	for _, part := range cids {
 		logger.Info("cid", "used", part.used)
 		if !part.used {
-			outch <- part.MailPart
+			select {
+			case outch <- part.MailPart:
+			case <-ctx.Done():
+				return
+			}
 		}
 	}
 }
@@ -362,7 +370,11 @@ func SaveOriHTMLFilter(ctx context.Context,
 
 	if !SaveOriginalHTML {
 		for part := range inch {
-			outch <- part
+			select {
+			case outch <- part:
+			case <-ctx.Done():
+				return
+			}
 		}
 		return
 	}
@@ -388,6 +400,10 @@ func SaveOriHTMLFilter(ctx context.Context,
 
 			}
 		}
-		outch <- part
+		select {
+		case outch <- part:
+		case <-ctx.Done():
+			return
+		}
 	}
 }

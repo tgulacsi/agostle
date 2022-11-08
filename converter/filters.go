@@ -18,6 +18,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"context"
 
@@ -482,7 +483,10 @@ func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files
 	worker := func() {
 		defer workWg.Done()
 		for mp := range partch {
-			if err = convertPart(ctx, mp, resultch); err != nil {
+			shortCtx, shortCancel := context.WithTimeout(ctx, 5*time.Minute)
+			err = convertPart(shortCtx, mp, resultch)
+			shortCancel()
+			if err != nil {
 				errch <- err
 			}
 		}
@@ -529,6 +533,8 @@ Collect:
 					errLen += len(errs[len(errs)-1])
 				}
 			}
+		case <-ctx.Done():
+			return files, ctx.Err()
 		}
 	}
 
@@ -715,13 +721,14 @@ func ExtractingFilter(ctx context.Context,
 
 	allIn := make(chan i18nmail.MailPart, 1024)
 	// nosemgrep: trailofbits.go.waitgroup-add-called-inside-goroutine.waitgroup-add-called-inside-goroutine
-	var wg sync.WaitGroup // for waiting all input to finish
 	go func() {
 		for part := range inch {
-			wg.Add(1)
-			allIn <- part
+			select {
+			case allIn <- part:
+			case <-ctx.Done():
+				return
+			}
 		}
-		wg.Wait()
 		close(allIn)
 	}()
 	//seen := make(map[string]struct{})
@@ -752,9 +759,11 @@ func ExtractingFilter(ctx context.Context,
 			}
 			child.Header = textproto.MIMEHeader(map[string][]string{
 				"X-FileName": {safeFn(fn, true)}})
-			wg.Add(1)
-			allIn <- child
-			wg.Done()
+			select {
+			case allIn <- child:
+			case <-ctx.Done():
+				return
+			}
 			continue
 		}
 
@@ -807,13 +816,15 @@ func ExtractingFilter(ctx context.Context,
 			if rErr != nil {
 				return rErr
 			}
-			wg.Add(1)
-			allIn <- child
+			select {
+			case allIn <- child:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
 			return nil
 		}); err != nil {
 			goto Error
 		}
-		wg.Done()
 		continue
 	Error:
 		logger.Info("ExtractingFilter", "ct", part.ContentType, "error", err)
@@ -821,7 +832,6 @@ func ExtractingFilter(ctx context.Context,
 			errch <- err
 		}
 	Skip:
-		wg.Done()
 		outch <- part
 	}
 }
