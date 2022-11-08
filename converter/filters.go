@@ -344,7 +344,8 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 
 // SlurpMail splits mail to parts, returns parts and/or error on the given channels
 func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<- error, body io.Reader, contentType string) {
-	logger := getLogger(ctx)
+	defer close(partch)
+	logger := getLogger(ctx).WithName("SlurpMail")
 	var head [4096]byte
 
 	logger.Info("SlurpMail", "ct", contentType)
@@ -369,7 +370,6 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 		if contentType != messageRFC822 { // sth else
 			mp.ContentType = contentType
 			partch <- mp
-			close(partch)
 			return
 		}
 	}
@@ -412,7 +412,6 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 		logger.Info("Walk finished", "error", err)
 		errch <- err
 	}
-	close(partch)
 	//close(errch)
 }
 
