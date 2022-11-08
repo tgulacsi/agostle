@@ -41,12 +41,12 @@ func PrependHeaderFilter(ctx context.Context,
 		//logger.Info("PrependHeaderFilter receives", "seq", part.Seq, "ct", part.ContentType, "header", part.Header, "inch", inch)
 		if len(mailHeader["From"]) == 0 || mailHeader.Get("Subject") == "" {
 			hdrs := make([]textproto.MIMEHeader, 0, 4)
-			parent := &part
+			parent := part
 			if len(parent.Header) > 0 {
 				hdrs = append(hdrs, parent.Header)
 			}
 			for parent.Parent != nil {
-				parent = parent.Parent
+				parent = *parent.Parent
 				if len(parent.Header) > 0 {
 					hdrs = append(hdrs, parent.Header)
 				}

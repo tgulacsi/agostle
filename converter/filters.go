@@ -357,33 +357,37 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 	}
 	mp, err := i18nmail.NewMailPart(io.NewSectionReader(sr, 0, sr.Size()))
 	if err != nil {
-		b := make([]byte, 2048)
-		n, _ := sr.ReadAt(b, 0)
-		b = b[:n]
-		if typ, _ := MIMEMatch(b); typ != "" &&
-			!(bytes.Contains(b, []byte("\nTo:")) || bytes.Contains(b, []byte("\nReceived:")) ||
-				bytes.Contains(b, []byte("\nFrom: ")) || bytes.Contains(b, []byte("\nMIME-Version: "))) {
-			logger.Info("not email!", "typ", typ, "ct", contentType)
-			logger.Info("body", "b", string(b))
-			if contentType == "" || contentType == "message/rfc822" {
-				contentType = typ
-			}
-			contentType = FixContentType(b, contentType, "")
-			logger.Info("fixed", "contentType", contentType)
-			if contentType != messageRFC822 { // sth else
-				mp.ContentType = contentType
-				entity, _ := i18nmail.NewEntity(nil, sr)
-				mp, _ = mp.WithEntity(entity)
-				select {
-				case partch <- mp:
-				case <-ctx.Done():
-					logger.Error(ctx.Err(), "SlurpMail not email")
+		logger.Error(err, "NewMailPart")
+		sr = stripBoundary(ctx, io.NewSectionReader(sr, 0, sr.Size()))
+		if mp, err = i18nmail.NewMailPart(io.NewSectionReader(sr, 0, sr.Size())); err != nil {
+			b := make([]byte, 2048)
+			n, _ := sr.ReadAt(b, 0)
+			b = b[:n]
+			if typ, _ := MIMEMatch(b); typ != "" &&
+				!(bytes.Contains(b, []byte("\nTo:")) || bytes.Contains(b, []byte("\nReceived:")) ||
+					bytes.Contains(b, []byte("\nFrom: ")) || bytes.Contains(b, []byte("\nMIME-Version: "))) {
+				logger.Info("not email!", "typ", typ, "ct", contentType)
+				logger.Info("body", "b", string(b))
+				if contentType == "" || contentType == "message/rfc822" {
+					contentType = typ
 				}
-				return
+				contentType = FixContentType(b, contentType, "")
+				logger.Info("fixed", "contentType", contentType)
+				if contentType != messageRFC822 { // sth else
+					mp.ContentType = contentType
+					entity, _ := i18nmail.NewEntity(nil, sr)
+					mp, _ = mp.WithEntity(entity)
+					select {
+					case partch <- mp:
+					case <-ctx.Done():
+						logger.Error(ctx.Err(), "SlurpMail not email")
+					}
+					return
+				}
 			}
+			errch <- err
+			return
 		}
-		errch <- err
-		return
 	}
 	err = i18nmail.Walk(
 		mp,
@@ -556,7 +560,7 @@ Collect:
 	return files, err
 }
 
-func savePart(ctx context.Context, mp *i18nmail.MailPart) string {
+func savePart(ctx context.Context, mp i18nmail.MailPart) string {
 	_, wd := prepareContext(ctx, "")
 	return filepath.Join(wd,
 		fmt.Sprintf("%02d#%03d.%s", mp.Level, mp.Seq,
@@ -571,9 +575,9 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 		converter Converter
 	)
 
-	fn = savePart(ctx, &mp)
+	fn = savePart(ctx, mp)
 
-	if true || messageRFC822 != mp.ContentType && !strings.HasPrefix(mp.ContentType, "multipart/") {
+	if messageRFC822 != mp.ContentType && !strings.HasPrefix(mp.ContentType, "multipart/") {
 		converter = GetConverter(mp.ContentType, mp.MediaType)
 	} else {
 		//_, _ = mp.Body.Seek(0, 0)
@@ -911,4 +915,53 @@ func DupFilter(ctx context.Context,
 			return
 		}
 	}
+}
+func stripBoundary(ctx context.Context, sr *io.SectionReader) *io.SectionReader {
+	logger := getLogger(ctx).WithName("stripBoundary")
+	body := io.NewSectionReader(sr, 0, sr.Size())
+	// Strip boundary from the beginning and the end.
+	// "Boundary delimiters must not appear within the encapsulated material, and must be no longer than 70 characters, not counting the two leading hyphens."
+	// -- https://www.rfc-editor.org/rfc/rfc2046#section-5.1.1
+	// The preceeding -- is mandatory for every boundary used in the message and the trailing -- is mandatory for the closing boundary (close-delimiter).
+	var pa, sa [128]byte
+	n, _ := body.ReadAt(pa[:], 0)
+	prefix := pa[:n]
+	if bytes.HasPrefix(prefix, []byte("--")) {
+		if i := bytes.Index(prefix, []byte("\r\n")); i >= 0 {
+			if prefix = prefix[:i]; body.Size() >= 2*int64(len(prefix))+4 {
+				n, _ = body.ReadAt(sa[:], body.Size()-int64(len(prefix))-4)
+				suffix := append(prefix, '-', '-')
+				if j := bytes.Index(sa[:n], suffix); j >= 0 {
+					if logger.V(1).Enabled() {
+						logger.V(1).Info("strip MIME boundary delimiters",
+							"prefixLen", len(prefix),
+							"prefixPos", i,
+							"prefix", string(prefix),
+							"suffixLen", len(suffix),
+							"suffixPos", body.Size()-int64(n+j),
+							"suffix", string(suffix),
+							"start", len(prefix)+2,
+							"oldLength", body.Size(),
+							"newLength", body.Size()-
+								((int64(len(prefix))+2)+
+									(int64(n-j))),
+						)
+					}
+					body = io.NewSectionReader(body, int64(len(prefix))+2,
+						body.Size()-
+							((int64(len(prefix))+2)+
+								0), //(int64(n-j))),
+					)
+					sr = body
+					if logger.V(1).Enabled() {
+						n, _ = body.ReadAt(pa[:], 0)
+						i, _ = body.ReadAt(sa[:], body.Size()-int64(cap(sa)))
+						logger.V(1).Info("after strip", "begin", string(pa[:n]), "end", string(sa[:i]))
+					}
+				}
+			}
+		}
+	}
+	return sr
+
 }
