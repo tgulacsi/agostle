@@ -74,6 +74,7 @@ func HTMLPartFilter(ctx context.Context,
 	seen := make(map[string]struct{})
 	this := -1
 	for part := range inch {
+		part := part
 		parent = part.Parent
 		if parent == nil {
 			grandpa = nil
