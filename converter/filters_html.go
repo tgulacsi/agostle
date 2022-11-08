@@ -74,7 +74,6 @@ func HTMLPartFilter(ctx context.Context,
 	seen := make(map[string]struct{})
 	this := -1
 	for part := range inch {
-		part := part
 		parent = part.Parent
 		if parent == nil {
 			grandpa = nil
@@ -136,7 +135,7 @@ func HTMLPartFilter(ctx context.Context,
 		} else if cid := strings.Trim(part.Header.Get("Content-ID"), "<>"); cid == "" {
 			goto Skip
 		} else {
-			cids[cid] = &usedPart{MailPart: &part}
+			cids[cid] = &usedPart{MailPart: part}
 		}
 
 		this = parent.Seq
@@ -181,7 +180,7 @@ func HTMLPartFilter(ctx context.Context,
 	for _, part := range cids {
 		logger.Info("cid", "used", part.used)
 		if !part.used {
-			outch <- *part.MailPart
+			outch <- part.MailPart
 		}
 	}
 }
@@ -230,7 +229,7 @@ func html2pdf(ctx context.Context, fn string, alter string, aConverter Converter
 }
 
 type usedPart struct {
-	*i18nmail.MailPart
+	i18nmail.MailPart
 	used bool
 }
 
