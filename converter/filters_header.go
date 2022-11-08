@@ -13,6 +13,7 @@ import (
 	"net/mail"
 	"net/textproto"
 	"os"
+	"unicode/utf8"
 
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/htmlindex"
@@ -83,6 +84,33 @@ func PrependHeaderFilter(ctx context.Context,
 			if err != nil {
 				logger.Error(err, "read")
 			}
+
+			// strip <!--[if ... <![endif]-->
+			{
+				const beg, end = "<!--[if", "<![endif]-->"
+				var off int
+				for {
+					fmt.Println("off:", off)
+					first := bytes.Index(b[off:], []byte(beg))
+					if first < 0 {
+						break
+					}
+					first += off
+					fmt.Println("first:", first)
+					off = first
+					last := bytes.Index(b[off:], []byte(end))
+					if last < 0 {
+						break
+					}
+					last += off + len(end)
+					fmt.Println("last:", last)
+					for i := first; i < last; i++ {
+						b[i] = ' '
+					}
+					off = last
+				}
+			}
+
 			// add some garbage to each line ending!
 			b = bytes.TrimSpace(
 				bytes.Replace(
@@ -104,10 +132,12 @@ func PrependHeaderFilter(ctx context.Context,
 					b = append([]byte(htmlPrefix), b[i:]...)
 				}
 			}
-			if bodyPos, _ := tagIndex(b, "body"); bodyPos >= 0 {
-				// even more garbage
-				b = append(append(b[:bodyPos], []byte("<!-- ------ -->")...),
-					b[bodyPos:]...)
+			if false {
+				if bodyPos, _ := tagIndex(b, "body"); bodyPos >= 0 {
+					// even more garbage
+					b = append(append(b[:bodyPos], []byte("<!-- ------ -->")...),
+						b[bodyPos:]...)
+				}
 			}
 
 			if i := bytes.LastIndex(b, []byte("</body>")); i >= 0 {
@@ -175,10 +205,9 @@ func tagIndex(b []byte, tag string) (int, int) {
 
 // decodeHTML decodes the HTML's encoding.
 func decodeHTML(ctx context.Context, r io.Reader, deleteMETA bool) io.Reader {
-	b := make([]byte, 4096)
-	n, _ := io.ReadAtLeast(r, b, len(b)/2)
-	b = b[:n]
-	r = io.MultiReader(bytes.NewReader(b), r)
+	b, _ := io.ReadAll(r)
+	r = bytes.NewReader(b)
+	alreadyUTF8 := utf8.Valid(b)
 
 	logger := getLogger(ctx)
 	var enc encoding.Encoding
@@ -212,10 +241,12 @@ func decodeHTML(ctx context.Context, r io.Reader, deleteMETA bool) io.Reader {
 			// delete the whole <meta .../> part
 			copy(b[i:j], bytes.Repeat([]byte{' '}, j-i))
 		}
-		var err error
-		if enc, err = htmlindex.Get(charset); err != nil {
-			logger.Info("cannot find encoding", "charset", charset)
-			continue
+		if !alreadyUTF8 {
+			var err error
+			if enc, err = htmlindex.Get(charset); err != nil {
+				logger.Info("cannot find encoding", "charset", charset)
+				continue
+			}
 		}
 		if !deleteMETA && len(charset) >= 5 {
 			copy(c[:5], []byte("utf-8"))
