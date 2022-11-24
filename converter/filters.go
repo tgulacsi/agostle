@@ -382,8 +382,10 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 				return ctx.Err()
 			default:
 			}
+			logger := logger.WithValues("level", mp.Level, "seq", mp.Seq)
 			fn := headerGetFileName(mp.Header)
 			n, err := mp.Body.ReadAt(head[:], 0)
+			logger.Info("readAt", "n", n, "error", err, "fn", fn)
 			if err != nil && (!errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) || n == 0) {
 				var ok bool
 				if _, params, _ := mime.ParseMediaType(

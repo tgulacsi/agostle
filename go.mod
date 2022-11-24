@@ -3,7 +3,7 @@ module github.com/tgulacsi/agostle
 require (
 	bitbucket.org/zombiezen/gopdf v0.0.0-20190421151423-ab3d04824694
 	github.com/KarpelesLab/reflink v0.0.2
-	github.com/UNO-SOFT/filecache v0.1.1
+	github.com/UNO-SOFT/filecache v0.0.5
 	github.com/UNO-SOFT/otel v0.3.4
 	github.com/VictoriaMetrics/metrics v1.23.0
 	github.com/coreos/go-systemd/v22 v22.5.0
@@ -21,7 +21,7 @@ require (
 	github.com/peterbourgon/ff/v3 v3.3.0
 	github.com/rs/zerolog v1.28.0
 	github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c
-	github.com/tgulacsi/go v0.24.0
+	github.com/tgulacsi/go v0.24.1
 	github.com/theupdateframework/go-tuf v0.5.1
 	golang.org/x/image v0.1.0
 	golang.org/x/net v0.1.0
@@ -37,13 +37,12 @@ require (
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/renameio/v2 v2.0.0 // indirect
 	github.com/hhrutter/lzw v0.0.0-20190829144645-6f07a24e8650 // indirect
 	github.com/hhrutter/tiff v0.0.0-20190829141212-736cae8d0bc7 // indirect
 	github.com/klauspost/compress v1.15.5 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/nwaples/rardecode/v2 v2.0.0-beta.2 // indirect
 	github.com/pdfcpu/pdfcpu v0.3.13 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
@@ -63,9 +62,8 @@ require (
 	go.opentelemetry.io/otel/sdk v1.10.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v0.31.0 // indirect
 	go.opentelemetry.io/otel/trace v1.10.0 // indirect
-	golang.org/x/crypto v0.0.0-20220507011949-2cf3adece122 // indirect
-	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d // indirect
-	golang.org/x/sys v0.1.0 // indirect
+	golang.org/x/exp v0.0.0-20221106115401-f9659909a136 // indirect
+	golang.org/x/sys v0.2.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
