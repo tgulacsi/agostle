@@ -678,6 +678,8 @@ github.com/syndtr/goleveldb v1.0.0/go.mod h1:ZVVdQEZoIme9iO1Ch2Jdy24qqXrMMOU6lpP
 github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d/go.mod h1:RRCYJbIwD5jmqPI9XoAFR0OcDxqUctll6zUj/+B4S48=
 github.com/tgulacsi/go v0.24.1 h1:6emJDCDLtDvUt05EzZPiLAX/NrEBfXvsIF6j4c/w1ck=
 github.com/tgulacsi/go v0.24.1/go.mod h1:ErUPCpqNYXtpvoMxBZlp+t000vGnWt4gAj83WH8QzDo=
+github.com/tgulacsi/go v0.24.2 h1:NFlyxWuKzpTW/Ri1p1Spj9K6Oc0aMv2I22W4wmVBtqw=
+github.com/tgulacsi/go v0.24.2/go.mod h1:ErUPCpqNYXtpvoMxBZlp+t000vGnWt4gAj83WH8QzDo=
 github.com/tgulacsi/picago v0.0.0-20171229130838-9e1ac2306c70/go.mod h1:YOW4MCz1GRh0aqedyC48A1CRXSHngOB/O/4+1rUjDQg=
 github.com/therootcompany/xz v1.0.1 h1:CmOtsn1CbtmyYiusbfmhmkpAAETj0wBIH6kCYaX+xzw=
 github.com/therootcompany/xz v1.0.1/go.mod h1:3K3UH1yCKgBneZYhuQUvJ9HPD19UEXEI0BWbMn8qNMY=
