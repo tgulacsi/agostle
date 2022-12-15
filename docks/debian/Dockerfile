@@ -22,7 +22,7 @@ RUN apt-get -y install procps
 #WORKDIR /home/agostle
 
 WORKDIR /app
-EXPOSE 9500:9500
+EXPOSE 9500
 VOLUME ["/app/bin"]
 ENTRYPOINT ["/bin/dash", "-c"]
 CMD ["/app/bin/agostle serve 0.0.0.0:9500"]
