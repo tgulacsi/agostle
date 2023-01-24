@@ -11,9 +11,13 @@ RUN ln -sf /bin/true /usr/bin/chfn
 RUN apt-get -y install \
 	ghostscript graphicsmagick pdftk poppler-utils mupdf-tools \
 	libemail-outlook-message-perl
-RUN apt-get -y install libreoffice
+RUN apt-get -y --no-install-recommends --no-install-suggests install libreoffice
+RUN apt-get -y purge liblog4j1.2-java
 RUN apt-get -y install wkhtmltopdf
 RUN apt-get -y install procps
+
+RUN find / -type f -name 'log4j-1*.jar' -print
+#RUN find / -type f -name 'log4j-1*.jar' -delete
 
 #RUN addgroup --quiet --gid 10507 agostle
 #RUN adduser --quiet --gecos 'agostle' --disabled-password --uid 10507 --gid 10507 agostle
