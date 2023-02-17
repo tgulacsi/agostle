@@ -23,10 +23,10 @@ require (
 	github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c
 	github.com/tgulacsi/go v0.24.2
 	github.com/theupdateframework/go-tuf v0.5.1
-	golang.org/x/image v0.1.0
+	golang.org/x/image v0.5.0
 	golang.org/x/net v0.1.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/text v0.4.0
+	golang.org/x/text v0.7.0
 )
 
 require (
