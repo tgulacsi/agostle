@@ -21,7 +21,7 @@ require (
 	github.com/peterbourgon/ff/v3 v3.3.0
 	github.com/rs/zerolog v1.29.0
 	github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c
-	github.com/tgulacsi/go v0.24.3
+	github.com/tgulacsi/go v0.24.4
 	github.com/theupdateframework/go-tuf v0.5.2
 	golang.org/x/image v0.5.0
 	golang.org/x/net v0.7.0
@@ -30,6 +30,7 @@ require (
 )
 
 require (
+	github.com/UNO-SOFT/zlog v0.5.0 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
@@ -63,8 +64,9 @@ require (
 	go.opentelemetry.io/otel/sdk v1.13.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v0.36.0 // indirect
 	go.opentelemetry.io/otel/trace v1.13.0 // indirect
-	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb // indirect
+	golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2 // indirect
 	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 

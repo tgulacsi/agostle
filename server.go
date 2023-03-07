@@ -88,6 +88,7 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 	H("/email/convert", emailConvertServer.ServeHTTP)
 	H("/convert", emailConvertServer.ServeHTTP)
 	H("/outlook", outlookToEmailServer.ServeHTTP)
+	//H("/stem", stemServer.ServeHTTP)
 	mux.Handle("/_admin/stop", mkAdminStopHandler(s))
 	mux.Handle("/", http.DefaultServeMux)
 

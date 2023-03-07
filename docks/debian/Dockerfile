@@ -15,6 +15,7 @@ RUN apt-get -y --no-install-recommends --no-install-suggests install libreoffice
 RUN apt-get -y purge liblog4j1.2-java
 RUN apt-get -y install wkhtmltopdf
 RUN apt-get -y install procps
+RUN apt-get -y install hunspell hunspell-hu
 
 RUN find / -type f -name 'log4j-1*.jar' -print
 #RUN find / -type f -name 'log4j-1*.jar' -delete

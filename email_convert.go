@@ -134,7 +134,7 @@ func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, erro
 		return nil, err
 	}
 	req.Input = inp
-	//getLogger(ctx).Log("input", req.Input)
+	getLogger(ctx).Info("emailConvertDecode", "input", req.Input)
 	contentType := req.Input.Header.Get("Content-Type")
 	if contentType == "" || contentType == "application/octet-stream" {
 		if strings.HasPrefix(r.URL.Path, "/convert") {

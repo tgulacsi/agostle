@@ -28,6 +28,7 @@ RUN apk add ghostscript graphicsmagick poppler-utils mupdf-tools
 RUN apk add libreoffice
 RUN apk add wkhtmltopdf
 RUN apk add procps
+RUN apk add hunspell hunspell-hu
 
 #RUN addgroup --quiet --gid 10507 agostle
 #RUN adduser --quiet --gecos 'agostle' --disabled-password --uid 10507 --gid 10507 agostle
