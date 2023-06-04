@@ -1,4 +1,4 @@
-// Copyright 2017, 2022 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2023 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -28,11 +28,12 @@ import (
 	"time"
 
 	"github.com/UNO-SOFT/otel"
+	"github.com/UNO-SOFT/zlog/v2"
 	"github.com/VictoriaMetrics/metrics"
-	"github.com/go-logr/logr"
 	"github.com/google/renameio"
 	"github.com/oklog/ulid/v2"
 	"github.com/tgulacsi/agostle/converter"
+	"golang.org/x/exp/slog"
 
 	kithttp "github.com/go-kit/kit/transport/http"
 )
@@ -92,7 +93,7 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 	mux.Handle("/_admin/stop", mkAdminStopHandler(s))
 	mux.Handle("/", http.DefaultServeMux)
 
-	tp, err := otel.LogTraceProvider(logger)
+	tp, err := otel.LogTraceProvider(slog.NewLogLogger(logger.Handler(), slog.LevelInfo))
 	if err != nil {
 		panic(err)
 	}
@@ -138,15 +139,15 @@ func prepareContext(ctx context.Context, r *http.Request) context.Context {
 	ctx = context.WithValue(ctx, ctxKeyCancel, cancel)
 	ctx = SetRequestID(ctx, "")
 	lgr := getLogger(ctx)
-	lgr = lgr.WithValues(
+	lgr = lgr.With(
 		"reqID", GetRequestID(ctx, ""),
 		"path", r.URL.Path,
 		"method", r.Method,
 	)
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		lgr = lgr.WithValues("ip", host)
+		lgr = lgr.With("ip", host)
 	}
-	ctx = logr.NewContext(ctx, lgr)
+	ctx = zlog.NewSContext(ctx, lgr)
 	logAccept(ctx, r)
 	return ctx
 }
@@ -158,13 +159,13 @@ func dumpRequest(ctx context.Context, req *http.Request) context.Context {
 	prefix := filepath.Join(converter.Workdir, time.Now().Format("20060102_150405")+"-")
 	var reqSeq uint64
 	b, err := httputil.DumpRequest(req, true)
-	logger := getLogger(ctx).WithValues("fn", "dumpRequest")
+	logger := getLogger(ctx).With("fn", "dumpRequest")
 	if err != nil {
-		logger.Error(err, "dumping request")
+		logger.Error("dumping request", "error", err)
 	}
 	fn := fmt.Sprintf("%s%06d.dmp", prefix, atomic.AddUint64(&reqSeq, 1))
 	if err = os.WriteFile(fn, b, 0660); err != nil {
-		logger.Error(err, "writing", "dumpfile", fn)
+		logger.Error("writing", "dumpfile", fn, "error", err)
 	} else {
 		logger.Info("Request has been dumped into " + fn)
 	}
@@ -281,7 +282,7 @@ func readerToFile(r io.Reader, prefix string) (pendingFile, error) {
 	}
 	var buf bytes.Buffer
 	if _, err = io.Copy(dfh, io.TeeReader(r, &buf)); err != nil {
-		logger.Error(err, "readerToFile renameio.TempFile")
+		logger.Error("readerToFile renameio.TempFile", "error", err)
 		_ = dfh.Cleanup()
 		if dfh, err := os.CreateTemp("", pat); err == nil {
 			if _, err = io.Copy(dfh, io.MultiReader(bytes.NewReader(buf.Bytes()), r)); err == nil {
@@ -336,8 +337,8 @@ func baseName(fileName string) string {
 	}
 	return fileName
 }
-func getLogger(ctx context.Context) logr.Logger {
-	if lgr, err := logr.FromContext(ctx); err == nil {
+func getLogger(ctx context.Context) *slog.Logger {
+	if lgr := zlog.SFromContext(ctx); lgr != nil {
 		return lgr
 	}
 	return logger

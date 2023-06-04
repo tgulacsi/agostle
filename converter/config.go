@@ -1,4 +1,4 @@
-// Copyright 2017, 2020 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2023 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -13,14 +13,15 @@ import (
 	"time"
 
 	"github.com/UNO-SOFT/filecache"
-	"github.com/go-logr/logr"
+	"github.com/UNO-SOFT/zlog/v2"
 	config "github.com/stvp/go-toml-config"
 	"github.com/tgulacsi/go/osgroup"
+	"golang.org/x/exp/slog"
 )
 
-var logger = logr.Discard()
+var logger *slog.Logger
 
-func SetLogger(lgr logr.Logger) { logger = lgr }
+func SetLogger(lgr *slog.Logger) { logger = lgr }
 
 func lookPath(fn string) string {
 	path, err := exec.LookPath(fn)
@@ -128,7 +129,7 @@ func LoadConfig(ctx context.Context, fn string) error {
 			popplerOk[k] = prefix + k
 		}
 	}
-	logger.V(1).Info("LoadConfig", "popplerOk", popplerOk)
+	logger.Debug("LoadConfig", "popplerOk", popplerOk)
 
 	if !*ConfLofficeUsePortLock {
 		lofficeMu.Lock()
@@ -181,8 +182,8 @@ var SaveOriginalHTML = false
 // name of errors list in resulting archive
 const ErrTextFn = "ZZZ-errors.txt"
 
-func getLogger(ctx context.Context) logr.Logger {
-	if lgr, err := logr.FromContext(ctx); err == nil {
+func getLogger(ctx context.Context) *slog.Logger {
+	if lgr := zlog.SFromContext(ctx); lgr != nil {
 		return lgr
 	}
 	return logger

@@ -156,7 +156,7 @@ func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, erro
 }
 
 func emailConvertEP(ctx context.Context, request interface{}) (response interface{}, err error) {
-	logger := getLogger(ctx).WithValues("f", "emailConvertEP")
+	logger := getLogger(ctx).With("f", "emailConvertEP")
 	req := request.(emailConvertRequest)
 	defer func() { _ = req.Input.Close() }()
 

@@ -1,4 +1,4 @@
-// Copyright 2017, 2021 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2023 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -345,7 +345,7 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 // SlurpMail splits mail to parts, returns parts and/or error on the given channels
 func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<- error, body io.Reader, contentType string) {
 	defer close(partch)
-	logger := getLogger(ctx).WithName("SlurpMail")
+	logger := getLogger(ctx).WithGroup("SlurpMail")
 	var head [4096]byte
 
 	logger.Info("SlurpMail", "ct", contentType)
@@ -382,7 +382,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 				return ctx.Err()
 			default:
 			}
-			logger := logger.WithValues("level", mp.Level, "seq", mp.Seq)
+			logger := logger.With("level", mp.Level, "seq", mp.Seq)
 			fn := headerGetFileName(mp.Header)
 			n, err := mp.Body.ReadAt(head[:], 0)
 			logger.Info("readAt", "n", n, "error", err, "fn", fn)
@@ -399,7 +399,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 					logger.Info("read 0", "size", s, "n", n, "ok", ok)
 				}
 				if !ok {
-					logger.Error(err, "cannot read", "body", mp)
+					logger.Error("cannot read", "body", mp, "error", err)
 				}
 				logger.Info("SKIP", "Seq", mp.Seq)
 				return nil // Skip

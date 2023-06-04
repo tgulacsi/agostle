@@ -1,4 +1,4 @@
-// Copyright 2017, 2020 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2023 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -296,7 +296,7 @@ func PdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 	if err == nil {
 		return nil
 	}
-	logger.Error(err, "pdfMerge")
+	logger.Error("pdfMerge", "error", err)
 
 	// filter out bad PDFs
 	fns := make([]string, 0, len(filenames))

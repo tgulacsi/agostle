@@ -1,10 +1,11 @@
-// Copyright 2017, 2022 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2023 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -17,12 +18,10 @@ import (
 	"strings"
 	"time"
 
-	"context"
-
-	"github.com/go-logr/zerologr"
+	"github.com/UNO-SOFT/zlog/v2"
 	"github.com/peterbourgon/ff/v3/ffcli"
-	"github.com/rs/zerolog"
 	tufclient "github.com/theupdateframework/go-tuf/client"
+	"golang.org/x/exp/slog"
 
 	"github.com/kardianos/osext"
 	"github.com/tgulacsi/agostle/converter"
@@ -35,12 +34,13 @@ import (
 
 const defaultUpdateURL = "https://www.unosoft.hu/tuf"
 
-var zl = zerolog.New(os.Stderr).With().Timestamp().Logger().Level(zerolog.InfoLevel)
-var logger = zerologr.New(&zl)
+var verbose = zlog.VerboseVar(1)
+var zl = zlog.NewMultiHandler(zlog.MaybeConsoleHandler(&verbose, os.Stderr))
+var logger = zlog.NewLogger(zl).SLog()
 
 func main() {
 	if err := Main(); err != nil {
-		logger.Error(err, "Main")
+		logger.Error("Main", "error", err)
 		os.Exit(1)
 	}
 }
@@ -54,22 +54,22 @@ var (
 func newFlagSet(name string) *flag.FlagSet { return flag.NewFlagSet(name, flag.ContinueOnError) }
 
 func Main() error {
-	converter.SetLogger(logger.WithName("converter"))
+	converter.SetLogger(logger.WithGroup("converter"))
 
-	i18nmail.SetLogger(logger.V(1).WithName("i18nmail"))
+	i18nmail.SetLogger(zlog.NewLogger(logger.WithGroup("i18nmail").Handler()).Logr().V(1))
 
 	updateURL := defaultUpdateURL
 	var (
-		verbose, leaveTempFiles bool
-		concurrency             int
-		timeout                 time.Duration
-		logFile                 string
+		leaveTempFiles bool
+		concurrency    int
+		timeout        time.Duration
+		logFile        string
 	)
 
 	fs := newFlagSet("agostle")
 	fs.StringVar(&updateURL, "update-url", updateURL, "URL to download updates from (with GOOS and GOARCH template vars)")
 	fs.BoolVar(&leaveTempFiles, "x", false, "leave tempfiles?")
-	fs.BoolVar(&verbose, "v", false, "verbose logging")
+	fs.Var(&verbose, "v", "verbose logging")
 	fs.IntVar(&concurrency, "concurrency", converter.Concurrency, "number of childs start in parallel")
 	fs.DurationVar(&timeout, "timeout", 10*time.Minute, "timeout for external programs")
 	fs.StringVar(&configFile, "config", "", "config file (TOML)")
@@ -142,7 +142,7 @@ func Main() error {
 			}
 			logger.Info("rename", "from", destFh.Name(), "to", self)
 			if err := os.Rename(destFh.Name(), self); err != nil {
-				logger.Error(err, "rename", "from", destFh.Name(), "to", self)
+				logger.Error("rename", "from", destFh.Name(), "to", self, "error", err)
 			} else {
 				os.Remove(old)
 			}
@@ -213,11 +213,10 @@ func Main() error {
 	if closeLogfile, err = logToFile(logFile); err != nil {
 		return err
 	}
-	if verbose {
-		zl = zl.Level(zerolog.TraceLevel)
-		i18nmail.SetLogger(logger)
+	if verbose > 1 {
+		i18nmail.SetLogger(zlog.NewLogger(logger.Handler()).Logr())
 	} else {
-		i18nmail.SetLogger(logger.V(1))
+		i18nmail.SetLogger(zlog.NewLogger(logger.Handler()).Logr().V(1))
 	}
 	logger.Info("config", "leave_tempfiles?", leaveTempFiles)
 	converter.LeaveTempFiles = leaveTempFiles
@@ -249,7 +248,7 @@ func Main() error {
 	}
 	if closeLogfile == nil {
 		if closeLogfile, err = logToFile(*converter.ConfLogFile); err != nil {
-			logger.Error(err, "logToFile")
+			logger.Error("logToFile", "error", err)
 		}
 	}
 
@@ -289,11 +288,11 @@ func logToFile(fn string) (func() error, error) {
 	// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
 	fh, err := os.OpenFile(fn, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0640)
 	if err != nil {
-		logger.Error(err, "open log file", "file", fn)
+		logger.Error("open log file", "file", fn, "error", err)
 		return nil, fmt.Errorf("%s: %w", fn, err)
 	}
 	logger.Info("Will log to", "file", fh.Name())
-	zl = zerolog.New(zerolog.MultiLevelWriter(zl, fh)).With().Timestamp().Logger()
+	zl.Add(slog.NewJSONHandler(fh, &zlog.DefaultHandlerOptions.HandlerOptions))
 	logger.Info("Logging to", "file", fh.Name())
 	return fh.Close, nil
 }

@@ -1,4 +1,4 @@
-// Copyright 2019, 2020 The Agostle Authors. All rights reserved.
+// Copyright 2019, 2023 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -39,7 +39,7 @@ var (
 )
 
 func (c Converter) WithCache(ctx context.Context, destfn string, r io.Reader, sourceContentType, destContentType string) error {
-	logger := getLogger(ctx).WithValues("f", "convertWithCache", "sct", sourceContentType, "dct", destContentType, "dest", destfn)
+	logger := getLogger(ctx).With("f", "convertWithCache", "sct", sourceContentType, "dct", destContentType, "dest", destfn)
 	hsh := filecache.NewHash()
 	if destContentType == "" {
 		destContentType = "application/pdf"
@@ -261,7 +261,7 @@ func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 	return Converter(htmlToPdf).WithCache(ctx, destfn, r, contentType, "application/pdf")
 }
 func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
-	logger := getLogger(ctx).WithValues("func", "HTMLToPdf", "dest", destfn)
+	logger := getLogger(ctx).With("func", "HTMLToPdf", "dest", destfn)
 	var inpfn string
 	if fh, ok := r.(*os.File); ok && fileExists(fh.Name()) {
 		inpfn = fh.Name()
