@@ -14,9 +14,9 @@ import (
 
 	"github.com/UNO-SOFT/filecache"
 	"github.com/UNO-SOFT/zlog/v2"
+	"github.com/UNO-SOFT/zlog/v2/slog"
 	config "github.com/stvp/go-toml-config"
 	"github.com/tgulacsi/go/osgroup"
-	"golang.org/x/exp/slog"
 )
 
 var logger *slog.Logger

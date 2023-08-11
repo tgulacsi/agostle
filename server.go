@@ -33,7 +33,7 @@ import (
 	"github.com/google/renameio"
 	"github.com/oklog/ulid/v2"
 	"github.com/tgulacsi/agostle/converter"
-	"golang.org/x/exp/slog"
+	"github.com/UNO-SOFT/zlog/v2/slog"
 
 	kithttp "github.com/go-kit/kit/transport/http"
 )

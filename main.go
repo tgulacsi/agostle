@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -21,11 +22,10 @@ import (
 	"github.com/UNO-SOFT/zlog/v2"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	tufclient "github.com/theupdateframework/go-tuf/client"
-	"golang.org/x/exp/slog"
+	"github.com/UNO-SOFT/zlog/v2/slog"
 
 	"github.com/kardianos/osext"
 	"github.com/tgulacsi/agostle/converter"
-	"github.com/tgulacsi/go/globalctx"
 	"github.com/tgulacsi/go/i18nmail"
 	"golang.org/x/sync/errgroup"
 )
@@ -235,7 +235,7 @@ func Main() error {
 			}
 		}
 	}
-	ctx, cancel := globalctx.Wrap(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 	logger.Info("Loading config", "file", configFile)
 	if err = converter.LoadConfig(ctx, configFile); err != nil {

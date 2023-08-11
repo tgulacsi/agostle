@@ -23,9 +23,12 @@ var stemConvertServer = kithttp.NewServer(
 	kithttp.ServerAfter(kithttp.SetContentType("application/json")),
 )
 
+var _ = stemConvertServer
+
 var errNotImplemented = errors.New("not implemented")
 
 func stemConvertEP(ctx context.Context, request interface{}) (response interface{}, err error) {
+	_ = stem
 	return nil, errNotImplemented
 }
 func stemConvertDecode(ctx context.Context, r *http.Request) (interface{}, error) {
