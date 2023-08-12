@@ -207,6 +207,7 @@ func Main() error {
 	if err := appCmd.Parse(os.Args[1:]); err != nil {
 		return err
 	}
+	logger = zlog.NewLogger(zl).SLog()
 	converter.SetLogger(logger)
 
 	var closeLogfile func() error

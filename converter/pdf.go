@@ -6,6 +6,7 @@ package converter
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/gob"
@@ -21,10 +22,8 @@ import (
 	"sync"
 	"unicode/utf16"
 
-	"context"
-
+	"github.com/google/renameio/v2"
 	"github.com/tgulacsi/go/pdf"
-	"github.com/tgulacsi/go/temp"
 )
 
 var popplerOk = map[string]string{"pdfinfo": "", "pdfseparate": "", "pdfunite": ""}
@@ -286,11 +285,27 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 
 // PdfMerge merges pdf files into destfn
 func PdfMerge(ctx context.Context, destfn string, filenames ...string) error {
+	logger.Debug("PdfMerge", "filenames", len(filenames))
 	if len(filenames) == 0 {
 		return errors.New("filenames required")
 	} else if len(filenames) == 1 {
-		os.Remove(destfn)
-		return temp.LinkOrCopy(filenames[0], destfn)
+		if err := os.Link(filenames[0], destfn); err == nil {
+			return nil
+		}
+		sfh, err := os.Open(filenames[0])
+		if err != nil {
+			return err
+		}
+		defer sfh.Close()
+		dfh, err := renameio.NewPendingFile(destfn)
+		if err != nil {
+			return err
+		}
+		defer dfh.Close()
+		if _, err = io.Copy(dfh, sfh); err != nil {
+			return err
+		}
+		return dfh.CloseAtomicallyReplace()
 	}
 	err := pdfMerge(ctx, destfn, filenames...)
 	if err == nil {

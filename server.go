@@ -126,12 +126,12 @@ func prepareContext(ctx context.Context, r *http.Request) context.Context {
 	ctx = SetRequestID(ctx, "")
 	lgr := getLogger(ctx)
 	lgr = lgr.With(
-		"reqID", GetRequestID(ctx),
-		"path", r.URL.Path,
-		"method", r.Method,
+		slog.String("reqID", GetRequestID(ctx)),
+		slog.String("path", r.URL.Path),
+		slog.String("method", r.Method),
 	)
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		lgr = lgr.With("ip", host)
+		lgr = lgr.With(slog.String("ip", host))
 	}
 	ctx = zlog.NewSContext(ctx, lgr)
 	logAccept(ctx, r)

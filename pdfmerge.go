@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"sort"
@@ -26,10 +27,10 @@ var pdfMergeServer = kithttp.NewServer(
 )
 
 func pdfMergeDecode(ctx context.Context, r *http.Request) (interface{}, error) {
-	logger := logger.With("fn", "pdfMergeDecode")
+	logger := logger.With(slog.String("fn", "pdfMergeDecode"))
 	inputs, err := getRequestFiles(r)
 	if err != nil {
-		logger.Error( "getRequestFiles", "error", err)
+		logger.Error("getRequestFiles", "error", err)
 		return nil, err
 	}
 	req := pdfMergeRequest{Inputs: inputs}
@@ -80,7 +81,7 @@ func pdfMergeEP(ctx context.Context, request interface{}) (response interface{},
 	for i, f := range req.Inputs {
 		tfh, err := readerToFile(f.ReadCloser, f.Filename)
 		if err != nil {
-			logger.Error( "readerToFile", "file", f.Filename, "error", err)
+			logger.Error("readerToFile", "file", f.Filename, "error", err)
 			return nil, fmt.Errorf("error saving %q: %w", f.Filename, err)
 		}
 		tbd = append(tbd, tfh.Cleanup)
@@ -94,18 +95,18 @@ func pdfMergeEP(ctx context.Context, request interface{}) (response interface{},
 
 	dst, err := tempFilename("pdfmerge-")
 	if err != nil {
-		logger.Error( "tempFilename", "error", err)
+		logger.Error("tempFilename", "error", err)
 		return nil, err
 	}
 	defer os.Remove(dst)
 	logger.Info("PdfMerge", "dst", dst, "filenames", filenames)
 	if err = converter.PdfMerge(ctx, dst, filenames...); err != nil {
-		logger.Error( "PdfMerge", "dst", dst, "filenames", filenames, "error", err)
+		logger.Error("PdfMerge", "dst", dst, "filenames", filenames, "error", err)
 		return nil, err
 	}
 	f, err := os.Open(dst)
 	if err != nil {
-		logger.Error( "Open(dst)", "dst", dst, "error", err)
+		logger.Error("Open(dst)", "dst", dst, "error", err)
 		return nil, err
 	}
 	return f, nil
@@ -117,7 +118,7 @@ func pdfMergeEncode(ctx context.Context, w http.ResponseWriter, response interfa
 		Stat() (os.FileInfo, error)
 	}); ok {
 		if fi, err := f.Stat(); err != nil {
-			logger.Error( "response file Stat", "error", err)
+			logger.Error("response file Stat", "error", err)
 		} else {
 			w.Header().Set("Content-Length", fmt.Sprintf("%d", fi.Size()))
 		}

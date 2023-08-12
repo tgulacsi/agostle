@@ -5,9 +5,8 @@
 package converter
 
 import (
-	"io"
-
 	"context"
+	"io"
 
 	"github.com/tgulacsi/go/text"
 )
