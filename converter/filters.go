@@ -361,7 +361,13 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 		!(bytes.Contains(b, []byte("\nTo:")) || bytes.Contains(b, []byte("\nReceived:")) ||
 			bytes.Contains(b, []byte("\nFrom: ")) || bytes.Contains(b, []byte("\nMIME-Version: "))) {
 		logger.Info("not email!", "typ", typ, "ct", contentType)
-		logger.Info("body", "b", string(b))
+		{
+			b := b
+			if len(b) > 128 {
+				b = b[:128]
+			}
+			logger.Info("body", "b", string(b))
+		}
 		if contentType == "" || contentType == "message/rfc822" {
 			contentType = typ
 		}

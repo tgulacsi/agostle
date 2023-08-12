@@ -97,7 +97,7 @@ func TestLoHtmlPdf(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	err = lofficeConvert(ctx, testDir, out.Name())
+	err = lofficeConvert(ctx, testDir, out.Name(), "text/html")
 	cancel()
 	if err != nil {
 		t.Errorf("error converting with loffice: %s", err)

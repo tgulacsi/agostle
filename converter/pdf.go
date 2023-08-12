@@ -337,7 +337,7 @@ func pdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 	}
 
 	if gotenberg.Valid() {
-		err := gotenberg.PostFileNames(ctx, destfn, "/forms/pdfengines/merge", filenames...)
+		err := gotenberg.PostFileNames(ctx, destfn, "/forms/pdfengines/merge", filenames, "application/pdf")
 		logger.Debug("gotenberg.MergePDF", "error", err)
 		if err == nil {
 			return nil

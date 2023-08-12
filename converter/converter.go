@@ -211,7 +211,7 @@ func officeToPdf(ctx context.Context, destfn string, r io.Reader, contentType st
 	if _, err = io.Copy(fh, r); err != nil {
 		return err
 	}
-	return lofficeConvert(ctx, filepath.Dir(destfn), inpfn)
+	return lofficeConvert(ctx, filepath.Dir(destfn), inpfn, contentType)
 }
 
 // OtherToPdf is the default converter
@@ -350,7 +350,7 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 
 	dn := filepath.Dir(destfn)
 	outfn := filepath.Join(dn, filepath.Base(nakeFilename(inpfn))+".pdf")
-	if err := lofficeConvert(ctx, dn, inpfn); err != nil {
+	if err := lofficeConvert(ctx, dn, inpfn, contentType); err != nil {
 		return err
 	}
 	if outfn != destfn {
@@ -386,11 +386,18 @@ var (
 
 // calls loffice converter with only one instance at a time,
 // in the input file's directory
-func lofficeConvert(ctx context.Context, outDir, inpfn string) error {
+func lofficeConvert(ctx context.Context, outDir, inpfn, contentType string) error {
 	if outDir == "" {
 		return errors.New("outDir is required")
 	}
 	logger := getLogger(ctx)
+	if gotenberg.Valid() {
+		err := gotenberg.PostFileNames(ctx, filepath.Join(outDir, filepath.Base(inpfn)+".pdf"), "/forms/libreoffice/convert", []string{inpfn}, contentType)
+		if err == nil {
+			return nil
+		}
+		logger.Debug("libreofficeConvert gotenberg", "error", err)
+	}
 	args := []string{"--headless", "--convert-to", "pdf", "--outdir",
 		outDir, inpfn}
 	lofficeMu.Lock()
