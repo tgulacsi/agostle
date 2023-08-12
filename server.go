@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -29,11 +30,11 @@ import (
 
 	"github.com/UNO-SOFT/otel"
 	"github.com/UNO-SOFT/zlog/v2"
+	"github.com/UNO-SOFT/zlog/v2/slog"
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/google/renameio"
 	"github.com/oklog/ulid/v2"
 	"github.com/tgulacsi/agostle/converter"
-	"github.com/UNO-SOFT/zlog/v2/slog"
 
 	kithttp "github.com/go-kit/kit/transport/http"
 )
@@ -190,6 +191,18 @@ func mkAdminStopHandler(s interface{ Shutdown(context.Context) error }) http.Han
 type reqFile struct {
 	io.ReadCloser
 	multipart.FileHeader
+}
+
+func (f reqFile) MarshalJSON() ([]byte, error) {
+	return json.Marshal(f.FileHeader)
+}
+func (f reqFile) String() string {
+	b, err := f.MarshalJSON()
+	s := string(b)
+	if err != nil {
+		s += "\n" + err.Error()
+	}
+	return s
 }
 
 // getOneRequestFile reads the first file from the request (if multipart/),
