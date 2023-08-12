@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/UNO-SOFT/zlog/v2"
+	"github.com/UNO-SOFT/zlog/v2/slog"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	tufclient "github.com/theupdateframework/go-tuf/client"
-	"github.com/UNO-SOFT/zlog/v2/slog"
 
 	"github.com/kardianos/osext"
 	"github.com/tgulacsi/agostle/converter"
@@ -34,9 +34,11 @@ import (
 
 const defaultUpdateURL = "https://www.unosoft.hu/tuf"
 
-var verbose = zlog.VerboseVar(1)
-var zl = zlog.NewMultiHandler(zlog.MaybeConsoleHandler(&verbose, os.Stderr))
-var logger = zlog.NewLogger(zl).SLog()
+var (
+	verbose = zlog.VerboseVar(1)
+	zl      = zlog.NewMultiHandler(zlog.MaybeConsoleHandler(&verbose, os.Stderr))
+	logger  = zlog.NewLogger(zl).SLog()
+)
 
 func main() {
 	if err := Main(); err != nil {
@@ -54,16 +56,14 @@ var (
 func newFlagSet(name string) *flag.FlagSet { return flag.NewFlagSet(name, flag.ContinueOnError) }
 
 func Main() error {
-	converter.SetLogger(logger.WithGroup("converter"))
-
 	i18nmail.SetLogger(zlog.NewLogger(logger.WithGroup("i18nmail").Handler()).Logr().V(1))
 
 	updateURL := defaultUpdateURL
 	var (
-		leaveTempFiles bool
-		concurrency    int
-		timeout        time.Duration
-		logFile        string
+		leaveTempFiles        bool
+		concurrency           int
+		timeout               time.Duration
+		logFile, gotenbergURL string
 	)
 
 	fs := newFlagSet("agostle")
@@ -74,6 +74,7 @@ func Main() error {
 	fs.DurationVar(&timeout, "timeout", 10*time.Minute, "timeout for external programs")
 	fs.StringVar(&configFile, "config", "", "config file (TOML)")
 	fs.StringVar(&logFile, "logfile", "", "logfile")
+	fs.StringVar(&gotenbergURL, "gotenberg", "", "gotenberg service URL")
 	appCmd := &ffcli.Command{
 		Name:        "agostle",
 		ShortHelp:   "agostle is an \"apostle\" which turns everything to PDF",
@@ -206,6 +207,7 @@ func Main() error {
 	if err := appCmd.Parse(os.Args[1:]); err != nil {
 		return err
 	}
+	converter.SetLogger(logger)
 
 	var closeLogfile func() error
 
@@ -242,6 +244,9 @@ func Main() error {
 		logger.Info("Parsing config", "file", configFile, "error", err)
 		return err
 	}
+	if gotenbergURL != "" {
+		*converter.ConfGotenbergURL = gotenbergURL
+	}
 	if timeout > 0 && timeout != *converter.ConfChildTimeout {
 		logger.Info("Setting timeout", "from", *converter.ConfChildTimeout, "to", timeout)
 		*converter.ConfChildTimeout = timeout
@@ -268,6 +273,7 @@ func Main() error {
 		"childTimeout", *converter.ConfChildTimeout,
 		"defaultIsService", *converter.ConfDefaultIsService,
 		"logfile", *converter.ConfLogFile,
+		"gotenbergURL", *converter.ConfGotenbergURL,
 	)
 
 	updateURL = strings.NewReplacer("{{.GOOS}}", runtime.GOOS, "{{.GOARCH}}", runtime.GOARCH).Replace(updateURL)

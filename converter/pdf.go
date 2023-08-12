@@ -315,8 +315,18 @@ func PdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 }
 
 func pdfMerge(ctx context.Context, destfn string, filenames ...string) error {
-	if err := pdf.MergeFiles(destfn, filenames...); err == nil {
+	err := pdf.MergeFiles(destfn, filenames...)
+	logger.Debug("pdf.MergeFiles", "error", err)
+	if err == nil {
 		return nil
+	}
+
+	if gotenberg.Valid() {
+		err := gotenberg.PostFileNames(ctx, destfn, "/forms/pdfengines/merge", filenames...)
+		logger.Debug("gotenberg.MergePDF", "error", err)
+		if err == nil {
+			return nil
+		}
 	}
 
 	var buf bytes.Buffer
@@ -329,6 +339,7 @@ func pdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 		cmd.Stdout = io.MultiWriter(&buf, os.Stdout)
 		cmd.Stderr = io.MultiWriter(&buf, os.Stderr)
 		err := cmd.Run()
+		logger.Debug("pdfunite", "cmd", cmd.Args, "error", err)
 		if err == nil {
 			return nil
 		}
@@ -341,7 +352,9 @@ func pdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 	cmd := exec.CommandContext(ctx, *ConfPdftk, args...)
 	cmd.Stdout = io.MultiWriter(&buf, os.Stdout)
 	cmd.Stderr = io.MultiWriter(&buf, os.Stderr)
-	if err := cmd.Run(); err != nil {
+	err = cmd.Run()
+	logger.Debug("pdftk", "cmd", cmd.Args, "error", err)
+	if err != nil {
 		err = fmt.Errorf("%q: %w", cmd.Args, err)
 		return fmt.Errorf("%s: %w", buf.String(), err)
 	}

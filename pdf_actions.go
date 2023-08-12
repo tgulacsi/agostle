@@ -41,7 +41,7 @@ func init() {
 						args[i] = "-"
 					}
 				}
-				if err := mergePdf(out, args, sort); err != nil {
+				if err := mergePdf(ctx, out, args, sort); err != nil {
 					return fmt.Errorf("mergePDF out=%q sort=%v inp=%v: %w", out, sort, args, err)
 				}
 				return nil
@@ -167,11 +167,11 @@ func splitPdfZip(ctx context.Context, outfn, inpfn string, pages []uint16) error
 	return closeErr
 }
 
-func mergePdf(outfn string, inpfn []string, sortFiles bool) error {
+func mergePdf(ctx context.Context, outfn string, inpfn []string, sortFiles bool) error {
 	if sortFiles {
 		sort.Strings(inpfn)
 	}
-	return converter.PdfMerge(context.Background(), outfn, inpfn...)
+	return converter.PdfMerge(ctx, outfn, inpfn...)
 }
 
 func cleanPdf(ctx context.Context, outfn, inpfn string) error {

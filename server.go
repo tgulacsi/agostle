@@ -10,7 +10,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,7 +32,6 @@ import (
 	"github.com/UNO-SOFT/zlog/v2/slog"
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/google/renameio"
-	"github.com/oklog/ulid/v2"
 	"github.com/tgulacsi/agostle/converter"
 
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -103,32 +101,19 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 	return s
 }
 
-type ctxKey string
+type ctxCancel struct{}
 
-const (
-	ctxKeyReqID  = ctxKey("reqid")
-	ctxKeyCancel = ctxKey("cancel")
-)
-
-func SetRequestID(ctx context.Context, name ctxKey) context.Context {
-	if name == "" {
-		name = ctxKeyReqID
-	}
-	if ctx.Value(name) != nil {
-		return ctx
-	}
-	return context.WithValue(ctx, name, NewULID().String())
+func SetRequestCancel(ctx context.Context, cancel context.CancelFunc) context.Context {
+	return context.WithValue(ctx, ctxCancel{}, cancel)
 }
-func GetRequestID(ctx context.Context, name ctxKey) string {
-	if v, ok := ctx.Value(name).(string); ok && v != "" {
-		return v
-	}
-	return NewULID().String()
+func SetRequestID(ctx context.Context, reqID string) context.Context {
+	return converter.SetRequestID(ctx, reqID)
+}
+func GetRequestID(ctx context.Context) string {
+	return converter.GetRequestID(ctx)
 }
 
-func NewULID() ulid.ULID {
-	return ulid.MustNew(ulid.Now(), rand.Reader)
-}
+func NewULID() string { return converter.NewULID().String() }
 
 var defaultBeforeFuncs = []kithttp.RequestFunc{
 	prepareContext,
@@ -137,11 +122,11 @@ var defaultBeforeFuncs = []kithttp.RequestFunc{
 func prepareContext(ctx context.Context, r *http.Request) context.Context {
 	// nosemgrep: dgryski.semgrep-go.contextcancelable.cancelable-context-not-systematically-cancelled
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
-	ctx = context.WithValue(ctx, ctxKeyCancel, cancel)
+	ctx = SetRequestCancel(ctx, cancel)
 	ctx = SetRequestID(ctx, "")
 	lgr := getLogger(ctx)
 	lgr = lgr.With(
-		"reqID", GetRequestID(ctx, ""),
+		"reqID", GetRequestID(ctx),
 		"path", r.URL.Path,
 		"method", r.Method,
 	)

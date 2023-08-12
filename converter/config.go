@@ -19,7 +19,7 @@ import (
 	"github.com/tgulacsi/go/osgroup"
 )
 
-var logger *slog.Logger
+var logger = slog.Default()
 
 func SetLogger(lgr *slog.Logger) { logger = lgr }
 
@@ -85,7 +85,16 @@ var (
 
 	// ConfKeepRemoteImage specifiec whether to keep the remote sources of images (mg src="http://mailtrack...").
 	ConfKeepRemoteImage = config.Bool("keepRemoteImage", false)
+
+	// ConfGotenbertURL is the working Gotenbert (https://pkg.go.dev/github.com/gotenberg/gotenberg/v7) service URL
+	ConfGotenbergURL = &gotenberg.URL
 )
+
+func init() {
+	config.StringVar(ConfGotenbergURL, "gotenberg", "")
+}
+
+var gotenberg Gotenberg
 
 // LoadConfig loads TOML config file
 func LoadConfig(ctx context.Context, fn string) error {
