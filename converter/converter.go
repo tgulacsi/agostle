@@ -340,6 +340,15 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 			}
 		}
 	}
+
+	if gotenberg.Valid() {
+		err := gotenberg.PostFileNames(ctx, destfn, "/forms/chromium/convert/html", []string{inpfn}, "text/html")
+		if err == nil {
+			return nil
+		}
+		logger.Debug("gotenberg chromium", "error", err)
+	}
+
 	if *ConfWkhtmltopdf != "" {
 		err := wkhtmltopdf(ctx, destfn, inpfn)
 		if err == nil {

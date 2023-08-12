@@ -71,7 +71,7 @@ func (g *Gotenberg) PostFileNames(ctx context.Context, destfn string, urlPath st
 		}
 		for _, fn := range filenames {
 			if err := func() error {
-				bfn := filepath.Base(fn)
+				bfn := nakeFilename(fn)
 				var hasExt bool
 				for _, ext := range exts {
 					if hasExt = strings.HasSuffix(bfn, ext); hasExt {
