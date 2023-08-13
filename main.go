@@ -56,8 +56,6 @@ var (
 func newFlagSet(name string) *flag.FlagSet { return flag.NewFlagSet(name, flag.ContinueOnError) }
 
 func Main() error {
-	i18nmail.SetLogger(zlog.NewLogger(logger.WithGroup("i18nmail").Handler()).Logr().V(1))
-
 	updateURL := defaultUpdateURL
 	var (
 		leaveTempFiles        bool
@@ -216,11 +214,7 @@ func Main() error {
 	if closeLogfile, err = logToFile(logFile); err != nil {
 		return err
 	}
-	if verbose > 1 {
-		i18nmail.SetLogger(zlog.NewLogger(logger.Handler()).Logr())
-	} else {
-		i18nmail.SetLogger(zlog.NewLogger(logger.Handler()).Logr().V(1))
-	}
+	i18nmail.SetLogger(logger.WithGroup("i18nmail"))
 	logger.Info("config", "leave_tempfiles?", leaveTempFiles)
 	converter.LeaveTempFiles = leaveTempFiles
 	converter.Concurrency = concurrency
@@ -238,7 +232,9 @@ func Main() error {
 			}
 		}
 	}
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, cancel := signal.NotifyContext(
+		zlog.NewSContext(context.Background(), logger),
+		os.Interrupt)
 	defer cancel()
 	logger.Info("Loading config", "file", configFile)
 	if err = converter.LoadConfig(ctx, configFile); err != nil {

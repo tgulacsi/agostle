@@ -366,7 +366,7 @@ func SlurpMail(ctx context.Context, partch chan<- i18nmail.MailPart, errch chan<
 			if len(b) > 128 {
 				b = b[:128]
 			}
-			logger.Info("body", "b", string(b))
+			logger.Debug("body", "b", string(b))
 		}
 		if contentType == "" || contentType == "message/rfc822" {
 			contentType = typ

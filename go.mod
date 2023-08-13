@@ -18,9 +18,10 @@ require (
 	github.com/kylelemons/godebug v1.1.0
 	github.com/mholt/archiver/v4 v4.0.0-alpha.8
 	github.com/oklog/ulid/v2 v2.1.0
+	github.com/pdfcpu/pdfcpu v0.4.2
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c
-	github.com/tgulacsi/go v0.25.1
+	github.com/tgulacsi/go v0.26.0
 	github.com/theupdateframework/go-tuf v0.6.1
 	golang.org/x/image v0.11.0
 	golang.org/x/net v0.14.0
@@ -49,7 +50,6 @@ require (
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/nwaples/rardecode/v2 v2.0.0-beta.2 // indirect
-	github.com/pdfcpu/pdfcpu v0.4.2 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

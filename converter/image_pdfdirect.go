@@ -21,8 +21,8 @@ import (
 	"bitbucket.org/zombiezen/gopdf/pdf"
 )
 
-// ImageToPdfDirect converts image to PDF using gpdf
-func ImageToPdfDirect(w io.Writer, r io.Reader) error {
+// ImageToPdfGoPDF converts image to PDF using gopdf
+func ImageToPdfGoPDF(w io.Writer, r io.Reader) error {
 	img, _, err := image.Decode(r)
 	if err != nil {
 		return err

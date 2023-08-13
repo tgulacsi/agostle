@@ -184,15 +184,29 @@ func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 	if err != nil {
 		return err
 	}
+	defer w.Close()
 
-	if err = ImageToPdfGm(ctx, w, ifh, contentType); err != nil {
-		logger.Info("ImageToPdfGm", "error", err)
+	logger.Info("ImageToPdfPdfCPU")
+	if err = ImageToPdfPdfCPU(w, ifh); err != nil {
+		logger.Info("imageToPdfPdfCPU", "error", err)
+		if _, seekErr := ifh.Seek(0, 0); seekErr != nil {
+			return seekErr
+		}
+		if _, seekErr := w.Seek(0, 0); seekErr != nil {
+			return seekErr
+		}
+		if *ConfGm != "" {
+			return err
+		}
+		logger.Info("ImageToPdfGm")
+		if err = ImageToPdfGm(ctx, w, ifh, contentType); err != nil {
+			logger.Info("ImageToPdfGm", "error", err)
+		}
 	}
-	closeErr := w.Close()
-	if err != nil {
-		return err
+	if closeErr := w.Close(); closeErr != nil && err == nil {
+		err = closeErr
 	}
-	return closeErr
+	return err
 }
 
 // OfficeToPdf converts other to PDF with LibreOffice
