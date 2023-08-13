@@ -8,6 +8,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"image"
+	"image/gif"
+	"image/jpeg"
+	"image/png"
 	"io"
 	"os"
 	"os/exec"
@@ -15,8 +19,6 @@ import (
 
 	"github.com/tgulacsi/go/temp"
 )
-
-const png = "png"
 
 func command(ctx context.Context, prg string, args ...string) *exec.Cmd {
 	if prg == "" {
@@ -71,6 +73,8 @@ func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType,
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	const png = "png"
+
 	imgtyp, ext := "gif", png
 	if contentType != "" && strings.HasPrefix(contentType, "image/") {
 		imgtyp = contentType[6:]
@@ -122,8 +126,34 @@ func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType,
 	}
 
 	// convert to the requested format
-	cmd = command(ctx, *ConfGm, "convert", "png:-", imgtyp+":-")
-	cmd.Stdin = tfh
+	return PngToImage(ctx, w, imgtyp, tfh)
+}
+
+func PngToImage(ctx context.Context, w io.Writer, imgtyp string, r io.Reader) error {
+	var encFunc func(w io.Writer, img image.Image) error
+	switch strings.ToLower(imgtyp) {
+	case "png":
+		_, err := io.Copy(w, r)
+		return err
+	case "gif":
+		encFunc = func(w io.Writer, img image.Image) error {
+			return gif.Encode(w, img, nil)
+		}
+	case "jpg", "jpeg":
+		encFunc = func(w io.Writer, img image.Image) error {
+			return jpeg.Encode(w, img, &jpeg.Options{Quality: 80})
+		}
+	}
+	if encFunc != nil {
+		img, err := png.Decode(r)
+		if err != nil {
+			return err
+		}
+		return encFunc(w, img)
+	}
+
+	cmd := command(ctx, *ConfGm, "convert", "png:-", imgtyp+":-")
+	cmd.Stdin = r
 	cmd.Stdout = w
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
