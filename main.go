@@ -72,7 +72,8 @@ func Main() error {
 	fs.DurationVar(&timeout, "timeout", 10*time.Minute, "timeout for external programs")
 	fs.StringVar(&configFile, "config", "", "config file (TOML)")
 	fs.StringVar(&logFile, "logfile", "", "logfile")
-	fs.StringVar(&gotenbergURL, "gotenberg", "", "gotenberg service URL")
+	fs.StringVar(converter.ConfGotenbergURL, "gotenberg", "", "gotenberg service URL")
+	fs.Uint64Var(converter.ConfMaxSubprocMemoryBytes, "max-subproc-mem-bytes", converter.DefaultMaxSubprocMemoryBytes, "maximum subprocess memory limit")
 	appCmd := &ffcli.Command{
 		Name:        "agostle",
 		ShortHelp:   "agostle is an \"apostle\" which turns everything to PDF",

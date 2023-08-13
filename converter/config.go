@@ -91,6 +91,9 @@ var (
 
 	// ConfGotenbertURL is the working Gotenbert (https://pkg.go.dev/github.com/gotenberg/gotenberg/v7) service URL
 	ConfGotenbergURL = &gotenberg.URL
+
+	// ConfMaxSubprocMemoryBytes is the limit for subprocess' memory.
+	ConfMaxSubprocMemoryBytes = config.Uint64("max-subproc-mem-bytes", DefaultMaxSubprocMemoryBytes)
 )
 
 func init() {
@@ -205,7 +208,7 @@ type procRunner struct {
 	RSS uint64
 }
 
-const MaxSubprocMemoryBytes = 4 << 30 // 4GiB
+const DefaultMaxSubprocMemoryBytes = 2 << 30 // 2GiB
 
 type cmd struct {
 	*exec.Cmd
@@ -273,7 +276,9 @@ func (c *cmd) setLimits() error {
 }
 func (pr procRunner) CommandContext(ctx context.Context, what string, args ...string) *cmd {
 	if pr.RSS == 0 {
-		pr.RSS = MaxSubprocMemoryBytes
+		if pr.RSS = *ConfMaxSubprocMemoryBytes; pr.RSS == 0 {
+			pr.RSS = DefaultMaxSubprocMemoryBytes
+		}
 	}
 	return &cmd{Cmd: exec.CommandContext(ctx, what, args...),
 		maxAS: pr.RSS, maxDATA: pr.RSS}
