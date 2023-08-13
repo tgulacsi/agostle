@@ -13,7 +13,6 @@ import (
 	"mime"
 	"mime/multipart"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -431,7 +430,7 @@ func lofficeConvert(ctx context.Context, outDir, inpfn, contentType string) erro
 	}
 	subCtx, subCancel := context.WithTimeout(ctx, *ConfLofficeTimeout)
 	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
-	cmd := exec.CommandContext(subCtx, *ConfLoffice, args...)
+	cmd := Exec.CommandContext(subCtx, *ConfLoffice, args...)
 	cmd.Dir = filepath.Dir(inpfn)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = cmd.Stderr
@@ -500,7 +499,7 @@ func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 		outfn}
 	var buf bytes.Buffer
 	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
-	cmd := exec.CommandContext(ctx, *ConfWkhtmltopdf, args...)
+	cmd := Exec.CommandContext(ctx, *ConfWkhtmltopdf, args...)
 	cmd.Dir = filepath.Dir(inpfn)
 	cmd.Stderr = &buf
 	cmd.Stdout = os.Stdout

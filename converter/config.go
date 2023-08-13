@@ -6,11 +6,14 @@
 package converter
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/UNO-SOFT/filecache"
 	"github.com/UNO-SOFT/zlog/v2"
@@ -134,7 +137,7 @@ func LoadConfig(ctx context.Context, fn string) error {
 	prefix := (*ConfPdfseparate)[:len(*ConfPdfseparate)-len(bn)]
 	for k := range popplerOk {
 		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
-		if err := exec.CommandContext(ctx, prefix+k, "-h").Run(); err == nil {
+		if err := Exec.CommandContext(ctx, prefix+k, "-h").Run(); err == nil {
 			popplerOk[k] = prefix + k
 		}
 	}
@@ -197,3 +200,83 @@ func getLogger(ctx context.Context) *slog.Logger {
 	}
 	return logger
 }
+
+type procRunner struct {
+	RSS uint64
+}
+
+const MaxSubprocMemoryBytes = 4 << 30 // 4GiB
+
+type cmd struct {
+	*exec.Cmd
+	maxAS, maxDATA uint64
+}
+
+func (c *cmd) Start() error { return c.start() }
+
+func (c *cmd) Run() error {
+	if err := c.start(); err != nil {
+		return err
+	}
+	return c.Cmd.Wait()
+}
+
+func (c *cmd) CombinedOutput() ([]byte, error) {
+	var buf bytes.Buffer
+	c.Stdout = &buf
+	c.Stderr = c.Stdout
+	if err := c.start(); err != nil {
+		return nil, err
+	}
+	err := c.Wait()
+	return buf.Bytes(), err
+}
+
+func (c *cmd) Output() ([]byte, error) {
+	var buf bytes.Buffer
+	c.Stdout = &buf
+	if err := c.start(); err != nil {
+		return nil, err
+	}
+	err := c.Wait()
+	return buf.Bytes(), err
+}
+
+func (c *cmd) start() error {
+	if err := c.Cmd.Start(); err != nil {
+		return err
+	}
+	return c.setLimits()
+}
+
+func (c *cmd) setLimits() error {
+	pid := c.Cmd.Process.Pid
+	var firstErr error
+	for _, l := range []struct {
+		Resource int
+		Limit    uint64
+	}{
+		{Resource: unix.RLIMIT_AS, Limit: c.maxAS},
+		{Resource: unix.RLIMIT_DATA, Limit: c.maxDATA},
+	} {
+		if l.Limit != 0 {
+			var old unix.Rlimit
+			if err := unix.Prlimit(
+				pid, l.Resource,
+				&unix.Rlimit{Cur: l.Limit, Max: l.Limit}, &old,
+			); err != nil && firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+	return nil
+}
+func (pr procRunner) CommandContext(ctx context.Context, what string, args ...string) *cmd {
+	if pr.RSS == 0 {
+		pr.RSS = MaxSubprocMemoryBytes
+	}
+	return &cmd{Cmd: exec.CommandContext(ctx, what, args...),
+		maxAS: pr.RSS, maxDATA: pr.RSS}
+}
+
+var Exec procRunner

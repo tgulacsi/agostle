@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 )
 
@@ -90,7 +89,7 @@ func newOLEStorageReaderDirect(ctx context.Context, r io.Reader) (io.ReadCloser,
 		  print new Email::Outlook::Message($file, 0)->to_email_mime->as_string;
 		}
 	*/
-	cmd := exec.CommandContext(ctx, "perl", "-w",
+	cmd := Exec.CommandContext(ctx, "perl", "-w",
 		"-e", "use Email::Outlook::Message",
 		"-e", "print (new Email::Outlook::Message($ARGV[0], 1)->to_email_mime->as_string);",
 		"--", in.Name(),
@@ -123,7 +122,7 @@ func newOLEStorageReaderDirect(ctx context.Context, r io.Reader) (io.ReadCloser,
 }
 
 func newOLEStorageReaderDocker(ctx context.Context, r io.Reader) (io.ReadCloser, error) {
-	cmd := exec.CommandContext(ctx, "docker", "build", "-t", "tgulacsi/agostle-outlook2email", "-")
+	cmd := Exec.CommandContext(ctx, "docker", "build", "-t", "tgulacsi/agostle-outlook2email", "-")
 	cmd.Stdin = strings.NewReader(`FROM debian:testing
 MAINTAINER Tamás Gulácsi <tgulacsi78@gmail.com>
 
@@ -141,7 +140,7 @@ CMD ["/bin/sh", "-c", "cat ->/tmp/input.msg && perl -w -e 'use Email::Outlook::M
 		logger.Info("ERROR docker build tgulacsi/agostle-outlook2email", "error", err, "errTxt", errBuf.String())
 		return nil, fmt.Errorf("docker build: %w", err)
 	}
-	cmd = exec.CommandContext(ctx, "docker", "run", "-i", "tgulacsi/agostle-outlook2email")
+	cmd = Exec.CommandContext(ctx, "docker", "run", "-i", "tgulacsi/agostle-outlook2email")
 	cmd.Stdin = r
 	errBuf.Reset()
 	cmd.Stderr = io.MultiWriter(&errBuf, os.Stderr)

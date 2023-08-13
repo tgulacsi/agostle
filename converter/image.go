@@ -14,18 +14,17 @@ import (
 	"image/png"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/tgulacsi/go/temp"
 )
 
-func command(ctx context.Context, prg string, args ...string) *exec.Cmd {
+func command(ctx context.Context, prg string, args ...string) *cmd {
 	if prg == "" {
 		prg, args = args[0], args[1:]
 	}
 	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
-	return exec.CommandContext(ctx, prg, args...)
+	return Exec.CommandContext(ctx, prg, args...)
 }
 
 // ImageToPdfGm converts image to PDF using GraphicsMagick
@@ -106,7 +105,7 @@ func PdfToImageCairo(ctx context.Context, w io.Writer, r io.Reader, contentType,
 	args = append(args, "-", fn)
 	fn = fn + "." + ext // pdftocairo appends the .png
 
-	cmd := exec.CommandContext(ctx, "pdftocairo", args...)
+	cmd := Exec.CommandContext(ctx, "pdftocairo", args...)
 	cmd.Stdin = r
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

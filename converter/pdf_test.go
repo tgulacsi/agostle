@@ -72,7 +72,7 @@ func TestGetFdf(t *testing.T) {
 		t.Errorf("DIFF: %s", df)
 	}
 
-	out, err := exec.Command("ls", "-l", Workdir).Output()
+	out, err := Exec.CommandContext(context.Background(), "ls", "-l", Workdir).Output()
 	if err == nil {
 		t.Logf("ls -l %s:\n%s", Workdir, out)
 	}

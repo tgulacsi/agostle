@@ -61,14 +61,14 @@ func pdfPageNum(ctx context.Context, srcfn string) (numberofpages int, encrypted
 	}
 
 	pdfinfo := false
-	var cmd *exec.Cmd
+	var cmd *cmd
 	if popplerOk["pdfinfo"] != "" {
 		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
-		cmd = exec.CommandContext(ctx, popplerOk["pdfinfo"], srcfn)
+		cmd = Exec.CommandContext(ctx, popplerOk["pdfinfo"], srcfn)
 		pdfinfo = true
 	} else {
 		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
-		cmd = exec.CommandContext(ctx, *ConfPdftk, srcfn, "dump_data_utf8")
+		cmd = Exec.CommandContext(ctx, *ConfPdftk, srcfn, "dump_data_utf8")
 	}
 	out, e := cmd.CombinedOutput()
 	err = e
@@ -350,7 +350,7 @@ func pdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 		args := append(append(make([]string, 0, len(filenames)+1), filenames...),
 			destfn)
 		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
-		cmd := exec.CommandContext(ctx, pdfunite, args...)
+		cmd := Exec.CommandContext(ctx, pdfunite, args...)
 		cmd.Stdout = io.MultiWriter(&buf, os.Stdout)
 		cmd.Stderr = io.MultiWriter(&buf, os.Stderr)
 		err := cmd.Run()
@@ -364,7 +364,7 @@ func pdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 	args := append(append(make([]string, 0, len(filenames)+3), filenames...),
 		"cat", "output", destfn)
 	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
-	cmd := exec.CommandContext(ctx, *ConfPdftk, args...)
+	cmd := Exec.CommandContext(ctx, *ConfPdftk, args...)
 	cmd.Stdout = io.MultiWriter(&buf, os.Stdout)
 	cmd.Stderr = io.MultiWriter(&buf, os.Stderr)
 	err = cmd.Run()
@@ -500,7 +500,7 @@ func PdfClean(ctx context.Context, fn string) (err error) {
 
 func call(ctx context.Context, what string, args ...string) error {
 	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
-	cmd := exec.CommandContext(ctx, what, args...)
+	cmd := Exec.CommandContext(ctx, what, args...)
 	if cmd.Stderr == nil {
 		cmd.Stderr = os.Stderr
 	}
@@ -512,13 +512,13 @@ func call(ctx context.Context, what string, args ...string) error {
 
 func callAt(ctx context.Context, what, where string, args ...string) error {
 	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
-	cmd := exec.CommandContext(ctx, what, args...)
+	cmd := Exec.CommandContext(ctx, what, args...)
 	cmd.Stderr = os.Stderr
 	cmd.Dir = where
 	return execute(cmd)
 }
 
-func execute(cmd *exec.Cmd) error {
+func execute(cmd *cmd) error {
 	errout := bytes.NewBuffer(nil)
 	cmd.Stderr = errout
 	cmd.Stdout = cmd.Stderr
@@ -594,7 +594,7 @@ func PdfRewrite(ctx context.Context, destfn, srcfn string) error {
 func PdfDumpFields(ctx context.Context, inpfn string) ([]string, error) {
 	var buf bytes.Buffer
 	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
-	cmd := exec.CommandContext(ctx, *ConfPdftk, inpfn, "dump_data_fields_utf8", "output", "-")
+	cmd := Exec.CommandContext(ctx, *ConfPdftk, inpfn, "dump_data_fields_utf8", "output", "-")
 	cmd.Stdout = &buf
 	if err := cmd.Run(); err != nil {
 		return nil, err
@@ -638,7 +638,7 @@ func PdfFillFdf(ctx context.Context, destfn, inpfn string, values map[string]str
 	}
 
 	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
-	cmd := exec.CommandContext(ctx, *ConfPdftk, inpfn, "fill_form", "-", "output", destfn)
+	cmd := Exec.CommandContext(ctx, *ConfPdftk, inpfn, "fill_form", "-", "output", destfn)
 	cmd.Stdin = bytes.NewReader(buf.Bytes())
 	return execute(cmd)
 }

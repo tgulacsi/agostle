@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"os/exec"
 	"sync"
 	"time"
 
@@ -58,7 +57,7 @@ type FileMIMEDetector struct{}
 func (d FileMIMEDetector) Match(b []byte) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "file", "-E", "-b", "--mime-type", "-")
+	cmd := Exec.CommandContext(ctx, "file", "-E", "-b", "--mime-type", "-")
 	cmd.Stdin = bytes.NewReader(b)
 	b, err := cmd.Output()
 	return string(bytes.TrimSpace(b)), err
