@@ -5,7 +5,7 @@ require (
 	github.com/KarpelesLab/reflink v1.0.1
 	github.com/UNO-SOFT/filecache v0.1.6
 	github.com/UNO-SOFT/otel v0.5.1
-	github.com/UNO-SOFT/zlog v0.7.3
+	github.com/UNO-SOFT/zlog v0.7.4
 	github.com/VictoriaMetrics/metrics v1.24.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/gabriel-vasile/mimetype v1.4.2
@@ -40,6 +40,7 @@ require (
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/go-logr/zerologr v1.2.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -47,6 +48,7 @@ require (
 	github.com/hhrutter/tiff v1.0.0 // indirect
 	github.com/klauspost/compress v1.16.7 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/nwaples/rardecode/v2 v2.0.0-beta.2 // indirect
