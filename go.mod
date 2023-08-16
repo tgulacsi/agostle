@@ -5,7 +5,7 @@ require (
 	github.com/KarpelesLab/reflink v1.0.1
 	github.com/UNO-SOFT/filecache v0.1.6
 	github.com/UNO-SOFT/otel v0.5.1
-	github.com/UNO-SOFT/zlog v0.7.4
+	github.com/UNO-SOFT/zlog v0.7.6
 	github.com/VictoriaMetrics/metrics v1.24.0
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/gabriel-vasile/mimetype v1.4.2
