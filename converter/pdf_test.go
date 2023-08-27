@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"os"
-	"os/exec"
 	"reflect"
 	"testing"
 	"time"

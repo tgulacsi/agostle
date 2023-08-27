@@ -503,7 +503,7 @@ func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 	cmd.Dir = filepath.Dir(inpfn)
 	cmd.Stderr = &buf
 	cmd.Stdout = os.Stdout
-	logger.Info("start", "wkhtmltopdf", "args", cmd.Args)
+	logger.Info("start wkhtmltopdf", "args", cmd.Args)
 	if err := cmd.Run(); err != nil {
 		err = fmt.Errorf("%q: %w", cmd.Args, err)
 		if bytes.HasSuffix(buf.Bytes(), []byte("ContentNotFoundError\n")) ||

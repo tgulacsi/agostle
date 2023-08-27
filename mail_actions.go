@@ -53,7 +53,7 @@ func outlookToEmail(ctx context.Context, outfn, inpfn string) error {
 	}
 	defer func() {
 		if closeErr := out.Close(); closeErr != nil {
-			logger.Info("msg", "Close")
+			logger.Info("Close")
 			if err == nil {
 				err = closeErr
 			}
