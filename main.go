@@ -19,6 +19,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/UNO-SOFT/zlog/v2"
 	"github.com/UNO-SOFT/zlog/v2/slog"
 	"github.com/peterbourgon/ff/v3/ffcli"
@@ -56,6 +58,7 @@ var (
 func newFlagSet(name string) *flag.FlagSet { return flag.NewFlagSet(name, flag.ContinueOnError) }
 
 func Main() error {
+
 	updateURL := defaultUpdateURL
 	var (
 		leaveTempFiles        bool
@@ -160,6 +163,24 @@ func Main() error {
 	serveCmd := ffcli.Command{Name: "serve", ShortHelp: "serve HTTP",
 		ShortUsage: "agostle serve [flags] [addr.to.listen.on:port]", FlagSet: fs,
 		Exec: func(ctx context.Context, args []string) error {
+			// Set limit to 4GiB
+			pid := os.Getpid()
+			for _, l := range []struct {
+				Resource int
+				Limit    uint64
+			}{
+				{Resource: unix.RLIMIT_AS, Limit: 4 << 30},
+				{Resource: unix.RLIMIT_DATA, Limit: 4 << 30},
+			} {
+				var old unix.Rlimit
+				if err := unix.Prlimit(
+					pid, l.Resource,
+					&unix.Rlimit{Cur: l.Limit, Max: l.Limit}, &old,
+				); err != nil {
+					return err
+				}
+			}
+
 			if len(args) != 0 {
 				listenAddr = args[0]
 			}
