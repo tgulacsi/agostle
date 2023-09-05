@@ -38,17 +38,20 @@ func PrependHeaderFilter(ctx context.Context,
 	headersBuf := bytes.NewBuffer(make([]byte, 0, 128))
 
 	for part := range inch {
-		//logger.Info("PrependHeaderFilter receives", "seq", part.Seq, "ct", part.ContentType, "header", part.Header, "inch", inch)
+		logger.Debug("PrependHeaderFilter receives", "seq", part.Seq, "ct", part.ContentType, "header", part.Header, "inch", inch)
 		if len(mailHeader["From"]) == 0 || mailHeader.Get("Subject") == "" {
 			hdrs := make([]textproto.MIMEHeader, 0, 4)
-			parent := &part
-			if len(parent.Header) > 0 {
-				hdrs = append(hdrs, parent.Header)
-			}
-			for parent.Parent != nil {
-				parent = parent.Parent
+			{
+				parent := &part
 				if len(parent.Header) > 0 {
 					hdrs = append(hdrs, parent.Header)
+				}
+				for i := 0; parent.Parent != nil && parent.Parent != parent && i < 10; i++ {
+					parent = parent.Parent
+					if len(parent.Header) > 0 {
+						logger.Debug("parent", "header", parent.Header)
+						hdrs = append(hdrs, parent.Header)
+					}
 				}
 			}
 			if len(hdrs) > 0 {
