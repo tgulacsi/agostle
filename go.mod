@@ -21,7 +21,7 @@ require (
 	github.com/pdfcpu/pdfcpu v0.4.2
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c
-	github.com/tgulacsi/go v0.26.0
+	github.com/tgulacsi/go v0.26.5
 	github.com/theupdateframework/go-tuf v0.6.1
 	golang.org/x/image v0.11.0
 	golang.org/x/net v0.14.0

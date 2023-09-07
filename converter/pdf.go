@@ -330,10 +330,13 @@ func PdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 }
 
 func pdfMerge(ctx context.Context, destfn string, filenames ...string) error {
-	err := pdf.MergeFiles(destfn, filenames...)
-	logger.Debug("pdf.MergeFiles", "error", err)
-	if err == nil {
-		return nil
+	if err := pdf.MergeFiles(ctx, destfn, filenames...); err == nil {
+		if fi, err := os.Stat(destfn); err == nil {
+			logger.Debug("pdf.MergeFiles", "dest", fi.Size())
+			if fi.Size() > 5 {
+				return nil
+			}
+		}
 	}
 
 	if gotenberg.Valid() {
@@ -367,7 +370,7 @@ func pdfMerge(ctx context.Context, destfn string, filenames ...string) error {
 	cmd := Exec.CommandContext(ctx, *ConfPdftk, args...)
 	cmd.Stdout = io.MultiWriter(&buf, os.Stdout)
 	cmd.Stderr = io.MultiWriter(&buf, os.Stderr)
-	err = cmd.Run()
+	err := cmd.Run()
 	logger.Debug("pdftk", "cmd", cmd.Args, "error", err)
 	if err != nil {
 		err = fmt.Errorf("%q: %w", cmd.Args, err)
