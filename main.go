@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/rand"
 	"net/http"
 	"os"
@@ -22,7 +23,6 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/UNO-SOFT/zlog/v2"
-	"github.com/UNO-SOFT/zlog/v2/slog"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	tufclient "github.com/theupdateframework/go-tuf/client"
 
@@ -58,6 +58,8 @@ var (
 func newFlagSet(name string) *flag.FlagSet { return flag.NewFlagSet(name, flag.ContinueOnError) }
 
 func Main() error {
+	slog.SetDefault(logger)
+
 	// Set limit to 4GiB
 	pid := os.Getpid()
 	for _, l := range []struct {
