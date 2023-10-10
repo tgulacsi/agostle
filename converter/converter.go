@@ -604,7 +604,7 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	contentType = fixCT(contentType, fileName)
 	if strings.HasPrefix(ext, ".") {
 		if want, ok := ExtContentType[ext[1:]]; ok && contentType != want {
-			if typ, err := MIMEMatch(body); err == nil && typ != "" && typ != contentType {
+			if typ := MIMEMatch(body); typ != "" && typ != contentType {
 				where = "A"
 				return fixCT(typ, fileName)
 			}
@@ -612,7 +612,7 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 	}
 	c := GetConverter(contentType, nil)
 	if c == nil { // no converter for this
-		if typ, err := MIMEMatch(body); err == nil && typ != "" && typ != contentType {
+		if typ := MIMEMatch(body); typ != "" && typ != contentType {
 			where = "B"
 			return fixCT(typ, fileName)
 		}

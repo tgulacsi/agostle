@@ -14,34 +14,15 @@ func BenchmarkMIMEDetector(t *testing.B) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	seq := MultiMIMEDetector{Detectors: []MIMEDetector{H2nonMIMEDetector{}, HTTPMIMEDetector{}, VasileMIMEDetector{}}}
+	seq := MultiMIMEDetector{Detectors: []MIMEDetector{MagicMIMEDetector{}, HTTPMIMEDetector{}, VasileMIMEDetector{}}}
 	const want = testDocxMIME
-	if got, err := seq.Match(b); err != nil {
-		t.Fatal(err)
-	} else if got != want {
+	if got := seq.Match(b); got != want {
 		if got != "application/zip" {
 			t.Fatalf("got %s, wanted %s", got, want)
 		}
 		t.Logf("got %s, wanted %s", got, want)
 	}
 
-	t.Run("Sequential", func(t *testing.B) {
-		for i := 0; i < t.N; i++ {
-			if _, err := seq.Match(b); err != nil {
-				t.Error(err)
-			}
-		}
-	})
-
-	par := seq
-	par.Parallel = true
-	t.Run("Parallel", func(t *testing.B) {
-		for i := 0; i < t.N; i++ {
-			if _, err := par.Match(b); err != nil {
-				t.Error(err)
-			}
-		}
-	})
 }
 
 const testDocxMIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"

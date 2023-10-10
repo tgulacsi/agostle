@@ -7,60 +7,56 @@ package converter
 import (
 	"bytes"
 	"context"
-	"errors"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/gabriel-vasile/mimetype"
-	"github.com/h2non/filetype"
-	filetypes "github.com/h2non/filetype/types"
+	"github.com/zRedShift/mimemagic"
 )
 
-type H2nonMIMEDetector struct{}
+type MagicMIMEDetector struct{}
 type VasileMIMEDetector struct{}
 
 type MIMEDetector interface {
-	Match([]byte) (string, error)
+	Match([]byte) string
 }
 
 var DefaultMIMEDetector = MIMEDetector(MultiMIMEDetector{Detectors: []MIMEDetector{
-	FileMIMEDetector{}, HTTPMIMEDetector{}, VasileMIMEDetector{}, H2nonMIMEDetector{},
+	FileMIMEDetector{}, HTTPMIMEDetector{}, VasileMIMEDetector{}, MagicMIMEDetector{},
 }})
 
-func MIMEMatch(b []byte) (string, error) { return DefaultMIMEDetector.Match(b) }
+func MIMEMatch(b []byte) string { return DefaultMIMEDetector.Match(b) }
 
-func (d H2nonMIMEDetector) Match(b []byte) (string, error) {
-	typ, err := filetype.Match(b)
-	if typ == filetypes.Unknown {
-		return "", err
-	}
-	return typ.MIME.Type + "/" + typ.MIME.Subtype, err
+func (d MagicMIMEDetector) Match(b []byte) string {
+	return mimemagic.Match(b, "").MediaType()
 }
-func (d VasileMIMEDetector) Match(b []byte) (string, error) {
-	typ := mimetype.Detect(b)
-	return typ.String(), nil
+func (d VasileMIMEDetector) Match(b []byte) string {
+	return mimetype.Detect(b).String()
 }
 
 type HTTPMIMEDetector struct{}
 
-func (d HTTPMIMEDetector) Match(b []byte) (string, error) {
+func (d HTTPMIMEDetector) Match(b []byte) string {
 	typ := http.DetectContentType(b)
 	if typ == "application/octet-stream" {
-		return "", nil
+		return ""
 	}
-	return typ, nil
+	return typ
 }
 
 type FileMIMEDetector struct{}
 
-func (d FileMIMEDetector) Match(b []byte) (string, error) {
+func (d FileMIMEDetector) Match(b []byte) string {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	cmd := Exec.CommandContext(ctx, "file", "-E", "-b", "--mime-type", "-")
 	cmd.Stdin = bytes.NewReader(b)
 	b, err := cmd.Output()
-	return string(bytes.TrimSpace(b)), err
+	if err != nil {
+		logger.Error("FileMIMEDetector", "cmd", cmd.Args, "error", err)
+	}
+	return string(bytes.TrimSpace(b))
 }
 
 type MultiMIMEDetector struct {
@@ -68,16 +64,11 @@ type MultiMIMEDetector struct {
 	Parallel  bool
 }
 
-func (d MultiMIMEDetector) Match(b []byte) (string, error) {
-	type result struct {
-		Err  error
-		Type string
-	}
-	results := make([]result, len(d.Detectors))
+func (d MultiMIMEDetector) Match(b []byte) string {
+	results := make([]string, len(d.Detectors))
 	if !d.Parallel {
 		for i, detector := range d.Detectors {
-			typ, err := detector.Match(b)
-			results[i] = result{Type: typ, Err: err}
+			results[i] = detector.Match(b)
 		}
 	} else {
 		var wg sync.WaitGroup
@@ -85,29 +76,20 @@ func (d MultiMIMEDetector) Match(b []byte) (string, error) {
 			wg.Add(1)
 			i, d := i, d
 			go func() {
-				typ, err := d.Match(b)
-				results[i] = result{Type: typ, Err: err}
+				results[i] = d.Match(b)
 				wg.Done()
 			}()
 		}
 		wg.Wait()
 	}
 	var res string
-	var lastErr = errors.New("not found")
 	for _, r := range results {
 		//fmt.Println(i, r)
-		if r.Err != nil {
-			if lastErr != nil {
-				lastErr = r.Err
-			}
-			continue
-		}
-		lastErr = nil
-		if res == "" {
-			res = r.Type
+		if res == "" && r != "application/octet-stream" {
+			res = r
 		}
 		continue
 	}
 	//fmt.Println("result:", res, lastErr)
-	return res, lastErr
+	return res
 }
