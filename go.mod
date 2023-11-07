@@ -5,10 +5,10 @@ require (
 	github.com/KarpelesLab/reflink v1.0.1
 	github.com/UNO-SOFT/filecache v0.1.9
 	github.com/UNO-SOFT/otel v0.5.2
-	github.com/UNO-SOFT/zlog v0.8.0
+	github.com/UNO-SOFT/zlog v0.8.1
 	github.com/VictoriaMetrics/metrics v1.24.0
 	github.com/coreos/go-systemd/v22 v22.5.0
-	github.com/gabriel-vasile/mimetype v1.4.2
+	github.com/gabriel-vasile/mimetype v1.4.3
 	github.com/go-kit/kit v0.13.0
 	github.com/google/renameio v1.0.1
 	github.com/google/renameio/v2 v2.0.0
@@ -20,33 +20,33 @@ require (
 	github.com/pdfcpu/pdfcpu v0.5.0
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c
-	github.com/tgulacsi/go v0.26.8
+	github.com/tgulacsi/go v0.27.1
 	github.com/theupdateframework/go-tuf v0.6.1
 	github.com/zRedShift/mimemagic v1.2.0
 	golang.org/x/image v0.13.0
-	golang.org/x/net v0.16.0
-	golang.org/x/sync v0.4.0
-	golang.org/x/sys v0.13.0
-	golang.org/x/text v0.13.0
+	golang.org/x/net v0.17.0
+	golang.org/x/sync v0.5.0
+	golang.org/x/sys v0.14.0
+	golang.org/x/text v0.14.0
 )
 
 require (
-	github.com/andybalholm/brotli v1.0.5 // indirect
+	github.com/andybalholm/brotli v1.0.6 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
-	github.com/bodgit/sevenzip v1.4.3 // indirect
+	github.com/bodgit/sevenzip v1.4.4 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
 	github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
-	github.com/go-logr/logr v1.2.4 // indirect
+	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hhrutter/lzw v1.0.0 // indirect
 	github.com/hhrutter/tiff v1.0.1 // indirect
-	github.com/klauspost/compress v1.17.0 // indirect
+	github.com/klauspost/compress v1.17.2 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
