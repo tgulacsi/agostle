@@ -158,17 +158,28 @@ func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 			return err
 		}
 	} else {
-		var err error
 		inpfn := destfn + "." + imgtyp
-		ifh, err = os.Create(inpfn)
-		if err != nil {
-			return fmt.Errorf("create temp image file %s: %w", inpfn, err)
-		}
-		if _, err = io.Copy(ifh, r); err != nil {
-			logger.Info("ImageToPdf reading", "file", ifh.Name(), "error", err)
-		}
-		if err = ifh.Close(); err != nil {
-			logger.Info("ImageToPdf writing", "dest", ifh.Name(), "error", err)
+		var err error
+		if contentType == "image/heic" {
+			imgtyp, inpfn = "jpeg", destfn+".jpeg"
+			var buf strings.Builder
+			cmd := command(ctx, *ConfGm, "convert", "-", inpfn)
+			cmd.Stdin = r
+			cmd.Stderr = &buf
+			if err = cmd.Run(); err != nil {
+				return fmt.Errorf("convert heic to %s: %w: %s", imgtyp, err, buf.String())
+			}
+		} else {
+			ifh, err = os.Create(inpfn)
+			if err != nil {
+				return fmt.Errorf("create temp image file %s: %w", inpfn, err)
+			}
+			if _, err = io.Copy(ifh, r); err != nil {
+				logger.Info("ImageToPdf reading", "file", ifh.Name(), "error", err)
+			}
+			if err = ifh.Close(); err != nil {
+				logger.Info("ImageToPdf writing", "dest", ifh.Name(), "error", err)
+			}
 		}
 		if ifh, err = os.Open(inpfn); err != nil {
 			return fmt.Errorf("open inp %s: %w", inpfn, err)
