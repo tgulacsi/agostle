@@ -92,11 +92,15 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 	mux.Handle("/_admin/stop", mkAdminStopHandler(s))
 	mux.Handle("/", http.DefaultServeMux)
 
-	tp, err := otel.LogTraceProvider(slog.NewLogLogger(logger.Handler(), slog.LevelInfo))
+	tp, mp, _, err := otel.LogTraceProvider(
+		slog.NewLogLogger(logger.Handler(), slog.LevelInfo),
+		"github.com/tgulacsi/agostle", "v0.0.1",
+	)
 	if err != nil {
 		panic(err)
 	}
-	otel.SetGlobalTraceProvider(tp)
+	otel.SetGlobalTracerProvider(tp)
+	otel.SetGlobalMeterProvider(mp)
 
 	return s
 }
