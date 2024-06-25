@@ -1,0 +1,16 @@
+[Unit]
+Description=Agostle Email-to-PDF service in container
+After=networking.target
+
+# https://bugzilla.redhat.com/show_bug.cgi?id=1781506
+[Service]
+Type=simple
+Restart=always
+# https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux_atomic_host/7/html/managing_containers/running_containers_as_systemd_services_with_podman
+#ExecStartPre=-/bin/sh -c "/usr/bin/podman ps -a | fgrep -q agostle_server || /usr/bin/podman run --sig-proxy=true --stop-timeout=2 --detach=true --name agostle_server -p 8500:9500 -v /home/kobe/agostle:/app/bin:Z,ro tgulacsi/agostle"
+ExecStart=/usr/bin/podman run --detach=false --sig-proxy=true --stop-timeout=2 --rm --name agostle_server -p 8500:9500 -v /home/kobe/agostle:/app/bin:Z,ro tgulacsi/agostle
+ExecStop=/usr/bin/podman stop -t 3 agostle_server
+ExecStopPost=-/usr/bin/podman rm -f agostle_server
+
+[Install]
+WantedBy=multi-user.target
