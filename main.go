@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -257,8 +258,9 @@ func Main() error {
 	}
 	ctx, cancel := signal.NotifyContext(
 		zlog.NewSContext(context.Background(), logger),
-		os.Interrupt)
+		os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
+	go func() { <-ctx.Done(); logger.Error("DONE"); time.Sleep(time.Second); logger.Error("EXIT"); os.Exit(3) }()
 	logger.Info("Loading config", "file", configFile)
 	if err = converter.LoadConfig(ctx, configFile); err != nil {
 		logger.Info("Parsing config", "file", configFile, "error", err)
