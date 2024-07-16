@@ -94,6 +94,10 @@ var (
 
 	// ConfMaxSubprocMemoryBytes is the limit for subprocess' memory.
 	ConfMaxSubprocMemoryBytes = config.Uint64("max-subproc-mem-bytes", DefaultMaxSubprocMemoryBytes)
+
+	ConfCacheTrimInterval = config.Duration("cache-trim-interval", 5*time.Minute)
+	ConfCacheTrimLimit    = config.Duration("cache-trim-limit", time.Hour)
+	ConfCacheTrimSize     = config.Int64("cache-trim-size", 20<<20)
 )
 
 func init() {
@@ -135,9 +139,9 @@ func LoadConfig(ctx context.Context, fn string) error {
 			return err
 		}
 	}
-	Cache.SetTrimInterval(5 * time.Minute)
-	Cache.SetTrimLimit(time.Hour)
-	Cache.SetTrimSize(20 << 20)
+	Cache.SetTrimInterval(*ConfCacheTrimInterval)
+	Cache.SetTrimLimit(*ConfCacheTrimLimit)
+	Cache.SetTrimSize(*ConfCacheTrimSize)
 
 	bn := filepath.Base(*ConfPdfseparate)
 	prefix := (*ConfPdfseparate)[:len(*ConfPdfseparate)-len(bn)]
