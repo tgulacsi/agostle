@@ -269,6 +269,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 			_, _, _ = converter.Cache.Put(cacheKey(resp.outFn), fh)
 			if _, err = fh.Seek(0, 0); err == nil {
 				resp.content = fh
+				os.Remove(fh.Name())
 			}
 		}
 	}
@@ -276,14 +277,8 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	return resp, err
 }
 
-type readSeekCloser interface {
-	io.Reader
-	io.Seeker
-	io.Closer
-}
-
 type emailConvertResponse struct {
-	content     readSeekCloser
+	content     io.ReadSeekCloser
 	outFn, hsh  string
 	r           *http.Request
 	NotModified bool
@@ -295,7 +290,7 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 	if !ok {
 		return fmt.Errorf("wanted emailConvertResponse, got %T", response)
 	}
-	logger.Info("emailConvertEncode", "notModified", resp.NotModified, "fn", resp.outFn, "contentNil", resp.content == nil)
+	logger.Info("emailConvertEncode", "notModified", resp.NotModified, "contentNil", resp.content == nil)
 	if resp.NotModified {
 		w.WriteHeader(http.StatusNotModified)
 	} else {
@@ -379,7 +374,7 @@ func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params c
 	if err != nil {
 		return fmt.Errorf("merge %v: %w", mr.Inputs, err)
 	}
-	resp.content = f.(readSeekCloser)
+	resp.content = f.(io.ReadSeekCloser)
 	return nil
 }
 
