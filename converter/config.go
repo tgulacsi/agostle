@@ -135,6 +135,9 @@ func LoadConfig(ctx context.Context, fn string) error {
 			return err
 		}
 	}
+	Cache.SetTrimInterval(5 * time.Minute)
+	Cache.SetTrimLimit(time.Hour)
+	Cache.SetTrimSize(20 << 20)
 
 	bn := filepath.Base(*ConfPdfseparate)
 	prefix := (*ConfPdfseparate)[:len(*ConfPdfseparate)-len(bn)]

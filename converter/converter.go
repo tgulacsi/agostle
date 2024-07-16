@@ -18,7 +18,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"time"
 
 	"context"
 
@@ -31,11 +30,6 @@ var ErrSkip = errors.New("skip this part")
 
 // Converter converts to Pdf (destination filename, source reader and source content-type)
 type Converter func(context.Context, string, io.Reader, string) error
-
-var (
-	lastTrimMu sync.Mutex
-	lastTrim   time.Time
-)
 
 func (c Converter) WithCache(ctx context.Context, destfn string, r io.Reader, sourceContentType, destContentType string) error {
 	logger := getLogger(ctx).With("f", "convertWithCache", "sct", sourceContentType, "dct", destContentType, "dest", destfn)
@@ -101,14 +95,6 @@ func (c Converter) WithCache(ctx context.Context, destfn string, r io.Reader, so
 	if err != nil {
 		return err
 	}
-
-	lastTrimMu.Lock()
-	now := time.Now()
-	if lastTrim.IsZero() || lastTrim.Add(time.Hour).Before(now) {
-		lastTrim = now
-		Cache.Trim()
-	}
-	lastTrimMu.Unlock()
 
 	_, _, err = Cache.Put(key, ofh)
 	ofh.Close()
