@@ -98,6 +98,7 @@ var (
 	ConfCacheTrimInterval = config.Duration("cache-trim-interval", 5*time.Minute)
 	ConfCacheTrimLimit    = config.Duration("cache-trim-limit", 1*time.Hour)
 	ConfCacheTrimSize     = config.Int64("cache-trim-size", 20<<20)
+	ConfCacheMaxSize      = config.Int64("cache-max-size", 512<<20)
 )
 
 func init() {
@@ -136,6 +137,7 @@ func LoadConfig(ctx context.Context, fn string) error {
 		filecache.WithTrimInterval(*ConfCacheTrimInterval),
 		filecache.WithTrimLimit(*ConfCacheTrimLimit),
 		filecache.WithTrimSize(*ConfCacheTrimSize),
+		filecache.WithMaxSize(*ConfCacheMaxSize),
 	); err != nil {
 		var tErr error
 		if cd, tErr = os.MkdirTemp(Workdir, "agostle-filecache-*"); tErr != nil {
