@@ -9,7 +9,6 @@ package main
 
 import (
 	"archive/zip"
-	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -231,7 +230,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 		}
 	}
 
-	h := sha256.New()
+	h := filecache.NewHash()
 	sr, err := iohlp.MakeSectionReader(io.TeeReader(req.Input, h), 1<<20)
 	logger.Info("readerToFile", "error", err)
 	if err != nil {
@@ -269,7 +268,9 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 			_, _, _ = converter.Cache.Put(cacheKey(resp.outFn), fh)
 			if _, err = fh.Seek(0, 0); err == nil {
 				resp.content = fh
-				os.Remove(fh.Name())
+				if fi, err := fh.Stat(); err == nil {
+					resp.modTime = fi.ModTime()
+				}
 			}
 		}
 	}
@@ -279,6 +280,7 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 
 type emailConvertResponse struct {
 	content     io.ReadSeekCloser
+	modTime     time.Time
 	outFn, hsh  string
 	r           *http.Request
 	NotModified bool
@@ -298,15 +300,20 @@ func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response int
 		w.Header().Set("Etag", `"`+resp.hsh+`"`)
 		if resp.content != nil {
 			defer resp.content.Close()
-			modTime := time.Now()
-			if fi, err := os.Stat(resp.outFn); err == nil {
-				modTime = fi.ModTime()
+			modTime := resp.modTime
+			if modTime.IsZero() {
+				if fi, err := os.Stat(resp.outFn); err == nil {
+					modTime = fi.ModTime()
+				} else {
+					modTime = time.Now()
+				}
 			}
 			w.Header().Set("Content-Type", "application/pdf")
 			http.ServeContent(w, resp.r, resp.outFn+".pdf", modTime, resp.content)
 		} else {
 			http.ServeFile(w, resp.r, resp.outFn)
 		}
+		os.Remove(resp.outFn)
 	}
 
 	return nil

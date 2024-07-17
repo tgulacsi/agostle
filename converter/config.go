@@ -96,7 +96,7 @@ var (
 	ConfMaxSubprocMemoryBytes = config.Uint64("max-subproc-mem-bytes", DefaultMaxSubprocMemoryBytes)
 
 	ConfCacheTrimInterval = config.Duration("cache-trim-interval", 5*time.Minute)
-	ConfCacheTrimLimit    = config.Duration("cache-trim-limit", time.Hour)
+	ConfCacheTrimLimit    = config.Duration("cache-trim-limit", 1*time.Hour)
 	ConfCacheTrimSize     = config.Int64("cache-trim-size", 20<<20)
 )
 
@@ -131,7 +131,12 @@ func LoadConfig(ctx context.Context, fn string) error {
 	cd := filepath.Join(Workdir, "agostle-filecache")
 	// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
 	_ = os.MkdirAll(cd, 0700)
-	if Cache, err = filecache.Open(cd); err != nil {
+	if Cache, err = filecache.Open(
+		cd,
+		filecache.WithTrimInterval(*ConfCacheTrimInterval),
+		filecache.WithTrimLimit(*ConfCacheTrimLimit),
+		filecache.WithTrimSize(*ConfCacheTrimSize),
+	); err != nil {
 		var tErr error
 		if cd, tErr = os.MkdirTemp(Workdir, "agostle-filecache-*"); tErr != nil {
 			return err
@@ -139,9 +144,6 @@ func LoadConfig(ctx context.Context, fn string) error {
 			return err
 		}
 	}
-	Cache.SetTrimInterval(*ConfCacheTrimInterval)
-	Cache.SetTrimLimit(*ConfCacheTrimLimit)
-	Cache.SetTrimSize(*ConfCacheTrimSize)
 
 	bn := filepath.Base(*ConfPdfseparate)
 	prefix := (*ConfPdfseparate)[:len(*ConfPdfseparate)-len(bn)]

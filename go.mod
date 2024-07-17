@@ -3,7 +3,7 @@ module github.com/tgulacsi/agostle
 require (
 	bitbucket.org/zombiezen/gopdf v0.0.0-20190421151423-ab3d04824694
 	github.com/KarpelesLab/reflink v1.0.1
-	github.com/UNO-SOFT/filecache v0.2.1
+	github.com/UNO-SOFT/filecache v0.3.0
 	github.com/UNO-SOFT/otel v0.8.6
 	github.com/UNO-SOFT/zlog v0.8.3
 	github.com/VictoriaMetrics/metrics v1.34.1
@@ -80,11 +80,11 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-go 1.21
+go 1.22
 
-toolchain go1.21.0
+toolchain go1.22.0
 
-//replace github.com/UNO-SOFT/filecache => ../../UNO-SOFT/filecache
+// replace github.com/UNO-SOFT/filecache => ../../UNO-SOFT/filecache
 
 //replace github.com/tgulacsi/go => ../go
 
