@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime"
 	"net/textproto"
 	"os"
@@ -49,6 +50,8 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 	ctx, _ = prepareContext(ctx, "")
 	var errs []string
 	files, err := MailToPdfFiles(ctx, body, contentType)
+	tbz := make([]ArchFileItem, 0, 2*len(files))
+	defer func() { cleanupFiles(ctx, files, tbz) }()
 	if err != nil {
 		fcount := 0
 		errs = make([]string, 1, max(1, len(files)))
@@ -72,7 +75,6 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 	}
 
 	rch := make(chan maybeArchItems, len(files))
-	tbz := make([]ArchFileItem, 0, 2*len(files))
 	if !split && imgmime == "" {
 		tbz = append(tbz, files...)
 	} else {
@@ -126,14 +128,13 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 		ze = err
 	}
 
-	cleanupFiles(ctx, files, tbz)
-
 	return ze
 }
 
 func cleanupFiles(ctx context.Context, files []ArchFileItem, tbz []ArchFileItem) {
 	logger := getLogger(ctx)
 	_, wd := prepareContext(ctx, "")
+	logger.Info("cleanupFiles", slog.String("wd", wd), slog.Bool("leave", LeaveTempFiles))
 	dirs := make(map[string]bool, 16)
 	for _, item := range files {
 		dirs[filepath.Dir(item.Filename)] = true
@@ -463,10 +464,11 @@ func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files
 	}
 
 	hshS := base64.URLEncoding.EncodeToString(hsh.Sum(nil))
-	ctx, _ = prepareContext(ctx, hshS)
+	ctx, wd := prepareContext(ctx, hshS)
 	if _, err = sr.Seek(0, 0); err != nil {
 		return nil, err
 	}
+	defer os.RemoveAll(wd)
 
 	files = make([]ArchFileItem, 0, 16)
 	errs := make([]string, 0, 16)
@@ -544,6 +546,7 @@ Collect:
 
 func savePart(ctx context.Context, mp *i18nmail.MailPart) string {
 	_, wd := prepareContext(ctx, "")
+	logger.Info("savePart", "wd", wd)
 	return filepath.Join(wd,
 		fmt.Sprintf("%02d#%03d.%s", mp.Level, mp.Seq,
 			strings.Replace(mp.ContentType, "/", "--", -1)),
