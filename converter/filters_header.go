@@ -32,7 +32,7 @@ func PrependHeaderFilter(ctx context.Context,
 	defer func() {
 		close(outch)
 	}()
-	ctx, _ = prepareContext(ctx, "")
+	ctx, _ = PrepareContext(ctx, "")
 
 	mailHeader := mail.Header(make(map[string][]string, len(PrependHeaders)))
 	headersBuf := bytes.NewBuffer(make([]byte, 0, 128))

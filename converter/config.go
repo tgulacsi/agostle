@@ -175,28 +175,27 @@ var LeaveTempFiles = false
 
 type ctxKeyWorkDir struct{}
 
-func prepareContext(ctx context.Context, subdir string) (context.Context, string) {
+func PrepareContext(ctx context.Context, subdir string) (context.Context, string) {
 	var wdKey ctxKeyWorkDir
-	odir, _ := ctx.Value(wdKey).(string)
-	if odir != "" {
+	dir, _ := ctx.Value(wdKey).(string)
+	if dir != "" {
 		if subdir != "" {
-			ctx = context.WithValue(ctx, wdKey, filepath.Join(odir, subdir))
+			dir = filepath.Join(dir, subdir)
+			ctx = context.WithValue(ctx, wdKey, dir)
 		}
 	} else {
-		if subdir != "" {
-			ctx = context.WithValue(ctx, wdKey, Workdir)
+		if subdir == "" {
+			dir = Workdir
 		} else {
-			ctx = context.WithValue(ctx, wdKey, filepath.Join(Workdir, subdir))
+			dir = filepath.Join(Workdir, subdir)
 		}
+		ctx = context.WithValue(ctx, wdKey, dir)
 	}
-	ndir, ok := ctx.Value(wdKey).(string)
-	if ok && odir != ndir {
-		// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
-		if err := os.MkdirAll(ndir, 0750); err != nil {
-			panic("cannot create workdir " + ndir + ": " + err.Error())
-		}
+	// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
+	if err := os.MkdirAll(dir, 0750); err != nil {
+		panic("cannot create workdir " + dir + ": " + err.Error())
 	}
-	return ctx, ndir
+	return ctx, dir
 }
 
 // port for LibreOffice locking (only one instance should be running)

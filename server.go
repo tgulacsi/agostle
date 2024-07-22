@@ -1,4 +1,4 @@
-// Copyright 2017, 2023 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2024 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -78,9 +78,15 @@ func newHTTPServer(address string, saveReq bool) *http.Server {
 				default:
 					mDur = metrics.GetOrCreateHistogram(fmt.Sprintf(mName, r.Method))
 				}
+				ctx := r.Context()
+				reqID := converter.GetRequestID(ctx)
+				ctx = converter.SetRequestID(ctx, reqID)
+				ctx, wd := converter.PrepareContext(ctx, reqID)
+				r = r.WithContext(ctx)
 				start := time.Now()
 				handleFunc.ServeHTTP(w, r)
 				mDur.UpdateDuration(start)
+				os.RemoveAll(wd)
 			},
 		)
 	}

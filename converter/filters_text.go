@@ -26,7 +26,7 @@ func TextDecodeFilter(ctx context.Context,
 	}()
 
 	cet := "Content-Transfer-Encoding"
-	ctx, _ = prepareContext(ctx, "")
+	ctx, _ = PrepareContext(ctx, "")
 	for part := range inch {
 		// decode text/plain and text/html
 		if part.ContentType == textPlain || part.ContentType == textHtml {

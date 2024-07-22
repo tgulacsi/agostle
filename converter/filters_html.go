@@ -41,7 +41,7 @@ func HTMLPartFilter(ctx context.Context,
 	defer func() {
 		close(outch)
 	}()
-	ctx, wd := prepareContext(ctx, "")
+	ctx, wd := PrepareContext(ctx, "")
 
 	var (
 		alter      = ""
@@ -294,7 +294,7 @@ func SaveOriHTMLFilter(ctx context.Context,
 	defer func() {
 		close(outch)
 	}()
-	_, wd := prepareContext(ctx, "")
+	_, wd := PrepareContext(ctx, "")
 
 	if !SaveOriginalHTML {
 		for part := range inch {

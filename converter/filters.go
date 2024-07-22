@@ -47,7 +47,7 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 	pages []uint16,
 ) error {
 	logger := getLogger(ctx)
-	ctx, _ = prepareContext(ctx, "")
+	ctx, _ = PrepareContext(ctx, "")
 	var errs []string
 	files, err := MailToPdfFiles(ctx, body, contentType)
 	tbz := make([]ArchFileItem, 0, 2*len(files))
@@ -133,7 +133,7 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 
 func cleanupFiles(ctx context.Context, files []ArchFileItem, tbz []ArchFileItem) {
 	logger := getLogger(ctx)
-	_, wd := prepareContext(ctx, "")
+	_, wd := PrepareContext(ctx, "")
 	logger.Info("cleanupFiles", slog.String("wd", wd), slog.Bool("leave", LeaveTempFiles))
 	dirs := make(map[string]bool, 16)
 	for _, item := range files {
@@ -464,7 +464,7 @@ func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files
 	}
 
 	hshS := base64.URLEncoding.EncodeToString(hsh.Sum(nil))
-	ctx, _ = prepareContext(ctx, hshS)
+	ctx, _ = PrepareContext(ctx, hshS)
 	if _, err = sr.Seek(0, 0); err != nil {
 		return nil, err
 	}
@@ -544,7 +544,7 @@ Collect:
 }
 
 func savePart(ctx context.Context, mp *i18nmail.MailPart) string {
-	_, wd := prepareContext(ctx, "")
+	_, wd := PrepareContext(ctx, "")
 	logger.Info("savePart", "wd", wd)
 	return filepath.Join(wd,
 		fmt.Sprintf("%02d#%03d.%s", mp.Level, mp.Seq,
@@ -686,7 +686,7 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 
 // MailToZip dumps mail and all parts into ZIP
 func MailToZip(ctx context.Context, destfn string, body io.Reader, contentType string) error {
-	ctx, wd := prepareContext(ctx, "")
+	ctx, wd := PrepareContext(ctx, "")
 	dn, err := os.MkdirTemp(wd, "zip-")
 	if err != nil {
 		return err
