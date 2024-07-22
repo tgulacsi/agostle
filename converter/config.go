@@ -180,7 +180,7 @@ func prepareContext(ctx context.Context, subdir string) (context.Context, string
 	odir, _ := ctx.Value(wdKey).(string)
 	if odir != "" {
 		if subdir != "" {
-			ctx = context.WithValue(ctx, wdKey, filepath.Join(Workdir, subdir))
+			ctx = context.WithValue(ctx, wdKey, filepath.Join(odir, subdir))
 		}
 	} else {
 		if subdir != "" {

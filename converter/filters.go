@@ -464,11 +464,10 @@ func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files
 	}
 
 	hshS := base64.URLEncoding.EncodeToString(hsh.Sum(nil))
-	ctx, wd := prepareContext(ctx, hshS)
+	ctx, _ = prepareContext(ctx, hshS)
 	if _, err = sr.Seek(0, 0); err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(wd)
 
 	files = make([]ArchFileItem, 0, 16)
 	errs := make([]string, 0, 16)
