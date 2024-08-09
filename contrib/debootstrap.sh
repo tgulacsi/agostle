@@ -17,7 +17,7 @@ sudo rm -rf "${dest}"
 set +e
 set -x
 time sudo /usr/sbin/debootstrap --merged-usr \
-  --include="$packages" \
+  --include="$packages",systemd-container \
   --components=main,contrib,non-free,non-free-firmware \
   "--cache-dir=${CACHEDIR}" \
   "${SUITE:-testing}" "${dest}" http://httpredir.debian.org/debian
