@@ -281,11 +281,12 @@ func Main() error {
 
 	sortBeforeMerge = *converter.ConfSortBeforeMerge
 	logger.Info("commands",
-		"pdftk", *converter.ConfPdftk,
-		"loffice", *converter.ConfLoffice,
 		"gm", *converter.ConfGm,
 		"gs", *converter.ConfGs,
+		"loffice", *converter.ConfLoffice,
+		"mutool", *converter.ConfMutool,
 		"pdfclean", *converter.ConfPdfClean,
+		"pdftk", *converter.ConfPdftk,
 		"wkhtmltopdf", *converter.ConfWkhtmltopdf,
 	)
 	logger.Info("parameters",
