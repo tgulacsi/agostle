@@ -62,11 +62,14 @@ var (
 	// ConfSortBeforeMerge should be true if generally we should sort files by filename before merge
 	ConfSortBeforeMerge = config.Bool("sortBeforeMerge", false)
 
+	// ConfRequestTimeout is the general HTTP request timeout
+	ConfRequestTimeout = config.Duration("requestTimeout", 5*time.Minute)
+
 	// ConfChildTimeout is the time before the child gets killed
-	ConfChildTimeout = config.Duration("childTimeout", 10*time.Minute)
+	ConfChildTimeout = config.Duration("childTimeout", 4*time.Minute)
 
 	// ConfLofficeTimeout is the time before LibreOffice gets killed.
-	ConfLofficeTimeout = config.Duration("lofficeTimeout", time.Minute)
+	ConfLofficeTimeout = config.Duration("lofficeTimeout", 3*time.Minute)
 
 	// ConcLimit limits the concurrently running child processes
 	ConcLimit = NewRateLimiter(Concurrency)

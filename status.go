@@ -42,11 +42,11 @@ var (
 func onStart() {
 	var err error
 	if self, err = osext.Executable(); err != nil {
-		logger.Error( "error getting the path for self", "error", err)
+		logger.Error("error getting the path for self", "error", err)
 	} else {
 		var self2 string
 		if self2, err = filepath.Abs(self); err != nil {
-			logger.Error( "error getting the absolute path", "for", self, "error", err)
+			logger.Error("error getting the absolute path", "for", self, "error", err)
 		} else {
 			self = self2
 		}
@@ -54,7 +54,7 @@ func onStart() {
 
 	var uname string
 	if u, e := user.Current(); e != nil {
-		logger.Error( "cannot get current user", "error", e)
+		logger.Error("cannot get current user", "error", e)
 		uname = os.Getenv("USER")
 	} else {
 		uname = u.Username
@@ -70,7 +70,7 @@ func onStart() {
 // getTopOut returns the output of the topCmd - shall be protected with a mutex
 func getTopOutput() ([]byte, error) {
 	topOut.Reset()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 	cmd := exec.CommandContext(ctx, topCmd[0], topCmd[1:]...)
@@ -78,7 +78,7 @@ func getTopOutput() ([]byte, error) {
 	cmd.Stderr = os.Stderr
 	e := cmd.Run()
 	if e != nil {
-		logger.Error( "error calling", "cmd", topCmd, "error", e)
+		logger.Error("error calling", "cmd", topCmd, "error", e)
 		fmt.Fprintf(topOut, "\n\nerror calling %s: %s\n", topCmd, e)
 	}
 	return topOut.Bytes(), e
@@ -100,7 +100,7 @@ func (st *statInfo) fill() {
 	runtime.ReadMemStats(st.mem)
 	top, err := getTopOutput()
 	if err != nil {
-		logger.Error( "error calling top", "error", err)
+		logger.Error("error calling top", "error", err)
 	} else {
 		st.top = bytes.Replace(top, []byte("\n"), []byte("\n    "), -1)
 	}

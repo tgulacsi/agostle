@@ -48,7 +48,7 @@ func (d HTTPMIMEDetector) Match(b []byte) string {
 type FileMIMEDetector struct{}
 
 func (d FileMIMEDetector) Match(b []byte) string {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	cmd := Exec.CommandContext(ctx, "file", "-E", "-b", "--mime-type", "-")
 	cmd.Stdin = bytes.NewReader(b)

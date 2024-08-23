@@ -131,7 +131,7 @@ var defaultBeforeFuncs = []kithttp.RequestFunc{
 
 func prepareContext(ctx context.Context, r *http.Request) context.Context {
 	// nosemgrep: dgryski.semgrep-go.contextcancelable.cancelable-context-not-systematically-cancelled
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, *converter.ConfChildTimeout)
 	ctx = SetRequestCancel(ctx, cancel)
 	ctx = SetRequestID(ctx, "")
 	lgr := getLogger(ctx)
