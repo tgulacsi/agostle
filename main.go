@@ -28,6 +28,7 @@ import (
 	tufclient "github.com/theupdateframework/go-tuf/client"
 
 	"github.com/kardianos/osext"
+	"github.com/rogpeppe/retry"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/i18nmail"
 	"golang.org/x/sync/errgroup"
@@ -191,6 +192,36 @@ func Main() error {
 				listenAddr = *converter.ConfListenAddr
 			}
 			logger.Info("serve", "listeners", len(listeners), "listenAddr", listenAddr)
+
+			go func() {
+				strategy := retry.Strategy{Delay: 5 * time.Minute}
+				var iter *retry.Iter
+				for {
+					threshold := time.Now().Add(-time.Hour)
+					wd := converter.Workdir
+					logger.Info("clear result-*.zip files", "dir", wd, "threshold", threshold)
+					dis, _ := os.ReadDir(wd)
+					for _, di := range dis {
+						bn := di.Name()
+						if !(di.Type().IsRegular() &&
+							strings.HasPrefix(bn, "result-") &&
+							strings.HasSuffix(bn, ".zip")) {
+							continue
+						}
+						if fi, err := di.Info(); err == nil && fi.ModTime().Before(threshold) {
+							fn := filepath.Join(wd, bn)
+							logger.Info("Remove", "file", fn)
+							os.Remove(fn)
+						}
+					}
+					if iter == nil {
+						iter = strategy.Start()
+					}
+					if !iter.Next(ctx.Done()) {
+						break
+					}
+				}
+			}()
 
 			grp, grpCtx := errgroup.WithContext(ctx)
 			srvs := make([]*http.Server, 0, len(listeners)+1)

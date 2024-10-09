@@ -59,6 +59,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	github.com/rogpeppe/retry v0.1.0 // indirect
 	github.com/rs/zerolog v1.29.1 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.8.0 // indirect
 	github.com/sloonz/go-qprintable v0.0.0-20210417175225-715103f9e6eb // indirect
