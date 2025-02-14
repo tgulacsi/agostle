@@ -8,10 +8,12 @@ MAINTAINER Tamás Gulácsi <tgulacsi78@gmail.com>
 
 #COPY --from=builder agostle /app/bin/agostle
 RUN apk -U upgrade
-RUN apk add ttf-dejavu ttf-liberation font-noto font-noto-emoji
+RUN apk add font-dejavu font-liberation font-noto font-noto-emoji font-carlito
+#RUN apt-get -y install fonts-sil-gentium fonts-takao-mincho  fonts-crosextra-caladea # K-MT16579
 RUN apk add msttcorefonts-installer 
 RUN update-ms-fonts 
 RUN fc-cache -f
+RUN apk add file
 # https://stackoverflow.com/questions/25193161/chfn-pam-system-error-intermittently-in-docker-hub-builds
 RUN ln -sf /bin/true /usr/bin/chfn
 # Missing:
@@ -40,4 +42,4 @@ WORKDIR /app
 EXPOSE 9500:9500
 VOLUME ["/app/bin"]
 ENTRYPOINT ["/bin/sh", "-c"]
-CMD ["/app/bin/agostle serve 0.0.0.0:9500"]
+CMD ["rm -rf --one-file-system /tmp/*; /app/bin/agostle serve 0.0.0.0:9500"]

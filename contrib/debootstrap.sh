@@ -40,9 +40,14 @@ EOF
 sudo sh <<EOF
 umount -f "${dest}/proc"
 umount -f "${dest}/sys"
+umount -f "${dest}/dev"
 
+mkdir -p "${dest}/proc"
 mount proc "${dest}"/proc -t proc
+mkdir -p "${dest}/sys"
 mount sysfs "${dest}"/sys -t sysfs
+mkdir -p "${dest}/dev"
+mount /dev "${dest}"/dev -o bind
 #mount -o bind "${CACHEDIR}" "${dest}/var/cache/apt/archives"
 chmod 0755 "${dest}/fix.sh"
 
@@ -51,6 +56,7 @@ chroot "${dest}" ./fix.sh
 #umount "${dest}/var/cache/apt/archives"
 umount "${dest}"/proc
 umount "${dest}"/sys
+umount "${dest}"/dev
 EOF
 
 sudo rm "${dest}/fix.sh" 
