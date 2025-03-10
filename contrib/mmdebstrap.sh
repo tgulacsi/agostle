@@ -7,28 +7,32 @@ sqfs="${2:-./agostle.sqfs}"
 #   pdftk is not available
 #   libreoffice is not installable by mmdebstrap
 pwd="$(cd "$(dirname "$0")"; pwd)"
-packages="$(sed -ne '/ install / { s/^.* install //; s/--[^ ]*//g; s/#.*$//; s/^  *//; p; }' "${pwd}/../docks/debian/Dockerfile" | tr ' ' '\n' | sort -u | grep -vE 'libreOffice|pdftk' | tr '\n' , | sed -e 's/,,,*/,/g; s/^,//; s/,$//')"
+packages="$({ sed -ne '/ install / { s/^.* install //; s/--[^ ]*//g; s/#.*$//; s/^  *//; p; }' "${pwd}/../docks/debian/Dockerfile" | tr ' ' '\n'; echo 'libreoffice'; } | sort -u | tr '\n' , | sed -e 's/,,,*/,/g; s/^,//; s/,$//')"
 echo "# packages=$packages" >&2
 
 if [ "${SKIP_MMDEBSTRAP:-0}" -ne 1 ]; then
-sudo rm -rf "${dest}"
-set +e
-if ! command -v mmdebstrap; then
-  sudo apt install mmdebstrap
-fi
-set -x
-sudo btrfs subv delete "${dest}"
-sudo btrfs subv create "${dest}"
-time sudo /usr/bin/mmdebstrap \
-  --include="$packages",systemd-container,auto-apt-proxy \
-  --variant=required \
-  --components=main,contrib,non-free \
-  --aptopt='APT::Solver "aspcud"' \
-  "${SUITE:-testing}" \
-  "${dest}"
-sudo rm "${dest}/etc/hostname"
-set +x
-set -e
+  sudo rm -rf "${dest}"
+  if ! command -v mmdebstrap; then
+    sudo apt install mmdebstrap
+  fi
+  set -x
+  # sudo btrfs subv delete "${dest}" || echo $?
+  sudo btrfs subv create "${dest}" || echo $?
+  time sudo /usr/bin/mmdebstrap \
+    --include="$(echo "$packages" | sed -e 's/,wkhtmltopdf//')",systemd-container,auto-apt-proxy \
+    --variant=required \
+    --components=main,contrib,non-free \
+    --aptopt='Acquire::http::Proxy "http://regis:3142"' \
+    --aptopt='Apt::Install-Recommends "true"' \
+    "${SUITE:-testing}" \
+    "${dest}"
+  sudo rm "${dest}/etc/hostname"
+  set +x
+  if echo "$packages" | grep -q wkhtmltopdf; then
+    sudo mkdir -p "${dest}/etc/apt/sources.list.d"
+    echo "deb http://deb.debian.org/debian bullseye main contrib non-free" | sudo tee "${dest}/etc/apt/sources.list.d/bullseye.list"
+    sudo systemd-nspawn -D /var/lib/machines/agostle -a --link-journal=try-guest sh -c "set -x; apt -y modernize-sources && apt update && apt -y install wkhtmltopdf xvfb"
+  fi
 fi
 
 

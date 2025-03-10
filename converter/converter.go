@@ -6,7 +6,9 @@ package converter
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -556,6 +558,8 @@ var ExtContentType = map[string]string{
 	"png":  "image/png",
 	"tif":  "image/tif",
 	"tiff": "image/tiff",
+
+	"es3": "text/xades+xml",
 }
 
 const mimeOutlook = "application/vnd.ms-outlook"
@@ -583,6 +587,10 @@ func fixCT(contentType, fileName string) (ct string) {
 		return "application/rar"
 	case "image/pdf":
 		return applicationPDF
+	case "text/xml":
+		if ext := filepath.Ext(fileName); len(ext) > 3 && ext == ".es3" {
+			return "text/xades+xml"
+		}
 	}
 	return contentType
 }
@@ -597,6 +605,15 @@ func FixContentType(body []byte, contentType, fileName string) (ct string) {
 			logger.Info("FixContentType", "ct", contentType, "fn", fileName, "ext", ext, "result", ct, "where", where)
 		}
 	}()
+	if bytes.HasPrefix(body, []byte("<?xml version=\"1.0\"")) {
+		contentType = "text/xml"
+		if bytes.Contains(body, []byte("https://www.microsec.hu/ds/e-szigno3")) {
+			contentType = "text/es3+xml"
+		} else if bytes.Contains(body, []byte("http://uri.etsi.org/01903/")) {
+			contentType = "text/xades+xml"
+		}
+		return contentType
+	}
 
 	contentType = fixCT(contentType, fileName)
 	if strings.HasPrefix(ext, ".") {
@@ -665,9 +682,15 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 		converter = OutlookToEML
 	case "multipart/related":
 		converter = MPRelatedToPdf
-	case "application/x-pkcs7-signature":
+	case "text/es3+xml":
+		converter = Decompress
+	case "application/x-pkcs7-signature", "text/xml":
 		converter = Skip
 	default:
+		if strings.HasPrefix(contentType, "text/") && strings.HasSuffix(contentType, "+xml") {
+			converter = Skip
+			break
+		}
 		// from http://www.openoffice.org/framework/documentation/mimetypes/mimetypes.html
 		if strings.HasPrefix(contentType, "application/vnd.oasis.") ||
 			//ODF
@@ -700,3 +723,186 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 	}
 	return
 }
+
+func Decompress(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	if contentType != "text/es3+xml" {
+		next := GetConverter(contentType, nil)
+		if next != nil {
+			return next(ctx, destfn, r, contentType)
+		}
+		return nil
+	}
+	dec := xml.NewDecoder(r)
+	var x es3Dossier
+	if err := dec.Decode(&x); err != nil {
+		return fmt.Errorf("decode as es3: %w", err)
+	}
+	for _, d := range x.Documents.Document {
+		logger.Info("found es3 document", "profile", d.DocumentProfile)
+		r := io.Reader(bytes.NewReader(d.Object.Data))
+		if d.DocumentProfile.BaseTransform.Transform.Algorithm == "base64" {
+			r = base64.NewDecoder(base64.StdEncoding, r)
+		}
+		ct := d.DocumentProfile.Format.MIMEType.Type + "/" + d.DocumentProfile.Format.MIMEType.Subtype
+		if next := GetConverter(ct, nil); next == nil {
+			logger.Warn("no converter for", "ct", ct)
+		} else if err := next(ctx, destfn, r, ct); err != nil {
+			return fmt.Errorf("sub object %+v: %w", d.DocumentProfile, err)
+		} else {
+			return nil
+		}
+	}
+	return nil
+}
+
+type (
+	es3Dossier struct {
+		XMLName        xml.Name   `xml:"Dossier"`
+		DossierProfile es3Profile `xml:"DossierProfile"`
+		Documents      struct {
+			ID       string        `xml:"Id,attr"`
+			Document []es3Document `xml:"Document"`
+		} `xml:"Documents"`
+		Signature struct {
+			ID         string `xml:"Id,attr"`
+			SignedInfo struct {
+				ID                     string `xml:"Id,attr"`
+				CanonicalizationMethod struct {
+					Algorithm string `xml:"Algorithm,attr"`
+				} `xml:"CanonicalizationMethod"`
+				SignatureMethod struct {
+					Algorithm string `xml:"Algorithm,attr"`
+				} `xml:"SignatureMethod"`
+				Reference []struct {
+					ID         string `xml:"Id,attr"`
+					URI        string `xml:"URI,attr"`
+					Type       string `xml:"Type,attr"`
+					Transforms struct {
+						Transform struct {
+							Algorithm string `xml:"Algorithm,attr"`
+						} `xml:"Transform"`
+					} `xml:"Transforms"`
+					DigestMethod struct {
+						Algorithm string `xml:"Algorithm,attr"`
+					} `xml:"DigestMethod"`
+					DigestValue string `xml:"DigestValue"`
+				} `xml:"Reference"`
+			} `xml:"SignedInfo"`
+			SignatureValue struct {
+				ID string `xml:"Id,attr"`
+			} `xml:"SignatureValue"`
+			KeyInfo struct {
+				ID       string `xml:"Id,attr"`
+				X509Data struct {
+					X509Certificate string `xml:"X509Certificate"`
+				} `xml:"X509Data"`
+			} `xml:"KeyInfo"`
+			Object []struct {
+				ID               string `xml:"Id,attr"`
+				SignatureProfile struct {
+					ID          string `xml:"Id,attr"`
+					ObjRef      string `xml:"OBJREF,attr"`
+					SigRef      string `xml:"SIGREF,attr"`
+					SigRefList  string `xml:"SIGREFLIST,attr"`
+					SignerName  string `xml:"SignerName"`
+					SDPresented string `xml:"SDPresented"`
+					Type        string `xml:"Type"`
+					Generator   struct {
+						Program struct {
+							Name    string `xml:"name,attr"`
+							Version string `xml:"version,attr"`
+						} `xml:"Program"`
+						Device struct {
+							Name string `xml:"name,attr"`
+							Type string `xml:"type,attr"`
+						} `xml:"Device"`
+					} `xml:"Generator"`
+				} `xml:"SignatureProfile"`
+				QualifyingProperties struct {
+					Target           string `xml:"Target,attr"`
+					ID               string `xml:"Id,attr"`
+					SignedProperties struct {
+						ID                        string `xml:"Id,attr"`
+						SignedSignatureProperties struct {
+							SigningTime          string `xml:"SigningTime"`
+							SigningCertificateV2 struct {
+								Cert struct {
+									CertDigest struct {
+										DigestMethod struct {
+											Algorithm string `xml:"Algorithm,attr"`
+										} `xml:"DigestMethod"`
+										DigestValue string `xml:"DigestValue"`
+									} `xml:"CertDigest"`
+									IssuerSerialV2 string `xml:"IssuerSerialV2"`
+								} `xml:"Cert"`
+							} `xml:"SigningCertificateV2"`
+							SignaturePolicyIdentifier struct {
+								SignaturePolicyImplied string `xml:"SignaturePolicyImplied"`
+							} `xml:"SignaturePolicyIdentifier"`
+							SignerRoleV2 struct {
+								ClaimedRoles struct {
+									ClaimedRole string `xml:"ClaimedRole"`
+								} `xml:"ClaimedRoles"`
+							} `xml:"SignerRoleV2"`
+						} `xml:"SignedSignatureProperties"`
+					} `xml:"SignedProperties"`
+					UnsignedProperties struct {
+						UnsignedSignatureProperties struct {
+							SignatureTimeStamp struct {
+								ID                     string `xml:"Id,attr"`
+								CanonicalizationMethod struct {
+									Algorithm string `xml:"Algorithm,attr"`
+								} `xml:"CanonicalizationMethod"`
+								EncapsulatedTimeStamp struct {
+									ID string `xml:"Id,attr"`
+								} `xml:"EncapsulatedTimeStamp"`
+							} `xml:"SignatureTimeStamp"`
+							CertificateValues struct {
+								ID                          string `xml:"Id,attr"`
+								EncapsulatedX509Certificate []struct {
+									ID string `xml:"Id,attr"`
+								} `xml:"EncapsulatedX509Certificate"`
+							} `xml:"CertificateValues"`
+						} `xml:"UnsignedSignatureProperties"`
+					} `xml:"UnsignedProperties"`
+				} `xml:"QualifyingProperties"`
+			} `xml:"Object"`
+		} `xml:"Signature"`
+	}
+
+	es3Profile struct {
+		ID           string `xml:"Id,attr"`
+		ObjRef       string `xml:"OBJREF,attr"`
+		Title        string `xml:"Title"`
+		ECategory    string `xml:"E-category"`
+		CreationDate string `xml:"CreationDate"`
+	}
+	es3Document struct {
+		DocumentProfile struct {
+			ID           string `xml:"Id,attr"`
+			ObjRef       string `xml:"OBJREF,attr"`
+			Title        string `xml:"Title"`
+			CreationDate string `xml:"CreationDate"`
+			Format       struct {
+				MIMEType struct {
+					Type      string `xml:"type,attr"`
+					Subtype   string `xml:"subtype,attr"`
+					Extension string `xml:"extension,attr"`
+				} `xml:"MIME-Type"`
+			} `xml:"Format"`
+			SourceSize struct {
+				SizeValue string `xml:"sizeValue,attr"`
+				SizeUnit  string `xml:"sizeUnit,attr"`
+			} `xml:"SourceSize"`
+			BaseTransform struct {
+				Transform struct {
+					Algorithm string `xml:"Algorithm,attr"`
+				} `xml:"Transform"`
+			} `xml:"BaseTransform"`
+		} `xml:"DocumentProfile"`
+		Object struct {
+			ID   string `xml:"Id,attr"`
+			Data []byte `xml:",chardata"`
+		} `xml:"Object"`
+	}
+)
