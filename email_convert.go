@@ -26,7 +26,7 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/filecache"
-	"github.com/mholt/archiver/v4"
+	"github.com/mholt/archives"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/iohlp"
 
@@ -328,7 +328,7 @@ func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params c
 		return err
 	}
 	defer fh.Close()
-	format, _, err := archiver.Identify(fh.Name(), fh)
+	format, _, err := archives.Identify(ctx, fh.Name(), fh)
 	if err != nil {
 		return err
 	}
@@ -364,13 +364,13 @@ func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params c
 		return nil
 	}
 
-	if ex, ok := format.(archiver.Extractor); ok {
-		if err = ex.Extract(ctx, fh, nil, func(ctx context.Context, f archiver.File) error {
-			return A(f.Name(), f.Open)
+	if ex, ok := format.(archives.Extractor); ok {
+		if err = ex.Extract(ctx, fh, func(ctx context.Context, f archives.FileInfo) error {
+			return A(f.Name(), func() (io.ReadCloser, error) { return f.Open() })
 		}); err != nil {
 			return err
 		}
-	} else if decom, ok := format.(archiver.Decompressor); ok {
+	} else if decom, ok := format.(archives.Decompressor); ok {
 		nm := fh.Name()
 		if err = A(nm[:len(nm)-len(filepath.Ext(nm))], func() (io.ReadCloser, error) { return decom.OpenReader(fh) }); err != nil {
 			return err

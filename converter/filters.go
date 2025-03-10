@@ -27,7 +27,7 @@ import (
 	"github.com/tgulacsi/go/iohlp"
 
 	//"github.com/tgulacsi/go/uncompr"
-	"github.com/mholt/archiver/v4"
+	"github.com/mholt/archives"
 )
 
 const bodyThreshold = 1 << 20
@@ -731,7 +731,7 @@ func ExtractingFilter(ctx context.Context,
 
 	for part := range allIn {
 		var (
-			format       archiver.Archival
+			format       archives.Extraction
 			rsc          *io.SectionReader
 			err          error
 			archRowCount int
@@ -765,18 +765,18 @@ func ExtractingFilter(ctx context.Context,
 
 		switch part.ContentType {
 		case applicationZIP:
-			format = archiver.Zip{}
+			format = archives.Zip{}
 		case "application/rar":
-			format = archiver.Rar{}
+			format = archives.Rar{}
 		case "application/tar":
-			format = archiver.Tar{}
+			format = archives.Tar{}
 		default:
 			goto Skip
 		}
 		if rsc, err = iohlp.MakeSectionReader(body, 1<<20); err != nil {
 			goto Error
 		}
-		if err = format.Extract(ctx, rsc, nil, func(ctx context.Context, f archiver.File) error {
+		if err = format.Extract(ctx, rsc, func(ctx context.Context, f archives.FileInfo) error {
 			name := f.Name()
 			if name == "__MACOSX" {
 				logger.Info("skip", "item", name)
