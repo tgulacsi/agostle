@@ -24,6 +24,7 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/filecache"
+	"github.com/mholt/archives"
 	"github.com/tgulacsi/go/iohlp"
 	"golang.org/x/net/html"
 )
@@ -682,6 +683,8 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 		converter = OutlookToEML
 	case "multipart/related":
 		converter = MPRelatedToPdf
+	case applicationZIP:
+		converter = Decompress
 	case "text/es3+xml":
 		converter = Decompress
 	case "application/x-pkcs7-signature", "text/xml":
@@ -725,34 +728,72 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 }
 
 func Decompress(ctx context.Context, destfn string, r io.Reader, contentType string) error {
-	if contentType != "text/es3+xml" {
+	toPDF := func(ctx context.Context, pdfs []string, r io.Reader, contentType string) ([]string, error) {
+		next := GetConverter(contentType, nil)
+		if next == nil {
+			logger.Warn("no converter for", "ct", contentType)
+			return pdfs, nil
+		}
+		tempFh, err := os.CreateTemp(
+			filepath.Dir(destfn),
+			strings.TrimSuffix(filepath.Base(destfn), ".pdf")+"-*.pdf",
+		)
+		if err != nil {
+			return pdfs, err
+		}
+		tempFh.Close()
+		if err := next(ctx, tempFh.Name(), r, contentType); err != nil {
+			return pdfs, err
+		}
+		pdfs = append(pdfs, tempFh.Name())
+		return pdfs, nil
+	}
+	var pdfs []string
+	defer func() {
+		for _, fn := range pdfs {
+			os.Remove(fn)
+		}
+	}()
+	if contentType == applicationZIP {
+		archives.Zip{}.Extract(ctx, r, func(ctx context.Context, f archives.FileInfo) error {
+			rc, err := f.Open()
+			if err != nil {
+				return err
+			}
+			defer rc.Close()
+			var a [1024]byte
+			n, _ := io.ReadAtLeast(rc, a[:], 512)
+			body := a[:n]
+			r := io.MultiReader(bytes.NewReader(body), rc)
+			pdfs, err = toPDF(ctx, pdfs, r, FixContentType(body, "", f.Name()))
+			return err
+
+		})
+	} else if contentType == "text/es3+xml" {
+		dec := xml.NewDecoder(r)
+		var x es3Dossier
+		if err := dec.Decode(&x); err != nil {
+			return fmt.Errorf("decode as es3: %w", err)
+		}
+		for _, d := range x.Documents.Document {
+			logger.Info("found es3 document", "profile", d.DocumentProfile)
+			r := io.Reader(bytes.NewReader(d.Object.Data))
+			if d.DocumentProfile.BaseTransform.Transform.Algorithm == "base64" {
+				r = base64.NewDecoder(base64.StdEncoding, r)
+			}
+			ct := d.DocumentProfile.Format.MIMEType.Type + "/" + d.DocumentProfile.Format.MIMEType.Subtype
+			var err error
+			if pdfs, err = toPDF(ctx, pdfs, r, ct); err != nil {
+				return fmt.Errorf("sub object %+v: %w", d.DocumentProfile, err)
+			}
+		}
+	} else {
 		next := GetConverter(contentType, nil)
 		if next != nil {
 			return next(ctx, destfn, r, contentType)
 		}
-		return nil
 	}
-	dec := xml.NewDecoder(r)
-	var x es3Dossier
-	if err := dec.Decode(&x); err != nil {
-		return fmt.Errorf("decode as es3: %w", err)
-	}
-	for _, d := range x.Documents.Document {
-		logger.Info("found es3 document", "profile", d.DocumentProfile)
-		r := io.Reader(bytes.NewReader(d.Object.Data))
-		if d.DocumentProfile.BaseTransform.Transform.Algorithm == "base64" {
-			r = base64.NewDecoder(base64.StdEncoding, r)
-		}
-		ct := d.DocumentProfile.Format.MIMEType.Type + "/" + d.DocumentProfile.Format.MIMEType.Subtype
-		if next := GetConverter(ct, nil); next == nil {
-			logger.Warn("no converter for", "ct", ct)
-		} else if err := next(ctx, destfn, r, ct); err != nil {
-			return fmt.Errorf("sub object %+v: %w", d.DocumentProfile, err)
-		} else {
-			return nil
-		}
-	}
-	return nil
+	return pdfMerge(ctx, destfn, pdfs...)
 }
 
 type (
