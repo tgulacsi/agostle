@@ -23,6 +23,8 @@ import (
 	"time"
 	"unicode/utf16"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/google/renameio/v2"
 	"github.com/tgulacsi/go/pdf"
 )
@@ -156,7 +158,35 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		return filenames, cleanup, err
 	}
 
-	if pdfsep := popplerOk["pdfseparate"]; pdfsep != "" {
+	if *ConfMutool != "" {
+		logger.Info(*ConfMutool, "src", srcfn, "dest", destdir)
+		grp, grpCtx := errgroup.WithContext(ctx)
+		grp.SetLimit(Concurrency)
+		pp := pages
+		if len(pp) == 0 {
+			pp = make([]uint16, 0, pageNum)
+			for i := 0; i < pageNum; i++ {
+				pp = append(pp, uint16(i))
+			}
+		}
+		for _, p := range pp {
+			p := int(p)
+			grp.Go(func() error {
+				if err = callAt(grpCtx, *ConfMutool, filepath.Dir(srcfn), "draw",
+					"-o", filepath.Join(destdir, fmt.Sprintf(prefix+"%03d.pdf", p)),
+					"-L", "-N", "-q", "-F", "pdf",
+					srcfn,
+					strconv.Itoa(p),
+				); err != nil {
+					return fmt.Errorf("executing %q: %w", *ConfMutool, err)
+				}
+				return nil
+			})
+		}
+		if err = grp.Wait(); err != nil {
+			return
+		}
+	} else if pdfsep := popplerOk["pdfseparate"]; pdfsep != "" {
 		logger.Info(pdfsep, "src", srcfn, "dest", destdir)
 		restArgs := []string{srcfn, filepath.Join(destdir, prefix+"%03d.pdf")}
 		if len(pages) != 0 && (len(pages) == 1 || len(pages) <= pageNum/2) {

@@ -13,6 +13,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -262,6 +263,32 @@ func Main() error {
 	}
 	logger = zlog.NewLogger(zl).SLog()
 	converter.SetLogger(logger)
+	ctx, cancel := signal.NotifyContext(
+		zlog.NewSContext(context.Background(), logger),
+		os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	if *converter.ConfMutool == "" {
+		ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+		defer cancel()
+		env := append(os.Environ(), "DEBIAN_FRONTEND=noninteractive")
+		for _, todo := range [][]string{
+			{"apt-get", "-y", "update"},
+			{"apt-get", "-y", "install", "mupdf-tools"},
+		} {
+			cmd := exec.CommandContext(ctx, todo[0], todo[1:]...)
+			cmd.Env = env
+			cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+			logger.Info("try", "command", cmd.Args)
+			if err := cmd.Run(); err != nil {
+				logger.Warn("try", "command", cmd.Args, "error", err)
+			}
+		}
+		cancel()
+		if s, _ := exec.LookPath("mutool"); s != "" {
+			*converter.ConfMutool = s
+		}
+	}
 
 	var closeLogfile func() error
 
@@ -287,10 +314,6 @@ func Main() error {
 			}
 		}
 	}
-	ctx, cancel := signal.NotifyContext(
-		zlog.NewSContext(context.Background(), logger),
-		os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
 	go func() { <-ctx.Done(); logger.Error("DONE"); time.Sleep(time.Second); logger.Error("EXIT"); os.Exit(3) }()
 	logger.Info("Loading config", "file", configFile)
 	if err = converter.LoadConfig(ctx, configFile); err != nil {

@@ -41,6 +41,9 @@ var (
 	// ConfPdfseparate is the path for pdfseparate (member of poppler-utils
 	ConfPdfseparate = config.String("pdfseparate", "pdfseparate")
 
+	// ConvMutool is the path for mutool
+	ConfMutool = config.String("mutool", lookPath("mutool"))
+
 	// ConfLoffice is the path for LibreOffice
 	ConfLoffice = config.String("loffice", lookPath("loffice"))
 
@@ -52,9 +55,6 @@ var (
 
 	// ConfPdfClean is the path for pdfclean
 	ConfPdfClean = config.String("pdfclean", lookPath("pdfclean"))
-
-	// ConfMutool is the path for mutool
-	ConfMutool = config.String("mutool", lookPath("mutool"))
 
 	// ConvWkhtmltopdf is the parth for wkhtmltopdf
 	ConfWkhtmltopdf = config.String("wkhtmltopdf", lookPath("wkhtmltopdf"))
