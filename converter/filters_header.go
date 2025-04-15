@@ -140,7 +140,7 @@ func PrependHeaderFilter(ctx context.Context,
 				), bodyThreshold)
 			}
 		} else {
-			b := make([]byte, 1<<20)
+			b := make([]byte, InMemorySize)
 			n, _ := io.ReadAtLeast(part.Body, b, len(b)/2)
 			b = b[:n]
 			if _, j := tagIndex(b, "body"); j >= 0 {

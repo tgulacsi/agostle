@@ -231,7 +231,9 @@ func emailConvertEP(ctx context.Context, request interface{}) (response interfac
 	}
 
 	h := filecache.NewHash()
-	sr, err := iohlp.MakeSectionReader(io.TeeReader(req.Input, h), 1<<20)
+	sr, err := iohlp.MakeSectionReader(io.TeeReader(
+		io.LimitReader(req.Input, converter.MaxSize), h,
+	), converter.InMemorySize)
 	logger.Info("readerToFile", "error", err)
 	if err != nil {
 		return resp, fmt.Errorf("cannot read input file: %w", err)
@@ -350,7 +352,9 @@ func (resp *emailConvertResponse) mergeIfRequested(ctx context.Context, params c
 			return err
 		}
 		defer rc.Close()
-		sr, err := iohlp.MakeSectionReader(rc, 1<<20)
+		sr, err := iohlp.MakeSectionReader(
+			io.LimitReader(rc, converter.MaxSize),
+			converter.InMemorySize)
 		if err != nil {
 			return err
 		}

@@ -29,6 +29,13 @@ import (
 	"golang.org/x/net/html"
 )
 
+const (
+	// MaxSize is the maximum read message/part size
+	MaxSize = 1 << 30 // 1GiB
+	// InMemorySize is the buffer size that is kept in memory
+	InMemorySize = 1 << 20
+)
+
 var ErrSkip = errors.New("skip this part")
 
 // Converter converts to Pdf (destination filename, source reader and source content-type)

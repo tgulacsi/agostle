@@ -456,7 +456,9 @@ const maxErrLen = 1 << 20
 func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files []ArchFileItem, err error) {
 	logger := getLogger(ctx)
 	hsh := sha256.New()
-	sr, e := iohlp.MakeSectionReader(io.TeeReader(r, hsh), 1<<20)
+	sr, e := iohlp.MakeSectionReader(io.TeeReader(
+		io.LimitReader(r, MaxSize), hsh,
+	), InMemorySize)
 	logger.Info("MailToPdfFiles", "input", sr.Size(), "error", e)
 	if e != nil {
 		err = fmt.Errorf("MailToPdfFiles: %w", e)
@@ -773,7 +775,9 @@ func ExtractingFilter(ctx context.Context,
 		default:
 			goto Skip
 		}
-		if rsc, err = iohlp.MakeSectionReader(body, 1<<20); err != nil {
+		if rsc, err = iohlp.MakeSectionReader(
+			io.LimitReader(body, MaxSize), InMemorySize,
+		); err != nil {
 			goto Error
 		}
 		if err = format.Extract(ctx, rsc, func(ctx context.Context, f archives.FileInfo) error {
