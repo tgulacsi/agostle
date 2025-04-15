@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unicode/utf16"
 
 	"github.com/google/renameio/v2"
@@ -112,6 +113,8 @@ var ErrBadPDF = errors.New("bad pdf")
 
 // PdfSplit splits pdf to pages, returns those filenames
 func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []string, cleanup func() error, err error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
 	cleanup = func() error { return nil }
 	if err = ctx.Err(); err != nil {
 		return
