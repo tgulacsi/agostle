@@ -41,7 +41,7 @@ const defaultUpdateURL = "https://www.unosoft.hu/tuf"
 
 var (
 	verbose = zlog.VerboseVar(1)
-	zl      = zlog.NewMultiHandler(zlog.MaybeConsoleHandler(&verbose, os.Stderr))
+	zl      = zlog.NewMultiHandler(zlog.MaybeConsoleHandler(&verbose, zlog.NewSyncWriter(os.Stderr)))
 	logger  = zlog.NewLogger(zl).SLog()
 )
 

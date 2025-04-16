@@ -1,4 +1,4 @@
-// Copyright 2017, 2023 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2025 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -166,17 +166,16 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		if len(pp) == 0 {
 			pp = make([]uint16, 0, pageNum)
 			for i := 0; i < pageNum; i++ {
-				pp = append(pp, uint16(i))
+				pp = append(pp, uint16(i+1))
 			}
 		}
 		for _, p := range pp {
 			p := int(p)
 			grp.Go(func() error {
 				logger.Info("execute "+*ConfMutool, "p", p)
-				if err = callAt(grpCtx, *ConfMutool, filepath.Dir(srcfn), "draw",
-					"-L", "-N", "-q", "-F", "pdf",
-					"-o", filepath.Join(destdir, fmt.Sprintf(prefix+"%05d.pdf", p)),
-					srcfn,
+				if err := callAt(grpCtx, *ConfMutool, filepath.Dir(srcfn), "clean",
+					"-g", "-s",
+					srcfn, filepath.Join(destdir, fmt.Sprintf(prefix+"%05d.pdf", p)),
 					strconv.Itoa(p),
 				); err != nil {
 					return fmt.Errorf("executing %q: %w", *ConfMutool, err)
