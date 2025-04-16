@@ -172,9 +172,10 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		for _, p := range pp {
 			p := int(p)
 			grp.Go(func() error {
+				logger.Info("execute "+*ConfMutool, "p", p)
 				if err = callAt(grpCtx, *ConfMutool, filepath.Dir(srcfn), "draw",
-					"-o", filepath.Join(destdir, fmt.Sprintf(prefix+"%03d.pdf", p)),
 					"-L", "-N", "-q", "-F", "pdf",
+					"-o", filepath.Join(destdir, fmt.Sprintf(prefix+"%05d.pdf", p)),
 					srcfn,
 					strconv.Itoa(p),
 				); err != nil {
@@ -188,7 +189,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		}
 	} else if pdfsep := popplerOk["pdfseparate"]; pdfsep != "" {
 		logger.Info(pdfsep, "src", srcfn, "dest", destdir)
-		restArgs := []string{srcfn, filepath.Join(destdir, prefix+"%03d.pdf")}
+		restArgs := []string{srcfn, filepath.Join(destdir, prefix+"%05d.pdf")}
 		if len(pages) != 0 && (len(pages) == 1 || len(pages) <= pageNum/2) {
 			args := append(append(make([]string, 0, 4+len(restArgs)),
 				"-f", "", "-l", ""), restArgs...)
@@ -210,7 +211,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		}
 	} else {
 		logger.Info(*ConfPdftk, "src", srcfn, "dest", destdir)
-		if err = callAt(ctx, *ConfPdftk, destdir, srcfn, "burst", "output", prefix+"%03d.pdf"); err != nil {
+		if err = callAt(ctx, *ConfPdftk, destdir, srcfn, "burst", "output", prefix+"%05d.pdf"); err != nil {
 			err = fmt.Errorf("executing %s: %w", *ConfPdftk, err)
 			return
 		}
