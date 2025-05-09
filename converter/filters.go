@@ -1,4 +1,4 @@
-// Copyright 2017, 2023 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2025 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -574,6 +574,9 @@ func convertPart(ctx context.Context, mp i18nmail.MailPart, resultch chan<- Arch
 			return
 		}
 		for _, elt := range plus {
+			if elt.Filename == "" {
+				logger.Warn("MailToPdfFiles plus no filename", "seq", mp.Seq)
+			}
 			resultch <- elt
 		}
 		return nil
@@ -784,6 +787,9 @@ func ExtractingFilter(ctx context.Context,
 			name := f.Name()
 			if name == "__MACOSX" {
 				logger.Info("skip", "item", name)
+				return nil
+			}
+			if f.IsDir() || f.FileInfo.Size() == 0 {
 				return nil
 			}
 			if zfh, ok := f.Header.(zip.FileHeader); ok && strings.HasPrefix(zfh.Name, "__MACOSX/") {
