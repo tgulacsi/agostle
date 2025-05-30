@@ -599,6 +599,10 @@ func fixCT(contentType, fileName string) (ct string) {
 		if ext := filepath.Ext(fileName); len(ext) > 3 && ext == ".es3" {
 			return "text/xades+xml"
 		}
+	case textPlain:
+		if ext := filepath.Ext(fileName); len(ext) > 3 && ext == ".eml" {
+			return messageRFC822
+		}
 	}
 	return contentType
 }
