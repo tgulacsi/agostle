@@ -577,11 +577,11 @@ func xToX(ctx context.Context, destfn, srcfn string, tops bool) (err error) {
 			"-f", srcfn}
 	} else {
 		gsOpts = []string{"-P-", "-dSAFER", "-dNOPAUSE", "-dCompatibilityLevel=1.4",
-			"-dPDFSETTINGS=/printer", "-dUseCIEColor=true",
+			"-dPDFSETTINGS=/printer",
 			"-q", "-dBATCH", "-sDEVICE=pdfwrite", "-sstdout=%stderr",
 			"-sOutputFile=" + destfn,
 			"-P-", "-dSAFER", "-dCompatibilityLevel=1.4",
-			"-c", ".setpdfwrite", "-f", srcfn}
+			"-f", srcfn}
 	}
 
 	if err = call(ctx, *ConfGs, gsOpts...); err != nil {

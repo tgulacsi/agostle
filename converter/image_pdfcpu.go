@@ -5,6 +5,7 @@
 package converter
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/pdfcpu/pdfcpu/pkg/api"
@@ -12,5 +13,5 @@ import (
 
 // ImageToPdfPdfCPU converts image to PDF using pdfcpu
 func ImageToPdfPdfCPU(w io.Writer, r io.Reader) error {
-	return api.ImportImages(nil, w, []io.Reader{r}, nil, nil)
+	return fmt.Errorf("ImportImages: %w", api.ImportImages(nil, w, []io.Reader{r}, nil, nil))
 }
