@@ -208,6 +208,14 @@ func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string,
 		sfiles, _, err = PdfSplit(ctx, fn, pages)
 		if err != nil || len(sfiles) == 0 {
 			logger.Info("Splitting", "file", fn, "error", err)
+			n, encrypted, err := pdfPageNum(ctx, fn)
+			if err != nil {
+				logger.Error("pdfPageNum", "file", fn, "error", err)
+			} else if n == 0 {
+				logger.Warn("pdfPageNum", "file", fn, "n", n, "encrypted", encrypted)
+			} else {
+				logger.Info("pdfPageNum", "file", fn, "n", n, "encrypted", encrypted)
+			}
 			if err = PdfRewrite(ctx, fn, fn); err != nil {
 				logger.Info("Cannot clean", "file", fn, "error", err)
 			} else {
@@ -453,27 +461,26 @@ const maxErrLen = 1 << 20
 
 // MailToPdfFiles converts email to PDF files
 // all mail part goes through all filter in Filters, in reverse order (last first)
-func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files []ArchFileItem, err error) {
+func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) ([]ArchFileItem, error) {
 	logger := getLogger(ctx)
 	hsh := sha256.New()
-	sr, e := iohlp.MakeSectionReader(io.TeeReader(
-		io.LimitReader(r, MaxSize), hsh,
-	), InMemorySize)
-	logger.Info("MailToPdfFiles", "input", sr.Size(), "error", e)
+	sr, e := iohlp.MakeSectionReader(r, InMemorySize)
 	if e != nil {
-		err = fmt.Errorf("MailToPdfFiles: %w", e)
-		return
+		return nil, fmt.Errorf("MailToPdfFiles: %w", e)
 	}
+	if _, err := io.Copy(hsh, io.NewSectionReader(sr, 0, sr.Size())); err != nil {
+		return nil, err
+	}
+	logger.Info("MailToPdfFiles", "input", sr.Size(), "error", e)
 
 	hshS := base64.URLEncoding.EncodeToString(hsh.Sum(nil))
 	ctx, _ = PrepareContext(ctx, hshS)
-	if _, err = sr.Seek(0, 0); err != nil {
+	if _, err := sr.Seek(0, 0); err != nil {
 		return nil, err
 	}
 
-	files = make([]ArchFileItem, 0, 16)
-	errs := make([]string, 0, 16)
-	errLen := 0
+	files := make([]ArchFileItem, 0, 16)
+	errs := make([]error, 0, 16)
 	resultch := make(chan ArchFileItem)
 	rawch := make(chan i18nmail.MailPart)
 	errch := make(chan error)
@@ -486,7 +493,7 @@ func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) (files
 	worker := func() {
 		defer workWg.Done()
 		for mp := range partch {
-			if err = convertPart(ctx, mp, resultch); err != nil {
+			if err := convertPart(ctx, mp, resultch); err != nil {
 				errch <- err
 			}
 		}
@@ -519,38 +526,39 @@ Collect:
 					statter = func() (os.FileInfo, error) { return os.Stat(item.Filename) }
 				}
 				if fi, err := statter(); err != nil {
-					errs = append(errs, fmt.Sprintf("stat %q: %+v", item.Filename, err))
+					errs = append(errs, fmt.Errorf("stat %q: %w", item.Filename, err))
 				} else if fi.Size() == 0 {
-					errs = append(errs, fmt.Sprintf("%q: zero file", item.Filename))
+					errs = append(errs, fmt.Errorf("%q: zero file", item.Filename))
 				} else {
 					files = append(files, item)
 				}
 			}
-		case err = <-errch:
+		case err := <-errch:
 			if err != nil {
-				if errLen < maxErrLen {
-					errs = append(errs, err.Error())
-					errLen += len(errs[len(errs)-1])
-				}
+				errs = append(errs, err)
 			}
 		}
 	}
 
-	if err != nil && !errors.Is(err, io.EOF) {
-		errs = append(errs, "error reading parts: "+err.Error())
-	}
-	if len(errs) > 0 {
-		err = errors.New(strings.Join(errs, "\n"))
-	}
-	return files, err
+	// if err != nil && !errors.Is(err, io.EOF) {
+	// 	errs = append(errs, "error reading parts: "+err.Error())
+	// }
+	return files, errors.Join(errs...)
 }
 
 func savePart(ctx context.Context, mp *i18nmail.MailPart) string {
 	_, wd := PrepareContext(ctx, "")
 	logger.Info("savePart", "wd", wd)
+	// var ext string
+	// if exts, _ := mime.ExtensionsByType(mp.ContentType); len(exts) == 0 {
+	// 	ext = "." + strings.Replace(mp.ContentType, "/", "--", -1)
+	// } else {
+	// 	ext = exts[len(exts)-1]
+	// }
 	return filepath.Join(wd,
+		// fmt.Sprintf("%02d#%03d%s", mp.Level, mp.Seq, ext),
 		fmt.Sprintf("%02d#%03d.%s", mp.Level, mp.Seq,
-			strings.Replace(mp.ContentType, "/", "--", -1)),
+			strings.ReplaceAll(mp.ContentType, "/", "--")),
 	)
 }
 

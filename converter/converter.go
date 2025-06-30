@@ -144,12 +144,12 @@ func ImageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 }
 func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	logger := getLogger(ctx)
-	logger.Info("converting image", "ct", contentType, "dest", destfn)
 	imgtyp := contentType[strings.Index(contentType, "/")+1:]
+	logger.Info("converting image", "ct", contentType, "dest", destfn, "imgtyp", imgtyp)
 	destfn = strings.TrimSuffix(destfn, ".pdf")
 
 	ifh, ok := r.(*os.File)
-	if !ok && fileExists(ifh.Name()) {
+	if ok && fileExists(ifh.Name()) {
 		if _, err := ifh.Seek(0, 0); err != nil {
 			return err
 		}
@@ -192,27 +192,33 @@ func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 	}
 	defer w.Close()
 
-	logger.Info("ImageToPdfPdfCPU")
-	if err = ImageToPdfPdfCPU(w, ifh); err != nil {
-		logger.Info("imageToPdfPdfCPU", "error", err)
-		if _, seekErr := ifh.Seek(0, 0); seekErr != nil {
-			return seekErr
-		}
-		if _, seekErr := w.Seek(0, 0); seekErr != nil {
-			return seekErr
-		}
-		if *ConfGm != "" {
-			return err
-		}
-		logger.Info("ImageToPdfGm")
-		if err = ImageToPdfGm(ctx, w, ifh, contentType); err != nil {
-			logger.Info("ImageToPdfGm", "error", err)
+	if err = ImageToPdfPdfCPU(w, ifh); err == nil {
+		w.Sync()
+		var n int
+		if n, _, err = pdfPageNum(ctx, destfn); err == nil && n != 0 {
+			logger.Info("pagenum", "n", n, "file", destfn)
+			return w.Close()
 		}
 	}
-	if closeErr := w.Close(); closeErr != nil && err == nil {
-		err = closeErr
+
+	logger.Warn("imageToPdfPdfCPU empty", "error", err)
+	if _, seekErr := ifh.Seek(0, 0); seekErr != nil {
+		return seekErr
 	}
-	return err
+	if _, seekErr := w.Seek(0, 0); seekErr != nil {
+		return seekErr
+	}
+	w.Truncate(0)
+	if *ConfGm == "" {
+		logger.Warn("no", "gm", *ConfGm)
+		return err
+	}
+	logger.Info("ImageToPdfGm", "ifh", ifh.Name(), "contentType", contentType)
+	if err = ImageToPdfGm(ctx, w, ifh, contentType); err != nil {
+		logger.Info("ImageToPdfGm", "error", err)
+		return fmt.Errorf("ImageToPdfGm: %w", err)
+	}
+	return w.Close()
 }
 
 // OfficeToPdf converts other to PDF with LibreOffice

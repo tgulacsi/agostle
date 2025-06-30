@@ -297,6 +297,9 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 		} else if unsafeArchFn {
 			zi.Name = unsafeFn(zi.Name, true)
 		}
+		if zi.Mode()&0644 < 440 {
+			zi.SetMode(0644)
+		}
 		if w, err = zfh.CreateHeader(zi); err != nil {
 			if openedHere {
 				_ = item.File.Close()

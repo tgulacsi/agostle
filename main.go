@@ -225,6 +225,7 @@ func Main() error {
 			}()
 
 			grp, grpCtx := errgroup.WithContext(ctx)
+			grp.SetLimit(converter.Concurrency)
 			srvs := make([]*http.Server, 0, len(listeners)+1)
 			if listenAddr != "" {
 				grp.Go(func() error {

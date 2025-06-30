@@ -126,7 +126,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		err = fmt.Errorf("cannot determine page number of %s: %w", srcfn, e)
 		return
 	} else if pageNum == 0 {
-		logger.Info("0 pages", "file", srcfn)
+		logger.Warn("0 pages", "file", srcfn)
 	} else if pageNum == 1 {
 		filenames = append(filenames, srcfn)
 		return
@@ -153,9 +153,9 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 	prefix := strings.TrimSuffix(filepath.Base(srcfn), ".pdf") + "_"
 	prefix = strings.Replace(prefix, "%", "!P!", -1)
 
-	srcFi, err := os.Stat(srcfn)
-	if err != nil {
-		return filenames, cleanup, err
+	srcFi, sErr := os.Stat(srcfn)
+	if sErr != nil {
+		return filenames, cleanup, sErr
 	}
 
 	if *ConfMutool != "" {
@@ -224,6 +224,8 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 	if filenames, err = dh.Readdirnames(-1); err != nil {
 		err = fmt.Errorf("listing %s: %w", dh.Name(), err)
 		return
+	} else if len(filenames) == 0 {
+		logger.Warn("empty", "dir", dh.Name())
 	}
 	logger.Info("ls", "destDir", destdir, "files", filenames)
 	names := make([]string, 0, len(filenames))
