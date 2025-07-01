@@ -107,6 +107,9 @@ Examples:
 					inp = args[0]
 				}
 				pages := parseUint16s(strings.Split(pageS, ","))
+				if outimg != "" && strings.IndexByte(outimg, '/') < 0 {
+					outimg = "image/" + outimg
+				}
 				if err := mailToPdfZip(ctx, out, inp, split, outimg, imgsize, pages); err != nil {
 					return fmt.Errorf("mailToPdfZip out=%s: %w", out, err)
 				}
