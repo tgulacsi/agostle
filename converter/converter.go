@@ -329,11 +329,10 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 				}
 				// delete height, modify width
 				for i := 0; i < len(img.Attr); i++ {
+					var del bool
 					switch strings.ToLower(img.Attr[i].Key) {
 					case "height", "style":
-						img.Attr[i] = img.Attr[0]
-						img.Attr = img.Attr[1:]
-						i--
+						del = true
 					case "width":
 						if len(img.Attr[i].Val) > 3 {
 							img.Attr[i].Val = "100%"
@@ -341,11 +340,14 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 					case "src":
 						if !*ConfKeepRemoteImage {
 							if s := img.Attr[i].Val; strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "http://") {
-								img.Attr[i] = img.Attr[0]
-								img.Attr = img.Attr[1:]
-								i--
+								del = true
 							}
 						}
+					}
+					if del {
+						img.Attr[i] = img.Attr[len(img.Attr)-1]
+						img.Attr = img.Attr[:len(img.Attr)-1]
+						i--
 					}
 				}
 				buf.Reset()
@@ -522,7 +524,7 @@ func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 		if bytes.HasSuffix(buf.Bytes(), []byte("ContentNotFoundError\n")) ||
 			bytes.HasSuffix(buf.Bytes(), []byte("ProtocolUnknownError\n")) ||
 			bytes.HasSuffix(buf.Bytes(), []byte("HostNotFoundError\n")) { // K-MT11422:99503
-			logger.Info(buf.String())
+			logger.Warn(buf.String())
 		} else {
 			return fmt.Errorf("%s: %w", buf.String(), err)
 		}
@@ -531,6 +533,8 @@ func wkhtmltopdf(ctx context.Context, outfn, inpfn string) error {
 		return fmt.Errorf("wkhtmltopdf no output for %s: %w", filepath.Base(inpfn), err)
 	} else if fi.Size() == 0 {
 		return fmt.Errorf("wkhtmltopdf empty output for %s", filepath.Base(inpfn))
+	} else {
+		logger.Info("wkhtml", "outfn", outfn, "size", fi.Size())
 	}
 	return nil
 }

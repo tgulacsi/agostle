@@ -59,13 +59,16 @@ func pdfPageNum(ctx context.Context, srcfn string) (numberofpages int, encrypted
 		return
 	}
 
-	if numberofpages, err = pdf.PageNum(ctx, srcfn); err == nil {
+	if numberofpages, err = pdf.PageNum(ctx, srcfn); err == nil && numberofpages != 0 {
 		return numberofpages, false, nil
 	}
 
 	pdfinfo := false
 	var cmd *cmd
-	if popplerOk["pdfinfo"] != "" {
+	if *ConfMutool != "" {
+		cmd = Exec.CommandContext(ctx, *ConfMutool, "info", "-M", srcfn)
+		pdfinfo = true
+	} else if popplerOk["pdfinfo"] != "" {
 		// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
 		cmd = Exec.CommandContext(ctx, popplerOk["pdfinfo"], srcfn)
 		pdfinfo = true
@@ -126,7 +129,11 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		err = fmt.Errorf("cannot determine page number of %s: %w", srcfn, e)
 		return
 	} else if pageNum == 0 {
-		logger.Warn("0 pages", "file", srcfn)
+		if fi, e := os.Stat(srcfn); e != nil {
+			return nil, nil, fmt.Errorf("stat %s: %w", srcfn, err)
+		} else {
+			logger.Warn("0 pages", "file", srcfn, "size", fi.Size())
+		}
 	} else if pageNum == 1 {
 		filenames = append(filenames, srcfn)
 		return

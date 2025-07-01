@@ -27,11 +27,18 @@ var logger = slog.Default()
 func SetLogger(lgr *slog.Logger) { logger = lgr }
 
 func lookPath(fn string) string {
-	path, err := exec.LookPath(fn)
-	if err != nil {
-		return ""
+	if path, _ := exec.LookPath(fn); path != "" {
+		if a, _ := filepath.Abs(path); a != "" {
+			return a
+		}
+		return path
 	}
-	return path
+	if a, _ := filepath.Abs(fn); a != "" {
+		if _, err := os.Stat(a); err == nil {
+			return a
+		}
+	}
+	return ""
 }
 
 var (
