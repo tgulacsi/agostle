@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/kardianos/osext"
+	"github.com/tgulacsi/go/version"
 )
 
 type statInfo struct {
@@ -120,6 +121,7 @@ func statusPage(w http.ResponseWriter, r *http.Request) {
   <head><title>Agostle</title></head>
   <body>
     <h1>Agostle</h1>
+    <p>%s</p>
     <p>%s compiled with Go version %s</p>
     <p>%d started at %s<br/>
     Allocated: %.03fMb (Sys: %.03fMb)</p>
@@ -128,6 +130,7 @@ func statusPage(w http.ResponseWriter, r *http.Request) {
 
     <h2>Top</h2>
     <pre>    `,
+		version.Main(),
 		self, stats.version,
 		os.Getpid(), stats.startedAt,
 		float64(stats.mem.Alloc)/1024/1024, float64(stats.mem.Sys)/1024/1024)

@@ -32,6 +32,7 @@ import (
 	"github.com/rogpeppe/retry"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/i18nmail"
+	"github.com/tgulacsi/go/version"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -352,6 +353,7 @@ func Main() error {
 		"defaultIsService", *converter.ConfDefaultIsService,
 		"logfile", *converter.ConfLogFile,
 		"gotenbergURL", *converter.ConfGotenbergURL,
+		"version", version.Main(),
 	)
 
 	updateURL = strings.NewReplacer("{{.GOOS}}", runtime.GOOS, "{{.GOARCH}}", runtime.GOARCH).Replace(updateURL)
