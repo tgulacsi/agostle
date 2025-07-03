@@ -144,10 +144,10 @@ func (fl ReadCloserFileLike) Stat() (os.FileInfo, error) {
 
 // ArchFileItem groups an archive item
 type ArchFileItem struct {
-	File     FileLike //opened file handle
-	Error    error    //error
-	Filename string   //name of the file
-	Archive  string   //name in the archive
+	File     FileLike `json:"-"`          //opened file handle
+	Error    error    `json:",omitempty"` //error
+	Filename string   `json:",omitempty"` //name of the file
+	Archive  string   `json:",omitempty"` //name in the archive
 }
 
 // ArchiveName returns the archive name - Archive, Filename if set, otherwise File's name
