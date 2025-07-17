@@ -316,7 +316,7 @@ func Main() error {
 			}
 		}
 	}
-	go func() { <-ctx.Done(); logger.Error("DONE"); time.Sleep(time.Second); logger.Error("EXIT"); os.Exit(3) }()
+	go func() { <-ctx.Done(); logger.Info("DONE"); time.Sleep(time.Second); logger.Info("EXIT"); os.Exit(3) }()
 	logger.Info("Loading config", "file", configFile)
 	if err = converter.LoadConfig(ctx, configFile); err != nil {
 		logger.Info("Parsing config", "file", configFile, "error", err)

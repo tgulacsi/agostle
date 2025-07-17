@@ -180,20 +180,23 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 			p := int(p)
 			grp.Go(func() error {
 				var args []string
+				fn := filepath.Join(destdir, fmt.Sprintf(prefix+"%05d.pdf", p))
 				if false {
 					args = []string{"clean", "-g", "-s",
-						srcfn, filepath.Join(destdir, fmt.Sprintf(prefix+"%05d.pdf", p)),
+						srcfn, fn,
 						strconv.Itoa(p),
 					}
 				} else {
-					args = []string{"draw",
-						"-o", filepath.Join(destdir, fmt.Sprintf(prefix+"%05d.pdf", p)),
-						srcfn,
+					args = []string{"draw", "-o",
+						fn, srcfn,
 						strconv.Itoa(p),
 					}
 				}
 				logger.Info("execute "+*ConfMutool, "p", p, "args", args)
 				if err := callAt(grpCtx, *ConfMutool, filepath.Dir(srcfn), args...); err != nil {
+					if n, _, pnErr := pdfPageNum(ctx, fn); pnErr == nil && n == 1 {
+						return nil
+					}
 					return fmt.Errorf("executing %q: %w", *ConfMutool, err)
 				}
 				return nil
