@@ -48,8 +48,11 @@ var (
 	// ConfPdfseparate is the path for pdfseparate (member of poppler-utils
 	ConfPdfseparate = config.String("pdfseparate", "pdfseparate")
 
-	// ConvMutool is the path for mutool
+	// ConfMutool is the path for mutool
 	ConfMutool = config.String("mutool", lookPath("mutool"))
+
+	// ConfQPDF is the path for qpdf
+	ConfQPDF = config.String("qpdf", lookPath("qpdf"))
 
 	// ConfLoffice is the path for LibreOffice
 	ConfLoffice = config.String("loffice", lookPath("loffice"))
