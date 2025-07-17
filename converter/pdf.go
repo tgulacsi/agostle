@@ -179,19 +179,28 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		p, fn := int(p), filepath.Join(destdir, fmt.Sprintf(pattern, p))
 		logger := logger.With("destfn", fn, "page", p)
 		grp.Go(func() error {
+			pS := strconv.Itoa(p)
 			var err error
+			var args []string
+			// Good but slow for lot of pages
+			if pdfsep := popplerOk["pdfseparate"]; pdfsep != "" {
+				logger.Info(pdfsep, "src", srcfn, "dest", destdir)
+				args = append(args[:0], "-f", pS, "-l", pS, srcfn, fn)
+				logger.Info("pdfsep", "at", destdir, "args", args)
+				if err = callAt(ctx, pdfsep, destdir, args...); err == nil {
+					return nil
+				}
+				logger.Error("pdfseparate", "args", args, "error", err)
+				os.Remove(fn)
+			}
+
+			// Sometimes this borks the page and errors out on FPDF, so this is the second
 			if *ConfMutool != "" {
-				var args []string
+				args = args[:0]
 				if false { // clean only prints the last page !!???
-					args = []string{"clean", "-g", "-s",
-						srcfn, fn,
-						strconv.Itoa(p),
-					}
+					args = append(args[:0], "clean", "-g", "-s", srcfn, fn, pS)
 				} else {
-					args = []string{"draw", "-o",
-						fn, srcfn,
-						strconv.Itoa(p),
-					}
+					args = append(args[:0], "draw", "-o", fn, srcfn, pS)
 				}
 				logger.Info("execute "+*ConfMutool, "args", args)
 				if err = callAt(ctx, *ConfMutool, filepath.Dir(srcfn), args...); err == nil {
@@ -201,18 +210,6 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 				os.Remove(fn)
 			}
 
-			if pdfsep := popplerOk["pdfseparate"]; pdfsep != "" {
-				logger.Info(pdfsep, "src", srcfn, "dest", destdir)
-				restArgs := []string{srcfn, fn}
-				args := append(append(make([]string, 0, 4+len(restArgs)),
-					"-f", strconv.Itoa(p), "-l", strconv.Itoa(p)), restArgs...)
-				logger.Info("pdfsep", "at", destdir, "args", args)
-				if err = callAt(ctx, pdfsep, destdir, args...); err == nil {
-					return nil
-				}
-				logger.Error("pdfseparate", "args", args, "error", err)
-				os.Remove(fn)
-			}
 			return err
 		})
 	}
