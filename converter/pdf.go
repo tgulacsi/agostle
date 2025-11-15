@@ -170,7 +170,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 	pp := pages
 	if len(pp) == 0 {
 		pp = make([]uint16, 0, pageNum)
-		for i := 0; i < pageNum; i++ {
+		for i := range pageNum {
 			pp = append(pp, uint16(i+1))
 		}
 	}

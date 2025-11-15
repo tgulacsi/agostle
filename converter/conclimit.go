@@ -22,7 +22,7 @@ type Token struct{}
 func NewRateLimiter(n int) RateLimiter {
 	rl := &rateLimiter{tokens: make(chan Token, n)}
 	var t Token
-	for i := 0; i < n; i++ {
+	for range n {
 		rl.tokens <- t
 	}
 	return rl

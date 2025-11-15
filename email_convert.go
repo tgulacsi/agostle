@@ -103,7 +103,7 @@ type emailConvertRequest struct {
 	r           *http.Request
 }
 
-func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, error) {
+func emailConvertDecode(ctx context.Context, r *http.Request) (any, error) {
 	if err := r.ParseForm(); err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func emailConvertDecode(ctx context.Context, r *http.Request) (interface{}, erro
 	return req, nil
 }
 
-func emailConvertEP(ctx context.Context, request interface{}) (response interface{}, err error) {
+func emailConvertEP(ctx context.Context, request any) (response any, err error) {
 	logger := getLogger(ctx).With("f", "emailConvertEP")
 	req := request.(emailConvertRequest)
 	defer func() { _ = req.Input.Close() }()
@@ -288,7 +288,7 @@ type emailConvertResponse struct {
 	NotModified bool
 }
 
-func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+func emailConvertEncode(ctx context.Context, w http.ResponseWriter, response any) error {
 	logger := getLogger(ctx)
 	resp, ok := response.(emailConvertResponse)
 	if !ok {

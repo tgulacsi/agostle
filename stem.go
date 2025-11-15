@@ -27,14 +27,14 @@ var _ = stemConvertServer
 
 var errNotImplemented = errors.New("not implemented")
 
-func stemConvertEP(ctx context.Context, request interface{}) (response interface{}, err error) {
+func stemConvertEP(ctx context.Context, request any) (response any, err error) {
 	_ = stem
 	return nil, errNotImplemented
 }
-func stemConvertDecode(ctx context.Context, r *http.Request) (interface{}, error) {
+func stemConvertDecode(ctx context.Context, r *http.Request) (any, error) {
 	return nil, errNotImplemented
 }
-func stemConvertEncode(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+func stemConvertEncode(ctx context.Context, w http.ResponseWriter, response any) error {
 	return errNotImplemented
 }
 

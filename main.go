@@ -237,7 +237,6 @@ func Main() error {
 				})
 			}
 			for _, l := range listeners {
-				l := l
 				grp.Go(func() error {
 					logger.Info("listening", "listener", l)
 					s := newHTTPServer("", savereq)

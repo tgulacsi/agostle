@@ -46,7 +46,7 @@ func TestText(t *testing.T) {
 	in.Write(sep)
 	in.WriteString("UTF-16: ")
 	u := utf16.Encode([]rune(accented))
-	for i := 0; i < len(u); i++ {
+	for i := range u {
 		in.Write([]byte{byte(u[i] >> 8), byte(u[i] & 0xff)})
 	}
 

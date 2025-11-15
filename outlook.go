@@ -26,17 +26,17 @@ var outlookToEmailServer = kithttp.NewServer(
 	kithttp.ServerAfter(kithttp.SetContentType("mail/rfc822")),
 )
 
-func outlookToEmailDecode(ctx context.Context, r *http.Request) (interface{}, error) {
+func outlookToEmailDecode(ctx context.Context, r *http.Request) (any, error) {
 	return getOneRequestFile(ctx, r)
 }
 
-func outlookToEmailEP(ctx context.Context, request interface{}) (response interface{}, err error) {
+func outlookToEmailEP(ctx context.Context, request any) (response any, err error) {
 	f := request.(reqFile)
 	defer func() { _ = f.Close() }()
 	return converter.NewOLEStorageReader(ctx, f)
 }
 
-func outlookToEmailEncode(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+func outlookToEmailEncode(ctx context.Context, w http.ResponseWriter, response any) error {
 	res := response.(io.ReadCloser)
 	defer func() { _ = res.Close() }()
 	_, err := io.Copy(w, res)

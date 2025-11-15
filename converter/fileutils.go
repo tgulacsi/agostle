@@ -420,4 +420,4 @@ func (fi dummyFileInfo) Size() int64        { return fi.size }
 func (fi dummyFileInfo) Mode() os.FileMode  { return fi.mode }
 func (fi dummyFileInfo) ModTime() time.Time { return fi.time }
 func (fi dummyFileInfo) IsDir() bool        { return false }
-func (fi dummyFileInfo) Sys() interface{}   { return nil }
+func (fi dummyFileInfo) Sys() any           { return nil }

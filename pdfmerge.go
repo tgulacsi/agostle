@@ -26,7 +26,7 @@ var pdfMergeServer = kithttp.NewServer(
 	kithttp.ServerAfter(kithttp.SetContentType("application/pdf")),
 )
 
-func pdfMergeDecode(ctx context.Context, r *http.Request) (interface{}, error) {
+func pdfMergeDecode(ctx context.Context, r *http.Request) (any, error) {
 	logger := logger.With(slog.String("fn", "pdfMergeDecode"))
 	inputs, err := getRequestFiles(r)
 	if err != nil {
@@ -45,7 +45,7 @@ func pdfMergeDecode(ctx context.Context, r *http.Request) (interface{}, error) {
 	return req, nil
 }
 
-func pdfMergeEP(ctx context.Context, request interface{}) (response interface{}, err error) {
+func pdfMergeEP(ctx context.Context, request any) (response any, err error) {
 	req, ok := request.(pdfMergeRequest)
 	if !ok {
 		return nil, fmt.Errorf("awaited pdfMergeRequest, got %T", request)
@@ -112,7 +112,7 @@ func pdfMergeEP(ctx context.Context, request interface{}) (response interface{},
 	return f, nil
 }
 
-func pdfMergeEncode(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+func pdfMergeEncode(ctx context.Context, w http.ResponseWriter, response any) error {
 	logger := logger.With("fn", "pdfMergeEncode")
 	if f, ok := response.(interface {
 		Stat() (os.FileInfo, error)
