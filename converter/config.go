@@ -26,16 +26,18 @@ var logger = slog.Default()
 
 func SetLogger(lgr *slog.Logger) { logger = lgr }
 
-func lookPath(fn string) string {
-	if path, _ := exec.LookPath(fn); path != "" {
-		if a, _ := filepath.Abs(path); a != "" {
-			return a
+func lookPath(fns ...string) string {
+	for _, fn := range fns {
+		if path, _ := exec.LookPath(fn); path != "" {
+			if a, _ := filepath.Abs(path); a != "" {
+				return a
+			}
+			return path
 		}
-		return path
-	}
-	if a, _ := filepath.Abs(fn); a != "" {
-		if _, err := os.Stat(a); err == nil {
-			return a
+		if a, _ := filepath.Abs(fn); a != "" {
+			if _, err := os.Stat(a); err == nil {
+				return a
+			}
 		}
 	}
 	return ""
@@ -55,7 +57,7 @@ var (
 	ConfQPDF = config.String("qpdf", lookPath("qpdf"))
 
 	// ConfLoffice is the path for LibreOffice
-	ConfLoffice = config.String("loffice", lookPath("loffice"))
+	ConfLoffice = config.String("loffice", lookPath("loffice", "libreoffice"))
 
 	// ConfGm is the path for GraphicsMagick
 	ConfGm = config.String("gm", lookPath("gm"))
@@ -66,8 +68,11 @@ var (
 	// ConfPdfClean is the path for pdfclean
 	ConfPdfClean = config.String("pdfclean", lookPath("pdfclean"))
 
-	// ConvWkhtmltopdf is the parth for wkhtmltopdf
+	// ConfWkhtmltopdf is the parth for wkhtmltopdf
 	ConfWkhtmltopdf = config.String("wkhtmltopdf", lookPath("wkhtmltopdf"))
+	//
+	// ConfUnrtf is the parth for unrtf
+	ConfUnrtf = config.String("unrtf", lookPath("unrtf"))
 
 	// ConfSortBeforeMerge should be true if generally we should sort files by filename before merge
 	ConfSortBeforeMerge = config.Bool("sortBeforeMerge", false)

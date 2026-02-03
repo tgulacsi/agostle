@@ -457,8 +457,6 @@ func SetupFilters(
 	return out
 }
 
-const maxErrLen = 1 << 20
-
 // MailToPdfFiles converts email to PDF files
 // all mail part goes through all filter in Filters, in reverse order (last first)
 func MailToPdfFiles(ctx context.Context, r io.Reader, contentType string) ([]ArchFileItem, error) {

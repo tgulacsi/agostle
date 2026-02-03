@@ -1,4 +1,4 @@
-// Copyright 2019, 2023 The Agostle Authors. All rights reserved.
+// Copyright 2019, 2026 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -15,6 +15,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -278,6 +279,38 @@ func MPRelatedToPdf(ctx context.Context, destfn string, r io.Reader, contentType
 	}
 	if e != nil && !errors.Is(e, io.EOF) {
 		return e
+	}
+	return nil
+}
+
+func RtfToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	htmlFn := destfn + ".html"
+	defer os.Remove(htmlFn)
+	if err := Converter(rtfToHTML).WithCache(ctx, htmlFn, r, contentType, "text/html"); err != nil {
+		return err
+	}
+	fh, err := os.Open(htmlFn)
+	if err != nil {
+		return fmt.Errorf("open: %w", err)
+	}
+	defer fh.Close()
+	return HTMLToPdf(ctx, destfn, fh, "text/html")
+}
+
+func rtfToHTML(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	fh, err := os.OpenFile(destfn, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0640)
+	if err != nil {
+		return fmt.Errorf("create: %w", err)
+	}
+	var buf strings.Builder
+	cmd := exec.CommandContext(ctx, "unrtf", "--html")
+	cmd.Stdin = r
+	cmd.Stdout = fh
+	cmd.Stderr = &buf
+	logger.Info("start", "cmd", cmd.Args)
+	if err := cmd.Run(); err != nil {
+		logger.Error("unrtf", "cmd", cmd.Args, "error", err)
+		return fmt.Errorf("%q: %s: %w", cmd.Args, buf.String(), err)
 	}
 	return nil
 }
@@ -686,7 +719,7 @@ func GetConverter(contentType string, mediaType map[string]string) (converter Co
 	case applicationPDF:
 		converter = PdfToPdf
 	case "application/rtf":
-		converter = OfficeToPdf
+		converter = RtfToPdf
 	case textPlain:
 		if mediaType != nil {
 			if cs, ok := mediaType["charset"]; ok && cs != "" {
@@ -775,7 +808,8 @@ func Decompress(ctx context.Context, destfn string, r io.Reader, contentType str
 			os.Remove(fn)
 		}
 	}()
-	if contentType == applicationZIP {
+	switch contentType {
+	case applicationZIP:
 		archives.Zip{}.Extract(ctx, r, func(ctx context.Context, f archives.FileInfo) error {
 			rc, err := f.Open()
 			if err != nil {
@@ -790,7 +824,7 @@ func Decompress(ctx context.Context, destfn string, r io.Reader, contentType str
 			return err
 
 		})
-	} else if contentType == "text/es3+xml" {
+	case "text/es3+xml":
 		dec := xml.NewDecoder(r)
 		var x es3Dossier
 		if err := dec.Decode(&x); err != nil {
@@ -808,7 +842,7 @@ func Decompress(ctx context.Context, destfn string, r io.Reader, contentType str
 				return fmt.Errorf("sub object %+v: %w", d.DocumentProfile, err)
 			}
 		}
-	} else {
+	default:
 		next := GetConverter(contentType, nil)
 		if next != nil {
 			return next(ctx, destfn, r, contentType)
