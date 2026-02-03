@@ -284,6 +284,9 @@ func MPRelatedToPdf(ctx context.Context, destfn string, r io.Reader, contentType
 }
 
 func RtfToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
+	if *ConfUnrtf == "" {
+		return OfficeToPdf(ctx, destfn, r, contentType)
+	}
 	htmlFn := destfn + ".html"
 	defer os.Remove(htmlFn)
 	if err := Converter(rtfToHTML).WithCache(ctx, htmlFn, r, contentType, "text/html"); err != nil {
