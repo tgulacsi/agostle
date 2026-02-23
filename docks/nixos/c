@@ -1,0 +1,7 @@
+#!/bin/bash
+set -euo pipefail
+env CGO_ENABLED=0 go install ../../
+result=$(nix-build agostle.nix) # streamLayeredImage
+"$result" | podman load
+# podman load -i $(nix-build agostle.nix)
+echo "# podman run --rm --name agostle --replace -ti -p 9500:9500 -v "$(dirname "$(command -v agostle)")":/app/bin:ro agostle"

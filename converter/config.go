@@ -68,6 +68,9 @@ var (
 	// ConfPdfClean is the path for pdfclean
 	ConfPdfClean = config.String("pdfclean", lookPath("pdfclean"))
 
+	// ConfWkhtmltopdf is the parth for weasyprint
+	ConfWeasyPrint = config.String("weasyprint", lookPath("weasyprint"))
+
 	// ConfWkhtmltopdf is the parth for wkhtmltopdf
 	ConfWkhtmltopdf = config.String("wkhtmltopdf", lookPath("wkhtmltopdf"))
 	//

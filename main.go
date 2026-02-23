@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"math/rand"
 	"net/http"
@@ -90,28 +91,29 @@ func Main() error {
 		logFile, gotenbergURL string
 	)
 
-	fs := newFlagSet("agostle")
-	fs.StringVar(&updateURL, "update-url", updateURL, "URL to download updates from (with GOOS and GOARCH template vars)")
-	fs.BoolVar(&leaveTempFiles, "x", false, "leave tempfiles?")
-	fs.Var(&verbose, "v", "verbose logging")
-	fs.IntVar(&concurrency, "concurrency", converter.Concurrency, "number of childs start in parallel")
-	fs.DurationVar(&timeout, "timeout", 10*time.Minute, "timeout for external programs")
-	fs.StringVar(&configFile, "config", "", "config file (TOML)")
-	fs.StringVar(&logFile, "logfile", "", "logfile")
-	fs.StringVar(converter.ConfGotenbergURL, "gotenberg", "", "gotenberg service URL")
-	fs.Uint64Var(converter.ConfMaxSubprocMemoryBytes, "max-subproc-mem-bytes", converter.DefaultMaxSubprocMemoryBytes, "maximum subprocess memory limit")
+	FS := newFlagSet("agostle")
+	FS.StringVar(&updateURL, "update-url", updateURL, "URL to download updates from (with GOOS and GOARCH template vars)")
+	FS.BoolVar(&leaveTempFiles, "x", false, "leave tempfiles?")
+	FS.Var(&verbose, "v", "verbose logging")
+	FS.IntVar(&concurrency, "concurrency", converter.Concurrency, "number of childs start in parallel")
+	FS.DurationVar(&timeout, "timeout", 10*time.Minute, "timeout for external programs")
+	FS.StringVar(&configFile, "config", "", "config file (TOML)")
+	FS.StringVar(&logFile, "logfile", "", "logfile")
+	FS.StringVar(converter.ConfGotenbergURL, "gotenberg", "", "gotenberg service URL")
+	FS.Uint64Var(converter.ConfMaxSubprocMemoryBytes, "max-subproc-mem-bytes", converter.DefaultMaxSubprocMemoryBytes, "maximum subprocess memory limit")
+	flagPrintFS := FS.Bool("print-fs", false, "print file system")
 	appCmd := &ffcli.Command{
 		Name:        "agostle",
 		ShortHelp:   "agostle is an \"apostle\" which turns everything to PDF",
-		FlagSet:     fs,
+		FlagSet:     FS,
 		Subcommands: subcommands,
 	}
 
 	var updateRootJSON, updateRootKeys string
-	fs = newFlagSet("update")
-	fs.StringVar(&updateRootKeys, "root-keys-string", defaultRootKeys, "CONTENTS of root.json for TUF update")
-	fs.StringVar(&updateRootJSON, "root-keys-file", updateRootJSON, "PATH of root.json for TUF update")
-	updateCmd := ffcli.Command{Name: "update", ShortHelp: "update binary to the latest release", FlagSet: fs,
+	FS = newFlagSet("update")
+	FS.StringVar(&updateRootKeys, "root-keys-string", defaultRootKeys, "CONTENTS of root.json for TUF update")
+	FS.StringVar(&updateRootJSON, "root-keys-file", updateRootJSON, "PATH of root.json for TUF update")
+	updateCmd := ffcli.Command{Name: "update", ShortHelp: "update binary to the latest release", FlagSet: FS,
 		Exec: func(ctx context.Context, args []string) error {
 			self, err := os.Executable()
 			if err != nil {
@@ -180,11 +182,11 @@ func Main() error {
 
 	var savereq bool
 	var regularUpdates time.Duration
-	fs = newFlagSet("serve")
-	fs.DurationVar(&regularUpdates, "regular-updates", 0, "do regular updates at this interval")
-	fs.BoolVar(&savereq, "savereq", false, "save requests")
+	FS = newFlagSet("serve")
+	FS.DurationVar(&regularUpdates, "regular-updates", 0, "do regular updates at this interval")
+	FS.BoolVar(&savereq, "savereq", false, "save requests")
 	serveCmd := ffcli.Command{Name: "serve", ShortHelp: "serve HTTP",
-		ShortUsage: "agostle serve [flags] [addr.to.listen.on:port]", FlagSet: fs,
+		ShortUsage: "agostle serve [flags] [addr.to.listen.on:port]", FlagSet: FS,
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {
 				listenAddr = args[0]
@@ -334,6 +336,25 @@ func Main() error {
 		}
 	}
 
+	if *flagPrintFS {
+		fs.WalkDir(os.DirFS("/"), ".", func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				logger.Warn("walk", "error", err)
+				return fs.SkipDir
+			}
+			if d.IsDir() {
+				fmt.Println(path + "/")
+			} else {
+				fmt.Println(path)
+			}
+			switch path {
+			case "dev", "home", "nix", "proc", "sys", "tmp":
+				return fs.SkipDir
+			}
+			return nil
+		})
+	}
+
 	sortBeforeMerge = *converter.ConfSortBeforeMerge
 	logger.Info("commands",
 		"gm", *converter.ConfGm,
@@ -342,7 +363,9 @@ func Main() error {
 		"mutool", *converter.ConfMutool,
 		"pdfclean", *converter.ConfPdfClean,
 		"pdftk", *converter.ConfPdftk,
+		"weasyprint", *converter.ConfWeasyPrint,
 		"wkhtmltopdf", *converter.ConfWkhtmltopdf,
+		"PATH", os.Getenv("PATH"),
 	)
 	logger.Info("parameters",
 		"sortBeforeMerge", sortBeforeMerge,

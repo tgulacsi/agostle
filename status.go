@@ -1,4 +1,4 @@
-// Copyright 2017, 2022 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2026 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -55,7 +55,7 @@ func onStart() {
 
 	var uname string
 	if u, e := user.Current(); e != nil {
-		logger.Error("cannot get current user", "error", e)
+		logger.Warn("cannot get current user", "error", e)
 		uname = os.Getenv("USER")
 	} else {
 		uname = u.Username

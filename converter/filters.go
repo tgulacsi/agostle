@@ -553,10 +553,11 @@ func savePart(ctx context.Context, mp *i18nmail.MailPart) string {
 	// } else {
 	// 	ext = exts[len(exts)-1]
 	// }
+	ct, _, _ := strings.Cut(mp.ContentType, ";")
 	return filepath.Join(wd,
 		// fmt.Sprintf("%02d#%03d%s", mp.Level, mp.Seq, ext),
 		fmt.Sprintf("%02d#%03d.%s", mp.Level, mp.Seq,
-			strings.ReplaceAll(mp.ContentType, "/", "--")),
+			strings.ReplaceAll(ct, "/", "--")),
 	)
 }
 
@@ -629,8 +630,9 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 		if xfn == "" {
 			xfn = "eml"
 		}
+		ct, _, _ := strings.Cut(mp.ContentType, ";")
 		return fmt.Sprintf("%03d.%s.%s", mp.Seq,
-			strings.Replace(mp.ContentType, "/", "--", -1), xfn)
+			strings.Replace(ct, "/", "--", -1), xfn)
 	}
 
 	// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission

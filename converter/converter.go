@@ -413,6 +413,14 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 		logger.Debug("gotenberg chromium", "error", err)
 	}
 
+	if *ConfWeasyPrint != "" {
+		err := weasyprint(ctx, destfn, inpfn)
+		if err == nil {
+			return nil
+		}
+		logger.Info("weasyprint", "error", err)
+	}
+
 	if *ConfWkhtmltopdf != "" {
 		err := wkhtmltopdf(ctx, destfn, inpfn)
 		if err == nil {
@@ -513,6 +521,59 @@ func lofficeConvert(ctx context.Context, outDir, inpfn, contentType string) erro
 	outfn := filepath.Join(outDir, filepath.Base(nakeFilename(inpfn))+".pdf")
 	if _, err := os.Stat(outfn); err != nil {
 		return fmt.Errorf("%v no output for %s: %w", cmd.Args, filepath.Base(inpfn), err)
+	}
+	return nil
+}
+
+// calls weasyprint
+func weasyprint(ctx context.Context, outfn, inpfn string) error {
+	logger := getLogger(ctx)
+	ussFh, err := os.CreateTemp("", "uss-*.css")
+	if err != nil {
+		return err
+	}
+	defer ussFh.Close()
+	ussFn := ussFh.Name()
+	defer func() { _ = os.Remove(ussFn) }()
+	if _, err = ussFh.Write([]byte(`pre {
+	white-space: pre-line;
+}`)); err != nil {
+		return err
+	}
+	if err = ussFh.Close(); err != nil {
+		return err
+	}
+
+	args := []string{
+		"-s", ussFn,
+		"--optimize-images",
+		"--dpi", "96",
+		"--timeout", "30",
+		inpfn, outfn,
+	}
+	var buf bytes.Buffer
+	// nosemgrep: go.lang.security.audit.dangerous-exec-command.dangerous-exec-command
+	cmd := Exec.CommandContext(ctx, *ConfWeasyPrint, args...)
+	cmd.Dir = filepath.Dir(inpfn)
+	cmd.Stderr = &buf
+	cmd.Stdout = os.Stdout
+	logger.Info("start weasyprint", "args", cmd.Args)
+	if err := cmd.Run(); err != nil {
+		err = fmt.Errorf("%q: %w", cmd.Args, err)
+		if bytes.HasSuffix(buf.Bytes(), []byte("ContentNotFoundError\n")) ||
+			bytes.HasSuffix(buf.Bytes(), []byte("ProtocolUnknownError\n")) ||
+			bytes.HasSuffix(buf.Bytes(), []byte("HostNotFoundError\n")) { // K-MT11422:99503
+			logger.Warn(buf.String())
+		} else {
+			return fmt.Errorf("%s: %w", buf.String(), err)
+		}
+	}
+	if fi, err := os.Stat(outfn); err != nil {
+		return fmt.Errorf("weasyprint no output for %s: %w", filepath.Base(inpfn), err)
+	} else if fi.Size() < 512 {
+		return fmt.Errorf("weasyprint empty output for %s", filepath.Base(inpfn))
+	} else {
+		logger.Info("weasyprint", "outfn", outfn, "size", fi.Size())
 	}
 	return nil
 }
