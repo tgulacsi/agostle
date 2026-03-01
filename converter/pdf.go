@@ -226,7 +226,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		ok = err == nil
 	}
 	if !ok { // errored or all pages
-		if len(pp) != 0 {
+		if len(pages) != 0 {
 			wanted = make(map[string]struct{}, len(pp))
 			for _, p := range pp {
 				wanted[fmt.Sprintf(pattern, p)] = struct{}{}
