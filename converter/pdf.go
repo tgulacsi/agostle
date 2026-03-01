@@ -1,4 +1,4 @@
-// Copyright 2017, 2025 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2026 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -158,15 +158,13 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 	}()
 
 	prefix := strings.TrimSuffix(filepath.Base(srcfn), ".pdf") + "_"
-	prefix = strings.Replace(prefix, "%", "!P!", -1)
+	prefix = strings.ReplaceAll(prefix, "%", "!P!")
 
 	srcFi, sErr := os.Stat(srcfn)
 	if sErr != nil {
 		return filenames, cleanup, sErr
 	}
 
-	var grp errgroup.Group
-	grp.SetLimit(Concurrency)
 	pp := pages
 	if len(pp) == 0 {
 		pp = make([]uint16, 0, pageNum)
@@ -175,68 +173,95 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		}
 	}
 	pattern := prefix + "%05d.pdf"
-	for _, p := range pp {
-		p, fn := int(p), filepath.Join(destdir, fmt.Sprintf(pattern, p))
-		logger := logger.With("destfn", fn, "page", p)
-		grp.Go(func() error {
-			pS := strconv.Itoa(p)
-			var err error
-			var args []string
-			// Good but slow for lot of pages
-			if pdfsep := popplerOk["pdfseparate"]; pdfsep != "" {
-				logger.Info(pdfsep, "src", srcfn, "dest", destdir)
-				args = append(args[:0], "-f", pS, "-l", pS, srcfn, fn)
-				logger.Info("pdfsep", "at", destdir, "args", args)
-				if err = callAt(ctx, pdfsep, destdir, args...); err == nil {
-					return nil
+	var grp *errgroup.Group
+	if *ConfQPDF == "" || len(pages) != 0 {
+		grp = new(errgroup.Group)
+		grp.SetLimit(Concurrency)
+		for _, p := range pp {
+			p, fn := int(p), filepath.Join(destdir, fmt.Sprintf(pattern, p))
+			logger := logger.With("destfn", fn, "page", p)
+			grp.Go(func() error {
+				pS := strconv.Itoa(p)
+				var err error
+				for _, c := range []struct {
+					Prog string
+					Args []string
+				}{
+					{*ConfQPDF, []string{
+						srcfn,
+						"--decrypt", "--remove-restrictions",
+						"--coalesce-contents", "--remove-unreferenced-resources=yes",
+						"--pages", ".", "--range=" + pS, "--", fn,
+					},
+					},
+					// Good but slow for lot of pages
+					{popplerOk["pdfseparate"], []string{
+						"-f", pS, "-l", pS, srcfn, fn,
+					}},
+					// Sometimes this borks the page and errors out on FPDF
+					{*ConfMutool, []string{
+						"draw", "-o", fn, srcfn, pS,
+					}},
+				} {
+					if c.Prog == "" {
+						continue
+					}
+					logger.Info(c.Prog, "src", srcfn, "at", destdir, "dest", fn)
+					if err = callAt(ctx, c.Prog, destdir, c.Args...); err == nil {
+						return nil
+					}
+					logger.Error(c.Prog, "args", c.Args, "error", err)
+					os.Remove(fn)
 				}
-				logger.Error("pdfseparate", "args", args, "error", err)
-				os.Remove(fn)
-			}
 
-			// Sometimes this borks the page and errors out on FPDF, so this is the second
-			if *ConfMutool != "" {
-				args = args[:0]
-				if false { // clean only prints the last page !!???
-					args = append(args[:0], "clean", "-g", "-s", srcfn, fn, pS)
-				} else {
-					args = append(args[:0], "draw", "-o", fn, srcfn, pS)
-				}
-				logger.Info("execute "+*ConfMutool, "args", args)
-				if err = callAt(ctx, *ConfMutool, filepath.Dir(srcfn), args...); err == nil {
-					return nil
-				}
-				logger.Error("mutool", "args", args, "error", err)
-				os.Remove(fn)
-			}
-
-			return err
-		})
-	}
-	var wanted map[string]struct{}
-	if err = grp.Wait(); err != nil {
-		logger.Info(*ConfPdftk, "src", srcfn, "dest", destdir)
-		if err = callAt(ctx, *ConfPdftk, destdir, srcfn, "burst", "output", pattern); err != nil {
-			logger.Error("pdftk", "burst", pattern, "error", err)
-			if true || *ConfQPDF == "" {
-				err = fmt.Errorf("executing %s: %w", *ConfPdftk, err)
-				return
-			}
-			/* QPDF sem jobb, csak az utolso oldalt adja elo
-			if err = callAt(ctx, *ConfQPDF, destdir,
-				"--split-pages", srcfn,
-				"--decrypt", "--remove-restrictions",
-				strings.TrimSuffix(fn, "%05d.pdf")+"%.pdf",
-			)
-			*/
+				return err
+			})
 		}
+	}
+
+	var wanted map[string]struct{}
+	var ok bool
+	if grp != nil {
+		err = grp.Wait()
+		ok = err == nil
+	}
+	if !ok { // errored or all pages
 		if len(pp) != 0 {
 			wanted = make(map[string]struct{}, len(pp))
 			for _, p := range pp {
 				wanted[fmt.Sprintf(pattern, p)] = struct{}{}
 			}
 		}
+
+		if *ConfQPDF != "" {
+			if err = callAt(ctx,
+				*ConfQPDF, destdir,
+				srcfn, "--split-pages",
+				"--decrypt", "--remove-restrictions",
+				"--coalesce-contents", "--remove-unreferenced-resources=yes",
+				prefix+"%d.pdf",
+			); err == nil {
+				ok = true
+			} else {
+				logger.Error("qpdf split-pages", "error", err)
+			}
+		}
+
+		if !ok {
+			if *ConfPdftk == "" {
+				return
+			}
+			logger.Info(*ConfPdftk, "src", srcfn, "dest", destdir)
+			if err = callAt(ctx,
+				*ConfPdftk, destdir, srcfn, "burst", "output", pattern,
+			); err != nil {
+				logger.Error("pdftk", "burst", pattern, "error", err)
+				err = fmt.Errorf("executing %s: %w", *ConfPdftk, err)
+				return
+			}
+		}
 	}
+
 	dh, e := os.Open(destdir)
 	if e != nil {
 		err = fmt.Errorf("opening destdir %s: %w", destdir, e)
@@ -271,7 +296,7 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		}
 		if wanted != nil {
 			if _, ok := wanted[fn]; !ok {
-				logger.Info("not wanted", fn)
+				logger.Info("not wanted", "file", fn)
 				continue
 			}
 		}
