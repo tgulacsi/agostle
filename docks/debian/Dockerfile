@@ -1,4 +1,4 @@
-FROM debian:testing
+FROM debian:testing-slim
 MAINTAINER Tamás Gulácsi <tgulacsi78@gmail.com>
 
 ENV DEBIAN_FRONTEND=noninteractive

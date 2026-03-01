@@ -363,6 +363,7 @@ func Main() error {
 		"mutool", *converter.ConfMutool,
 		"pdfclean", *converter.ConfPdfClean,
 		"pdftk", *converter.ConfPdftk,
+		"qpdf", *converter.ConfQPDF,
 		"weasyprint", *converter.ConfWeasyPrint,
 		"wkhtmltopdf", *converter.ConfWkhtmltopdf,
 		"PATH", os.Getenv("PATH"),
