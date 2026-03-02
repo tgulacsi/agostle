@@ -1,15 +1,19 @@
-FROM debian:testing-slim
-MAINTAINER Tamás Gulácsi <tgulacsi78@gmail.com>
+FROM debian:bookworm-slim
+# for wkhtmltopdf
+MAINTAINER Tamás Gulácsi <tamas@gulacsi.eu>
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN echo 'deb http://debian-archive.trafficmanager.net/debian testing main contrib non-free' >/etc/apt/sources.list
-RUN apt-get -y update && apt-get -y upgrade
+RUN echo 'deb http://debian-archive.trafficmanager.net/debian bookworm main contrib non-free' >/etc/apt/sources.list && apt-get -y update
+# RUN apt-get -y install libqt5qml5=5.15.8+dfsg-3
+# RUN apt-get -y install qtdeclarative-abi-5-15-8
+# RUN apt-get -y install --allow-downgrades libqt5webkit5
+RUN apt-get -y install --no-install-recommends --no-install-suggests wkhtmltopdf
 # https://stackoverflow.com/questions/25193161/chfn-pam-system-error-intermittently-in-docker-hub-builds
 RUN ln -sf /bin/true /usr/bin/chfn
 
+RUN echo 'deb http://debian-archive.trafficmanager.net/debian testing main contrib non-free' >>/etc/apt/sources.list
+RUN apt-get -y update && apt-get -y upgrade
 RUN apt-get -y --no-install-recommends --no-install-suggests install libreoffice
-RUN echo 'deb http://debian-archive.trafficmanager.net/debian bullseye main contrib non-free' >>/etc/apt/sources.list && apt-get -y update
-RUN apt-get -y install --no-install-recommends --no-install-suggests libqt5svg5 wkhtmltopdf
 RUN apt-get -y install ghostscript graphicsmagick
 RUN apt-get -y install pdftk-java poppler-utils mupdf-tools qpdf
 RUN apt-get -y purge liblog4j1.2-java
