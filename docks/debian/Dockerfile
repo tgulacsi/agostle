@@ -25,6 +25,7 @@ RUN apt-get -y install fonts-sil-gentium fonts-dejavu-extra fonts-liberation fon
 RUN apt-get -y install fonts-crosextra-caladea fonts-crosextra-carlito
 RUN apt-get -y install file
 RUN apt-get -y install unrtf
+RUN apt-get -y install weasyprint
 
 RUN find / -mount -type f -name 'log4j-1*.jar' -print
 #RUN find / -type f -name 'log4j-1*.jar' -delete

@@ -15,7 +15,10 @@ pkgs.dockerTools.streamLayeredImage {
   #   pathsToLink = [ "/bin" ];
   #   paths = with pkgs; [
   contents = with pkgs; [
+    fakeNss
+    dockerTools.binSh
     toybox
+
     cacert
     caladea
     carlito
@@ -36,7 +39,7 @@ pkgs.dockerTools.streamLayeredImage {
     pkgs.perl5Packages.EmailOutlookMessage
     poppler-utils
     procps
-    python313Packages.weasyprint
+    python3Packages.weasyprint
     qpdf
     takao
     unrtf
