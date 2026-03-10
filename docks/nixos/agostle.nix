@@ -4,7 +4,7 @@
 pkgs.dockerTools.streamLayeredImage {
   name = "agostle";
   tag = "latest";
-  maxLayers = 32;
+  maxLayers = 2;
   created = "now";
 
   # compressor = "zstd";

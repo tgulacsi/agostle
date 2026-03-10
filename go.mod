@@ -10,7 +10,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.9
 	github.com/go-kit/kit v0.13.0
 	github.com/google/renameio v1.0.1
-	github.com/google/renameio/v2 v2.0.0
+	github.com/google/renameio/v2 v2.0.2
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/kardianos/service v1.2.2
 	github.com/kylelemons/godebug v1.1.0
@@ -25,9 +25,10 @@ require (
 	github.com/zRedShift/mimemagic v1.2.0
 	golang.org/x/image v0.28.0
 	golang.org/x/net v0.41.0
-	golang.org/x/sync v0.15.0
-	golang.org/x/sys v0.33.0
+	golang.org/x/sync v0.17.0
+	golang.org/x/sys v0.42.0
 	golang.org/x/text v0.26.0
+	mvdan.cc/sh/v3 v3.13.0
 )
 
 require (
@@ -41,14 +42,12 @@ require (
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hhrutter/lzw v1.0.0 // indirect
 	github.com/hhrutter/pkcs7 v0.2.0 // indirect
 	github.com/hhrutter/tiff v1.0.2 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
-	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mikelolasagasti/xz v1.0.1 // indirect
 	github.com/minio/minlz v1.0.1 // indirect
@@ -68,13 +67,11 @@ require (
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/term v0.32.0 // indirect
+	golang.org/x/term v0.40.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-go 1.23.0
-
-toolchain go1.24.1
+go 1.25.0
 
 // replace github.com/UNO-SOFT/filecache => ../../UNO-SOFT/filecache
 

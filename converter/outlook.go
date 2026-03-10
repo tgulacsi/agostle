@@ -11,7 +11,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
+
+	"mvdan.cc/sh/v3/syntax"
 )
 
 // NewOLEStorageReader converts Outlook .msg files to .eml RFC822 email files.
@@ -89,11 +92,29 @@ func newOLEStorageReaderDirect(ctx context.Context, r io.Reader) (io.ReadCloser,
 		  print new Email::Outlook::Message($file, 0)->to_email_mime->as_string;
 		}
 	*/
-	cmd := Exec.CommandContext(ctx, "perl", "-w",
+	args := []string{"perl", "-w",
 		"-e", "use Email::Outlook::Message",
 		"-e", "print (new Email::Outlook::Message($ARGV[0], 1)->to_email_mime->as_string);",
 		"--", in.Name(),
-	)
+	}
+	var cmd *cmd
+	if nixShell, _ := exec.LookPath("nix-shell"); nixShell != "" {
+		var buf strings.Builder
+		for _, a := range args {
+			q, err := syntax.Quote(a, syntax.LangBash)
+			if err != nil {
+				return nil, err
+			}
+			if buf.Len() != 0 {
+				buf.WriteByte(' ')
+			}
+			buf.WriteString(q)
+		}
+		cmd = Exec.CommandContext(ctx, "nix-shell", "-p", "perl", "pkgs.perlPackages.EmailOutlookMessage",
+			"--run", buf.String())
+	} else {
+		cmd = Exec.CommandContext(ctx, args[0], args[1:]...)
+	}
 	pr, pw := io.Pipe()
 	cmd.Stdout = pw
 	cmd.Stderr = &errBuf
