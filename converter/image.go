@@ -1,11 +1,10 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2026 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
 package converter
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"image"
@@ -31,21 +30,41 @@ func command(ctx context.Context, prg string, args ...string) *cmd {
 func ImageToPdfGm(ctx context.Context, w io.Writer, r io.Reader, contentType string) error {
 	//log.Printf("converting image %s to %s", contentType, destfn)
 	imgtyp := ""
-	if false && contentType != "" {
+	if contentType != "" {
 		imgtyp = contentType[strings.Index(contentType, "/")+1:] + ":"
 	}
 
-	cmd := command(ctx, *ConfGm, "convert", imgtyp+"-", "pdf:-")
+	// Convert HEIF to jpeg first
+	if imgtyp == "heif:" {
+		pr, pw := io.Pipe()
+		cmd := command(ctx, *ConfGm, "convert", imgtyp+"-", "jpeg:-")
+		cmd.Stdin = r
+		cmd.Stdout = pw
+		var errout strings.Builder
+		cmd.Stderr = &errout
+		go func() {
+			defer pw.Close()
+			err := cmd.Run()
+			if err != nil {
+				logger.Error("heif to jpeg", "args", cmd.Args, "error", err, "out", errout.String())
+				err = fmt.Errorf("%s: %s: %w", cmd.Args, errout.String(), err)
+			}
+			pw.CloseWithError(err)
+		}()
+		r, imgtyp = pr, "jpeg:"
+	}
+
+	cmd := command(ctx, *ConfGm, "convert", imgtyp+"-", "-density", "300x300", "-type", "optimize", "pdf:-")
 	// cmd.Stdin = io.TeeReader(r, os.Stderr)
 	cmd.Stdin = r
 	cmd.Stdout = w
-	errout := bytes.NewBuffer(nil)
-	cmd.Stderr = errout
+	var errout strings.Builder
+	cmd.Stderr = &errout
 	if err := cmd.Run(); err != nil {
 		err = fmt.Errorf("%q: %w", cmd.Args, err)
-		return fmt.Errorf("gm convert converting %s: %s: %w", r, errout.Bytes(), err)
+		return fmt.Errorf("gm convert converting %s: %s: %w", r, errout.String(), err)
 	}
-	if len(errout.Bytes()) > 0 {
+	if errout.Len() > 0 {
 		logger.Info("WARN gm convert", "r", r, "error", errout.String())
 	}
 	return nil
@@ -162,8 +181,8 @@ func PngToImage(ctx context.Context, w io.Writer, imgtyp string, r io.Reader) er
 func PdfToImageGm(ctx context.Context, w io.Writer, r io.Reader, contentType, size string) error {
 	// gm may pollute its stdout with error & warning messages, so we must use files!
 	var imgtyp = "gif"
-	if contentType != "" && strings.HasPrefix(contentType, "image/") {
-		imgtyp = contentType[6:]
+	if contentType != "" {
+		imgtyp, _ = strings.CutPrefix(contentType, "image/")
 	}
 	args := make([]string, 3, 5)
 	args[0], args[1] = "convert", "pdf:-"
