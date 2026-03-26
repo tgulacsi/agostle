@@ -188,10 +188,10 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 					Args []string
 				}{
 					{*ConfQPDF, []string{
-						srcfn,
 						"--decrypt", "--remove-restrictions",
 						"--coalesce-contents", "--remove-unreferenced-resources=yes",
-						"--pages", ".", "--range=" + pS, "--", fn,
+						"--pages", ".", "--range=" + pS, "--",
+						srcfn, fn,
 					},
 					},
 					// Good but slow for lot of pages
@@ -236,14 +236,15 @@ func PdfSplit(ctx context.Context, srcfn string, pages []uint16) (filenames []st
 		if *ConfQPDF != "" {
 			if err = callAt(ctx,
 				*ConfQPDF, destdir,
-				srcfn, "--split-pages",
+				"--split-pages",
 				"--decrypt", "--remove-restrictions",
 				"--coalesce-contents", "--remove-unreferenced-resources=yes",
-				prefix+"%d.pdf",
+				srcfn, filepath.Join(destdir, prefix+"%d.pdf"),
 			); err == nil {
 				ok = true
 			} else {
 				logger.Error("qpdf split-pages", "error", err)
+				callAt(ctx, *ConfQPDF, destdir, "--version")
 			}
 		}
 
@@ -610,13 +611,14 @@ func callAt(ctx context.Context, what, where string, args ...string) error {
 }
 
 func execute(cmd *cmd) error {
-	errout := bytes.NewBuffer(nil)
-	cmd.Stderr = errout
+	var errout strings.Builder
+	cmd.Stderr = &errout
 	cmd.Stdout = cmd.Stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("%#v while converting %s: %w", cmd, errout.Bytes(), err)
+		logger.Error("execute", "cmd", cmd.Args, "stderr", errout.String())
+		return fmt.Errorf("%q while converting %s: %w", cmd.Args, errout.String(), err)
 	}
-	if len(errout.Bytes()) > 0 {
+	if errout.Len() > 0 {
 		logger.Warn("execute", "cmd", cmd.Args, "stderr", errout.String())
 	}
 	return nil

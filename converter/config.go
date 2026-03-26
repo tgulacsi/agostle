@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 
 	"github.com/UNO-SOFT/filecache"
@@ -124,6 +125,28 @@ var (
 
 func init() {
 	config.StringVar(ConfGotenbergURL, "gotenberg", "")
+	if *ConfQPDF != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		var version string
+		if b, err := exec.CommandContext(ctx, *ConfQPDF, "--version").Output(); err == nil {
+			const verS = "qpdf version "
+			if i := bytes.Index(b, []byte(verS)); i >= 0 {
+				b = b[i+len(verS):]
+				if j := bytes.IndexByte(b, '\n'); j >= 0 {
+					b = b[:j]
+				}
+				version = "v" + string(b)
+			}
+		}
+		const want = "v12.0.0"
+		if semver.Compare(version, want) < 0 {
+			*ConfQPDF = ""
+			logger.Warn("QPDF is old", "have", version, "want", want)
+		} else {
+			logger.Info("QPDF is ok", "have", version, "want", want)
+		}
+	}
 }
 
 var gotenberg Gotenberg
