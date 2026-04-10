@@ -615,8 +615,14 @@ func execute(cmd *cmd) error {
 	cmd.Stderr = &errout
 	cmd.Stdout = cmd.Stderr
 	if err := cmd.Run(); err != nil {
-		logger.Error("execute", "cmd", cmd.Args, "stderr", errout.String())
-		return fmt.Errorf("%q while converting %s: %w", cmd.Args, errout.String(), err)
+		if cmd.Path == *ConfQPDF {
+			var ec interface{ ExitCode() int }
+			if errors.As(err, &ec) && ec.ExitCode() == 3 {
+				logger.Warn("qpdf finished with warnings", "cmd", cmd.String(), "stderr", errout.String())
+				return nil
+			}
+		}
+		return fmt.Errorf("%s while converting %s: %w", ShellQuote(cmd.Args), errout.String(), err)
 	}
 	if errout.Len() > 0 {
 		logger.Warn("execute", "cmd", cmd.Args, "stderr", errout.String())
