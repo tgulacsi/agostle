@@ -1,4 +1,4 @@
-// Copyright 2017, 2023 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2026 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -245,6 +245,8 @@ type cmd struct {
 	*exec.Cmd
 	maxAS, maxDATA uint64
 }
+
+func (c *cmd) String() string { return ShellQuote(c.Args) }
 
 func (c *cmd) Start() error { return c.start() }
 

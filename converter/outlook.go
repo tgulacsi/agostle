@@ -1,4 +1,4 @@
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2026 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -13,8 +13,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-
-	"mvdan.cc/sh/v3/syntax"
 )
 
 // NewOLEStorageReader converts Outlook .msg files to .eml RFC822 email files.
@@ -99,19 +97,8 @@ func newOLEStorageReaderDirect(ctx context.Context, r io.Reader) (io.ReadCloser,
 	}
 	var cmd *cmd
 	if nixShell, _ := exec.LookPath("nix-shell"); nixShell != "" {
-		var buf strings.Builder
-		for _, a := range args {
-			q, err := syntax.Quote(a, syntax.LangBash)
-			if err != nil {
-				return nil, err
-			}
-			if buf.Len() != 0 {
-				buf.WriteByte(' ')
-			}
-			buf.WriteString(q)
-		}
 		cmd = Exec.CommandContext(ctx, "nix-shell", "-p", "perl", "pkgs.perlPackages.EmailOutlookMessage",
-			"--run", buf.String())
+			"--run", ShellQuote(args))
 	} else {
 		cmd = Exec.CommandContext(ctx, args[0], args[1:]...)
 	}

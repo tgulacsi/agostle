@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime"
 	"mime/multipart"
 	"os"
@@ -28,6 +29,7 @@ import (
 	"github.com/mholt/archives"
 	"github.com/tgulacsi/go/iohlp"
 	"golang.org/x/net/html"
+	"mvdan.cc/sh/v3/syntax"
 )
 
 const (
@@ -1066,3 +1068,18 @@ type (
 		} `xml:"Object"`
 	}
 )
+
+func ShellQuote(args []string) string {
+	var buf strings.Builder
+	for _, a := range args {
+		q, err := syntax.Quote(a, syntax.LangBash)
+		if err != nil {
+			slog.Error("quote", "sting", a, "error", err)
+		}
+		if buf.Len() != 0 {
+			buf.WriteByte(' ')
+		}
+		buf.WriteString(q)
+	}
+	return buf.String()
+}
