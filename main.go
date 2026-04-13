@@ -1,4 +1,4 @@
-// Copyright 2017, 2023 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2026 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -6,7 +6,7 @@ package main
 
 import (
 	"context"
-	"flag"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -26,7 +26,8 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/UNO-SOFT/zlog/v2"
-	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/peterbourgon/ff/v4"
+	"github.com/peterbourgon/ff/v4/ffhelp"
 	tufclient "github.com/theupdateframework/go-tuf/client"
 
 	"github.com/kardianos/osext"
@@ -57,10 +58,8 @@ func main() {
 var (
 	configFile, listenAddr string
 
-	subcommands []*ffcli.Command
+	subcommands []*ff.Command
 )
-
-func newFlagSet(name string) *flag.FlagSet { return flag.NewFlagSet(name, flag.ContinueOnError) }
 
 func Main() error {
 	slog.SetDefault(logger)
@@ -91,29 +90,29 @@ func Main() error {
 		logFile, gotenbergURL string
 	)
 
-	FS := newFlagSet("agostle")
-	FS.StringVar(&updateURL, "update-url", updateURL, "URL to download updates from (with GOOS and GOARCH template vars)")
-	FS.BoolVar(&leaveTempFiles, "x", false, "leave tempfiles?")
-	FS.Var(&verbose, "v", "verbose logging")
-	FS.IntVar(&concurrency, "concurrency", converter.Concurrency, "number of childs start in parallel")
-	FS.DurationVar(&timeout, "timeout", 10*time.Minute, "timeout for external programs")
-	FS.StringVar(&configFile, "config", "", "config file (TOML)")
-	FS.StringVar(&logFile, "logfile", "", "logfile")
-	FS.StringVar(converter.ConfGotenbergURL, "gotenberg", "", "gotenberg service URL")
-	FS.Uint64Var(converter.ConfMaxSubprocMemoryBytes, "max-subproc-mem-bytes", converter.DefaultMaxSubprocMemoryBytes, "maximum subprocess memory limit")
-	flagPrintFS := FS.Bool("print-fs", false, "print file system")
-	appCmd := &ffcli.Command{
-		Name:        "agostle",
+	FS := ff.NewFlagSet("agostle")
+	FS.StringVar(&updateURL, 0, "update-url", updateURL, "URL to download updates from (with GOOS and GOARCH template vars)")
+	FS.BoolVar(&leaveTempFiles, 'x', "leave-tempfiles", "leave tempfiles?")
+	FS.Value('v', "verbose", &verbose, "verbose logging")
+	FS.IntVar(&concurrency, 'C', "concurrency", converter.Concurrency, "number of childs start in parallel")
+	FS.DurationVar(&timeout, 0, "timeout", 10*time.Minute, "timeout for external programs")
+	FS.StringVar(&configFile, 'c', "config", "", "config file (TOML)")
+	FS.StringVar(&logFile, 0, "logfile", "", "logfile")
+	FS.StringVar(converter.ConfGotenbergURL, 0, "gotenberg", "", "gotenberg service URL")
+	FS.Uint64Var(converter.ConfMaxSubprocMemoryBytes, 0, "max-subproc-mem-bytes", converter.DefaultMaxSubprocMemoryBytes, "maximum subprocess memory limit")
+	flagPrintFS := FS.BoolLong("print-fs", "print file system")
+	appCmd := &ff.Command{
+		Name: "agostle", Flags: FS,
 		ShortHelp:   "agostle is an \"apostle\" which turns everything to PDF",
-		FlagSet:     FS,
 		Subcommands: subcommands,
 	}
 
 	var updateRootJSON, updateRootKeys string
-	FS = newFlagSet("update")
-	FS.StringVar(&updateRootKeys, "root-keys-string", defaultRootKeys, "CONTENTS of root.json for TUF update")
-	FS.StringVar(&updateRootJSON, "root-keys-file", updateRootJSON, "PATH of root.json for TUF update")
-	updateCmd := ffcli.Command{Name: "update", ShortHelp: "update binary to the latest release", FlagSet: FS,
+	FS = ff.NewFlagSet("update")
+	FS.StringVar(&updateRootKeys, 0, "root-keys-string", defaultRootKeys, "CONTENTS of root.json for TUF update")
+	FS.StringVar(&updateRootJSON, 0, "root-keys-file", updateRootJSON, "PATH of root.json for TUF update")
+	updateCmd := ff.Command{Name: "update", Flags: FS,
+		ShortHelp: "update binary to the latest release",
 		Exec: func(ctx context.Context, args []string) error {
 			self, err := os.Executable()
 			if err != nil {
@@ -182,11 +181,12 @@ func Main() error {
 
 	var savereq bool
 	var regularUpdates time.Duration
-	FS = newFlagSet("serve")
-	FS.DurationVar(&regularUpdates, "regular-updates", 0, "do regular updates at this interval")
-	FS.BoolVar(&savereq, "savereq", false, "save requests")
-	serveCmd := ffcli.Command{Name: "serve", ShortHelp: "serve HTTP",
-		ShortUsage: "agostle serve [flags] [addr.to.listen.on:port]", FlagSet: FS,
+	FS = ff.NewFlagSet("serve")
+	FS.DurationVar(&regularUpdates, 0, "regular-updates", 0, "do regular updates at this interval")
+	FS.BoolVar(&savereq, 0, "savereq", "save requests")
+	serveCmd := ff.Command{Name: "serve", Flags: FS,
+		ShortHelp: "serve HTTP",
+		Usage:     "agostle serve [flags] [addr.to.listen.on:port]",
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {
 				listenAddr = args[0]
@@ -261,7 +261,22 @@ func Main() error {
 	}
 	appCmd.Subcommands = append(appCmd.Subcommands, &serveCmd)
 
+	if configFile == "" {
+		if self, execErr := osext.Executable(); execErr != nil {
+			logger.Info("Cannot determine executable file name", "error", execErr)
+		} else {
+			ini := filepath.Join(filepath.Dir(self), "agostle.ini")
+			if _, err := os.Stat(ini); err == nil {
+				configFile = ini
+			}
+		}
+	}
+
 	if err := appCmd.Parse(os.Args[1:]); err != nil {
+		if errors.Is(err, ff.ErrHelp) {
+			ffhelp.Command(appCmd).WriteTo(os.Stderr)
+			return nil
+		}
 		return err
 	}
 	logger = zlog.NewLogger(zl).SLog()
@@ -303,20 +318,7 @@ func Main() error {
 	logger.Info("config", "leave_tempfiles?", leaveTempFiles)
 	converter.LeaveTempFiles = leaveTempFiles
 	converter.Concurrency = concurrency
-	if configFile == "" {
-		if self, execErr := osext.Executable(); execErr != nil {
-			logger.Info("Cannot determine executable file name", "error", execErr)
-		} else {
-			ini := filepath.Join(filepath.Dir(self), "agostle.ini")
-			f, iniErr := os.Open(ini)
-			if iniErr != nil {
-				logger.Info("Cannot open config", "file", ini, "error", iniErr)
-			} else {
-				_ = f.Close()
-				configFile = ini
-			}
-		}
-	}
+
 	go func() { <-ctx.Done(); logger.Info("DONE"); time.Sleep(time.Second); logger.Info("EXIT"); os.Exit(3) }()
 	logger.Info("Loading config", "file", configFile)
 	if err = converter.LoadConfig(ctx, configFile); err != nil {

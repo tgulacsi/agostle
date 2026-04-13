@@ -1,18 +1,17 @@
-// Copyright 2017, 2022 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2026 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"strings"
 
 	"context"
 
-	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/peterbourgon/ff/v4"
 	"github.com/tgulacsi/agostle/converter"
 )
 
@@ -72,9 +71,9 @@ func outlookToEmail(ctx context.Context, outfn, inpfn string) error {
 func init() {
 	inp := "-"
 	var out string
-	withOutFlag := func(name string) *flag.FlagSet {
-		fs := newFlagSet(name)
-		fs.StringVar(&out, "o", "", "output file")
+	withOutFlag := func(name string) *ff.FlagSet {
+		fs := ff.NewFlagSet(name)
+		fs.StringVar(&out, 'o', "out", "", "output file")
 		return fs
 	}
 	{
@@ -84,13 +83,14 @@ func init() {
 			imgsize       = "640x640"
 		)
 		fs := withOutFlag("mail")
-		fs.BoolVar(&split, "split", false, "split PDF to pages")
-		fs.BoolVar(&converter.SaveOriginalHTML, "save-original-html", converter.SaveOriginalHTML, "save original html")
-		fs.StringVar(&outimg, "outimg", "", "output image format")
-		fs.StringVar(&imgsize, "imgsize", imgsize, "image size")
-		fs.StringVar(&pageS, "pages", "", "pages (comma separated)")
-		mailToPdfZipCmd := ffcli.Command{Name: "mail", ShortHelp: "convert mail to zip of PDFs",
-			ShortUsage: "mail [-split] [-outimg=image/gif] [-imgsize=640x640] mailfile.eml",
+		fs.BoolVar(&split, 0, "split", "split PDF to pages")
+		fs.BoolVarDefault(&converter.SaveOriginalHTML, 0, "save-original-html", converter.SaveOriginalHTML, "save original html")
+		fs.StringVar(&outimg, 0, "outimg", "", "output image format")
+		fs.StringVar(&imgsize, 0, "imgsize", imgsize, "image size")
+		fs.StringVar(&pageS, 0, "pages", "", "pages (comma separated)")
+		mailToPdfZipCmd := ff.Command{Name: "mail", Flags: fs,
+			ShortHelp: "convert mail to zip of PDFs",
+			Usage:     "mail [-split] [-outimg=image/gif] [-imgsize=640x640] mailfile.eml",
 			LongHelp: `reads a message/rfc822 email, converts all of it to PDF files
 (including attachments), and outputs a zip file containing these pdfs,
 optionally splits the PDFs to separate pages, and converts these pages to images.
@@ -101,7 +101,6 @@ Usage:
 Examples:
 	mail2pdfzip -split --outimg=image/gif --imgsize=800x800 -o=/tmp/email.pdf.zip email.eml
 `,
-			FlagSet: fs,
 			Exec: func(ctx context.Context, args []string) error {
 				if len(args) != 0 {
 					inp = args[0]
@@ -120,8 +119,8 @@ Examples:
 	}
 
 	fs := withOutFlag("mail2tree")
-	mailToTreeCmd := ffcli.Command{Name: "mail2tree", ShortHelp: "extract mail tree to a directory",
-		FlagSet: fs,
+	mailToTreeCmd := ff.Command{Name: "mail2tree", Flags: fs,
+		ShortHelp: "extract mail tree to a directory",
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {
 				inp = args[0]
@@ -135,9 +134,9 @@ Examples:
 	subcommands = append(subcommands, &mailToTreeCmd)
 
 	fs = withOutFlag("outlook2email")
-	outlookToEmailCmd := ffcli.Command{Name: "outlook2email", ShortHelp: "convert outlook .msg to standard .eml",
-		LongHelp: "uses libemail-outlook-message-perl if installed, or docker to install && run that script",
-		FlagSet:  fs,
+	outlookToEmailCmd := ff.Command{Name: "outlook2email", Flags: fs,
+		ShortHelp: "convert outlook .msg to standard .eml",
+		LongHelp:  "uses libemail-outlook-message-perl if installed, or docker to install && run that script",
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) != 0 {
 				inp = args[0]

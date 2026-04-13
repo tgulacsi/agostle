@@ -17,13 +17,14 @@ require (
 	github.com/mholt/archives v0.1.3
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/pdfcpu/pdfcpu v0.11.0
-	github.com/peterbourgon/ff/v3 v3.4.0
+	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/rogpeppe/retry v0.1.0
 	github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c
 	github.com/tgulacsi/go v0.28.5
 	github.com/theupdateframework/go-tuf v0.7.0
 	github.com/zRedShift/mimemagic v1.2.0
 	golang.org/x/image v0.28.0
+	golang.org/x/mod v0.34.0
 	golang.org/x/net v0.41.0
 	golang.org/x/sync v0.17.0
 	golang.org/x/sys v0.42.0
@@ -67,7 +68,6 @@ require (
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/mod v0.34.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
@@ -79,3 +79,5 @@ go 1.25.0
 //replace github.com/tgulacsi/go => ../go
 
 //replace github.com/UNO-SOFT/ulog => ../../UNO-SOFT/ulog
+
+replace github.com/peterbourgon/ff/v4 v4.0.0-beta.1 => github.com/UNO-SOFT/ff/v4 v4.0.0-beta.1.us

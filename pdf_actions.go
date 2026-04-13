@@ -1,4 +1,4 @@
-// Copyright 2017, 2022 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2026 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -6,7 +6,6 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -15,26 +14,26 @@ import (
 
 	"context"
 
-	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/peterbourgon/ff/v4"
 	"github.com/tgulacsi/agostle/converter"
 )
 
 func init() {
-	pdfCmd := &ffcli.Command{Name: "pdf", ShortHelp: "pdf commands"}
+	pdfCmd := &ff.Command{Name: "pdf", ShortHelp: "pdf commands"}
 	subcommands = append(subcommands, pdfCmd)
 
 	var out string
-	withOutFlag := func(name string) *flag.FlagSet {
-		fs := newFlagSet(name)
-		fs.StringVar(&out, "o", "", "output file")
+	withOutFlag := func(name string) *ff.FlagSet {
+		fs := ff.NewFlagSet(name)
+		fs.StringVar(&out, 'o', "out", "", "output file")
 		return fs
 	}
 	{
 		var sort bool
 		fs := withOutFlag("merge")
-		fs.BoolVar(&sort, "sort", false, "shall we sort the files by name before merge?")
-		mergeCmd := ffcli.Command{Name: "merge", ShortHelp: "merges the given PDFs into one",
-			FlagSet: fs,
+		fs.BoolVar(&sort, 0, "sort", "shall we sort the files by name before merge?")
+		mergeCmd := ff.Command{Name: "merge", Flags: fs,
+			ShortHelp: "merges the given PDFs into one",
 			Exec: func(ctx context.Context, args []string) error {
 				for i, s := range args {
 					if s == "" {
@@ -51,9 +50,9 @@ func init() {
 	}
 
 	fs := withOutFlag("split")
-	flagSplitPages := fs.String("pages", "", "pages (comma separated)")
-	splitCmd := ffcli.Command{Name: "split", ShortHelp: "splits the given PDF into one per page",
-		FlagSet: fs,
+	flagSplitPages := fs.StringLong("pages", "", "pages (comma separated)")
+	splitCmd := ff.Command{Name: "split", Flags: fs,
+		ShortHelp: "splits the given PDF into one per page",
 		Exec: func(ctx context.Context, args []string) error {
 			var splitInp string
 			if len(args) != 0 {
@@ -70,7 +69,8 @@ func init() {
 	}
 	pdfCmd.Subcommands = append(pdfCmd.Subcommands, &splitCmd)
 
-	countCmd := ffcli.Command{Name: "count", ShortHelp: "prints the number of pages in the given pdf",
+	countCmd := ff.Command{Name: "count",
+		ShortHelp: "prints the number of pages in the given pdf",
 		Exec: func(ctx context.Context, args []string) error {
 			var countInp string
 			if len(args) != 0 {
@@ -85,7 +85,8 @@ func init() {
 	pdfCmd.Subcommands = append(pdfCmd.Subcommands, &countCmd)
 
 	fs = withOutFlag("clean")
-	cleanCmd := ffcli.Command{Name: "clean", ShortHelp: "clean PDF from encryption", FlagSet: fs,
+	cleanCmd := ff.Command{Name: "clean", Flags: fs,
+		ShortHelp: "clean PDF from encryption",
 		Exec: func(ctx context.Context, args []string) error {
 			var cleanInp string
 			if len(args) != 0 {
@@ -102,10 +103,9 @@ func init() {
 	{
 		var mime string
 		fs = withOutFlag("topdf")
-		fs.StringVar(&mime, "mime", "application/octet-stream", "input mimetype")
-		topdfCmd := ffcli.Command{Name: "topdf",
+		fs.StringVar(&mime, 0, "mime", "application/octet-stream", "input mimetype")
+		topdfCmd := ff.Command{Name: "topdf", Flags: fs,
 			ShortHelp: "tries to convert the given file (you can specify its mime-type) to PDF",
-			FlagSet:   fs,
 			Exec: func(ctx context.Context, args []string) error {
 				var topdfInp string
 				if len(args) != 0 {
@@ -121,10 +121,10 @@ func init() {
 	}
 
 	fs = withOutFlag("fill")
-	fillPdfCmd := ffcli.Command{Name: "fill", ShortHelp: "fill PDF form",
-		ShortUsage: `fill PDF form
+	fillPdfCmd := ff.Command{Name: "fill", Flags: fs,
+		ShortHelp: "fill PDF form",
+		Usage: `fill PDF form
 input.pdf key1=value1 key2=value2...`,
-		FlagSet: fs,
 		Exec: func(ctx context.Context, args []string) error {
 			var fillInp string
 			var fillKeyvals []string

@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-// Copyright 2017 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2026 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/peterbourgon/ff/v4"
 
 	"github.com/kardianos/service"
 	"github.com/tgulacsi/agostle/converter"
@@ -30,10 +30,10 @@ const exeName = "agostle.exe"
 func init() {
 	topCmd = []string{"tasklist", "/v", "/fi", "USERNAME eq " + os.Getenv("USER")}
 
-	serviceCmd := ffcli.Command{Name: "service", ShortHelp: "manage Windows service"}
+	serviceCmd := ff.Command{Name: "service", ShortHelp: "manage Windows service"}
 
 	for _, todo := range []string{"install", "remove", "run", "start", "stop"} {
-		subCmd := ffcli.Command{Name: todo, ShortHelp: todo + " service",
+		subCmd := ff.Command{Name: todo, ShortHelp: todo + " service",
 			Exec: func(ctx context.Context, args []string) error {
 				return doServiceWindows(ctx, todo, args)
 			},
@@ -50,7 +50,7 @@ type program struct {
 }
 
 func (p *program) Start(S service.Service) error {
-	logger.Log("msg", "starting", "service", S)
+	logger.Info("starting", "service", S)
 	if p.Logger != nil {
 		_ = p.Logger.Info("Starting service")
 	}
@@ -60,15 +60,15 @@ func (p *program) Start(S service.Service) error {
 
 func (p *program) run() {
 	p.Server = newHTTPServer(listenAddr, false)
-	logger.Log("msg", "run")
+	logger.Info("run")
 	if err := p.Server.ListenAndServe(); err != nil {
-		logger.Log("error", err)
+		logger.Error("run", "error", err)
 		os.Exit(1)
 	}
 }
 
 func (p *program) Stop(S service.Service) error {
-	logger.Log("msg", "stopping", "service", S)
+	logger.Info("stopping", "service", S)
 	if p.Logger != nil {
 		_ = p.Logger.Info("Stopping service")
 	}
@@ -112,7 +112,7 @@ func doServiceWindows(ctx context.Context, todo string, args []string) error {
 			if err == nil {
 				continue
 			}
-			logger.Log("error", err)
+			logger.Error("doService", "error", err)
 		}
 	}()
 
@@ -121,18 +121,18 @@ func doServiceWindows(ctx context.Context, todo string, args []string) error {
 		if err = s.Install(); err != nil {
 			return fmt.Errorf("install: %w", err)
 		}
-		logger.Log("msg", "Service "+name+" installed.")
+		logger.Info("Service " + name + " installed.")
 	case "remove":
 		if err = s.Uninstall(); err != nil {
 			return fmt.Errorf("remove: %w", err)
 		}
-		logger.Log("msg", "Service "+name+" removed.")
+		logger.Info("Service " + name + " removed.")
 	case "run":
-		logger.Log("msg", "running", "service", name)
+		logger.Info("running", "service", name)
 		if err = s.Run(); err != nil {
 			err = fmt.Errorf("run %s: %w", name, err)
 			if p.Logger != nil {
-				_ = p.Logger.Error(name + " failed: " + err.Error())
+				_ = p.Logger.Error(name+" failed", "error", err)
 			}
 			return err
 		}
@@ -140,12 +140,12 @@ func doServiceWindows(ctx context.Context, todo string, args []string) error {
 		if err = s.Start(); err != nil {
 			return fmt.Errorf("start %s: %w", name, err)
 		}
-		logger.Log("msg", "Service "+name+" started.")
+		logger.Info("Service " + name + " started.")
 	case "stop":
 		if err = s.Stop(); err != nil {
 			return fmt.Errorf("stop %s: %w", name, err)
 		}
-		logger.Log("msg", "Service "+name+" stopped.")
+		logger.Info("Service " + name + " stopped.")
 	default:
 		return fmt.Errorf("unknown service %s", todo)
 	}
