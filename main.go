@@ -100,6 +100,7 @@ func Main() error {
 	FS.StringVar(&logFile, 0, "logfile", "", "logfile")
 	FS.StringVar(converter.ConfGotenbergURL, 0, "gotenberg", "", "gotenberg service URL")
 	FS.Uint64Var(converter.ConfMaxSubprocMemoryBytes, 0, "max-subproc-mem-bytes", converter.DefaultMaxSubprocMemoryBytes, "maximum subprocess memory limit")
+	flagVersion := FS.BoolLong("version", "print version number and ext")
 	flagPrintFS := FS.BoolLong("print-fs", "print file system")
 	appCmd := &ff.Command{
 		Name: "agostle", Flags: FS,
@@ -279,6 +280,11 @@ func Main() error {
 		}
 		return err
 	}
+	if *flagVersion {
+		fmt.Println(version.Main())
+		return nil
+	}
+
 	logger = zlog.NewLogger(zl).SLog()
 	converter.SetLogger(logger)
 	ctx, cancel := signal.NotifyContext(
