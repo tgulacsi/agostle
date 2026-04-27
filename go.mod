@@ -20,15 +20,15 @@ require (
 	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/rogpeppe/retry v0.1.0
 	github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c
-	github.com/tgulacsi/go v0.28.5
+	github.com/tgulacsi/go v0.28.16-0.20260427190510-a9a84155697d
 	github.com/theupdateframework/go-tuf v0.7.0
 	github.com/zRedShift/mimemagic v1.2.0
-	golang.org/x/image v0.28.0
-	golang.org/x/mod v0.34.0
-	golang.org/x/net v0.41.0
-	golang.org/x/sync v0.17.0
-	golang.org/x/sys v0.42.0
-	golang.org/x/text v0.26.0
+	golang.org/x/image v0.39.0
+	golang.org/x/mod v0.35.0
+	golang.org/x/net v0.53.0
+	golang.org/x/sync v0.20.0
+	golang.org/x/sys v0.43.0
+	golang.org/x/text v0.36.0
 	mvdan.cc/sh/v3 v3.13.0
 )
 
@@ -38,6 +38,7 @@ require (
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.6.1 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
+	github.com/carlos7ags/folio v0.7.1 // indirect
 	github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
@@ -66,13 +67,13 @@ require (
 	github.com/valyala/fastrand v1.1.0 // indirect
 	github.com/valyala/histogram v1.2.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/term v0.40.0 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
+	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
+	golang.org/x/term v0.42.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-go 1.25.0
+go 1.26
 
 // replace github.com/UNO-SOFT/filecache => ../../UNO-SOFT/filecache
 

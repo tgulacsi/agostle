@@ -25,6 +25,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	pdfReader "github.com/carlos7ags/folio/reader"
 	"github.com/google/renameio/v2"
 	"github.com/tgulacsi/go/pdf"
 )
@@ -54,6 +55,7 @@ func PdfPageNum(ctx context.Context, srcfn string) (numberofpages int, err error
 }
 
 func pdfPageNum(ctx context.Context, srcfn string) (numberofpages int, encrypted bool, err error) {
+
 	numberofpages = -1
 	if err = ctx.Err(); err != nil {
 		return
@@ -62,6 +64,7 @@ func pdfPageNum(ctx context.Context, srcfn string) (numberofpages int, encrypted
 	if numberofpages, err = pdf.PageNum(ctx, srcfn); err == nil && numberofpages != 0 {
 		return numberofpages, false, nil
 	}
+	encrypted = errors.Is(err, pdf.ErrEncrypted)
 
 	pdfinfo := false
 	var cmd *cmd
@@ -95,7 +98,7 @@ func pdfPageNum(ctx context.Context, srcfn string) (numberofpages int, encrypted
 	}
 
 	if pdfinfo {
-		encrypted = getLine(out, "Encrypted:") == "yes"
+		encrypted = encrypted || getLine(out, "Encrypted:") == "yes"
 		s := getLine(out, "Pages:")
 		if s == "" {
 			err = ErrBadPDF
@@ -103,7 +106,7 @@ func pdfPageNum(ctx context.Context, srcfn string) (numberofpages int, encrypted
 			numberofpages, err = strconv.Atoi(s)
 		}
 	} else {
-		encrypted = bytes.Contains(out, []byte(" password "))
+		encrypted = encrypted || bytes.Contains(out, []byte(" password "))
 		s := getLine(out, "NumberOfPages:")
 		if s == "" {
 			err = ErrBadPDF
