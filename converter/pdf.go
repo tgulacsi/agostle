@@ -25,7 +25,6 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	pdfReader "github.com/carlos7ags/folio/reader"
 	"github.com/google/renameio/v2"
 	"github.com/tgulacsi/go/pdf"
 )
