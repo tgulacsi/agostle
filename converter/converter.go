@@ -369,12 +369,10 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 				for i := 0; i < len(img.Attr); i++ {
 					var del bool
 					switch strings.ToLower(img.Attr[i].Key) {
-					case "height", "style":
+					case "height", "width":
 						del = true
-					case "width":
-						if len(img.Attr[i].Val) > 3 {
-							img.Attr[i].Val = "100%"
-						}
+					case "style":
+						img.Attr[i].Val = "max-width:100%; max-height:100%"
 					case "src":
 						if !*ConfKeepRemoteImage {
 							if s := img.Attr[i].Val; strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "http://") {
@@ -537,7 +535,12 @@ func weasyprint(ctx context.Context, outfn, inpfn string) error {
 	defer ussFh.Close()
 	ussFn := ussFh.Name()
 	defer func() { _ = os.Remove(ussFn) }()
-	if _, err = ussFh.Write([]byte(`pre {
+	if _, err = ussFh.Write([]byte(`
+@page {
+  size: A4;
+  margin: 20mm;
+}
+pre {
 	white-space: pre-line;
 }`)); err != nil {
 		return err
