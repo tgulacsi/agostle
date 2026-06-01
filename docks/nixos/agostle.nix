@@ -7,13 +7,6 @@ pkgs.dockerTools.streamLayeredImage {
   maxLayers = 2;
   created = "now";
 
-  # compressor = "zstd";
-
-  # copyToRoot = pkgs.buildEnv {
-  #   name = "image-root";
-  #   created = "now";
-  #   pathsToLink = [ "/bin" ];
-  #   paths = with pkgs; [
   contents = with pkgs; [
     fakeNss
     dockerTools.binSh

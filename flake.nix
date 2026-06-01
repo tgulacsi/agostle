@@ -2,7 +2,8 @@
   description = "agostle";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    # nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -47,20 +48,16 @@
         pkgs = import nixpkgs { inherit system; };
       in
       {
+        nixpkgs.config.allowUnfreePredicate =
+          pkg: builtins.elem (nixpkgs.config.lib.getName pkg) [ "corefonts" ];
+
         packages = {
           dockerImage = pkgs.dockerTools.streamLayeredImage {
             name = "agostle";
             tag = "latest";
-            maxLayers = 2;
+            maxLayers = 32;
             created = "now";
 
-            # compressor = "zstd";
-
-            # copyToRoot = pkgs.buildEnv {
-            #   name = "image-root";
-            #   created = "now";
-            #   pathsToLink = [ "/bin" ];
-            #   paths = with pkgs; [
             contents =
               with pkgs;
               [
