@@ -141,6 +141,10 @@ github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c h1:qqS5F61c0qT
 github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c/go.mod h1:mSfXi8twSmH/vUuE3J+HRfI2fp8XmWxVhYsV+V6W1JY=
 github.com/tgulacsi/go v0.29.1 h1:7OgkX15UywJD/j0mVpRKNgBN9gthHZX7mTxDJteq/N8=
 github.com/tgulacsi/go v0.29.1/go.mod h1:AX+r623VbCPShh8ouPnQJ7VjpVFrrPGL/vZzk2zf0Kk=
+github.com/tgulacsi/go v0.29.2-0.20260602165714-1de57dec3521 h1:yts/ynlqkMYgERlryUuI4rij8uNS7P3wzh6dFwu2tM8=
+github.com/tgulacsi/go v0.29.2-0.20260602165714-1de57dec3521/go.mod h1:AX+r623VbCPShh8ouPnQJ7VjpVFrrPGL/vZzk2zf0Kk=
+github.com/tgulacsi/go v0.29.2 h1:YgJIQE6tdaMmAfdAylOLmyFJH6KhE5frRCvWPguviXk=
+github.com/tgulacsi/go v0.29.2/go.mod h1:AX+r623VbCPShh8ouPnQJ7VjpVFrrPGL/vZzk2zf0Kk=
 github.com/theupdateframework/go-tuf v0.7.0 h1:CqbQFrWo1ae3/I0UCblSbczevCCbS31Qvs5LdxRWqRI=
 github.com/theupdateframework/go-tuf v0.7.0/go.mod h1:uEB7WSY+7ZIugK6R1hiBMBjQftaFzn7ZCDJcp1tCUug=
 github.com/ulikunitz/xz v0.5.8/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=

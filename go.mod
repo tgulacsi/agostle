@@ -20,7 +20,7 @@ require (
 	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/rogpeppe/retry v0.1.0
 	github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c
-	github.com/tgulacsi/go v0.29.1
+	github.com/tgulacsi/go v0.29.2
 	github.com/theupdateframework/go-tuf v0.7.0
 	github.com/zRedShift/mimemagic v1.2.0
 	golang.org/x/image v0.41.0
