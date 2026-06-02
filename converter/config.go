@@ -318,14 +318,15 @@ func (c *cmd) setLimits() error {
 		{Resource: unix.RLIMIT_AS, Limit: c.maxAS},
 		{Resource: unix.RLIMIT_DATA, Limit: c.maxDATA},
 	} {
-		if l.Limit != 0 {
-			var old unix.Rlimit
-			if err := unix.Prlimit(
-				pid, l.Resource,
-				&unix.Rlimit{Cur: l.Limit, Max: l.Limit}, &old,
-			); err != nil && firstErr == nil {
-				firstErr = err
-			}
+		if l.Limit == 0 {
+			continue
+		}
+		var old unix.Rlimit
+		if err := unix.Prlimit(
+			pid, l.Resource,
+			&unix.Rlimit{Cur: l.Limit, Max: l.Limit}, &old,
+		); err != nil && firstErr == nil {
+			firstErr = err
 		}
 	}
 	return nil
@@ -337,7 +338,7 @@ func (pr procRunner) CommandContext(ctx context.Context, what string, args ...st
 		}
 	}
 	return &cmd{Cmd: exec.CommandContext(ctx, what, args...),
-		maxAS: pr.RSS, maxDATA: pr.RSS}
+		maxAS: pr.RSS}
 }
 
 var Exec procRunner

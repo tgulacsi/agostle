@@ -151,43 +151,48 @@ func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 	logger.Info("converting image", "ct", contentType, "dest", destfn, "imgtyp", imgtyp)
 	destfn = strings.TrimSuffix(destfn, ".pdf")
 
+	inpfn := destfn + "." + imgtyp
 	ifh, ok := r.(*os.File)
-	if ok && fileExists(ifh.Name()) {
+	if ok {
+		logger.Info("seek back", "file", ifh.Name())
 		if _, err := ifh.Seek(0, 0); err != nil {
 			return err
 		}
 	} else {
-		inpfn := destfn + "." + imgtyp
+		logger.Info("save", "to", inpfn)
 		var err error
-		if contentType == "image/heic" {
-			imgtyp, inpfn = "jpeg", destfn+".jpeg"
-			var buf strings.Builder
-			cmd := command(ctx, *ConfGm, "convert", "-", inpfn)
-			cmd.Stdin = r
-			cmd.Stderr = &buf
-			if err = cmd.Run(); err != nil {
-				return fmt.Errorf("convert heic to %s: %w: %s", imgtyp, err, buf.String())
-			}
-		} else {
-			ifh, err = os.Create(inpfn)
-			if err != nil {
-				return fmt.Errorf("create temp image file %s: %w", inpfn, err)
-			}
-			if _, err = io.Copy(ifh, r); err != nil {
-				logger.Info("ImageToPdf reading", "file", ifh.Name(), "error", err)
-			}
-			if err = ifh.Close(); err != nil {
-				logger.Info("ImageToPdf writing", "dest", ifh.Name(), "error", err)
-			}
-		}
-		if ifh, err = os.Open(inpfn); err != nil {
-			return fmt.Errorf("open inp %s: %w", inpfn, err)
-		}
-		defer func() { _ = ifh.Close() }()
-		if !LeaveTempFiles {
-			defer func() { _ = unlink(inpfn, "ImageToPdf") }()
+		if ifh, err = os.Create(inpfn); err != nil {
+			return fmt.Errorf("create temp image file %s: %w", inpfn, err)
+		} else if _, err = io.Copy(ifh, r); err != nil {
+			logger.Info("ImageToPdf reading", "file", ifh.Name(), "error", err)
+		} else if err = ifh.Close(); err != nil {
+			logger.Info("ImageToPdf writing", "dest", ifh.Name(), "error", err)
 		}
 	}
+
+	var err error
+	if imgtyp == "heic" {
+		imgtyp, inpfn = "jpeg", ifh.Name()+".jpeg"
+		var buf strings.Builder
+		cmd := command(ctx, *ConfGm, "convert", ifh.Name(), inpfn)
+		cmd.maxAS, cmd.maxDATA = 0, 0 // !!!
+		cmd.Stderr = &buf
+		err = cmd.Run()
+		ifh.Close()
+		os.Remove(ifh.Name())
+		if err != nil {
+			return fmt.Errorf("convert heic to %s %q: %w: %s", imgtyp, cmd.Args, err, buf.String())
+		}
+	}
+
+	if ifh, err = os.Open(inpfn); err != nil {
+		return fmt.Errorf("open inp %s: %w", inpfn, err)
+	}
+	defer func() { _ = ifh.Close() }()
+	if !LeaveTempFiles {
+		defer func() { _ = unlink(inpfn, "ImageToPdf") }()
+	}
+
 	destfn = destfn + ".pdf"
 	w, err := os.Create(destfn)
 	if err != nil {
