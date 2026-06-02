@@ -2,7 +2,7 @@
 set -euo pipefail
 CGO_ENABLED=0 go install
 if command -v nix >/dev/null 2>/dev/null; then
-	env NIX_ALLOW_UNFREE=1 nix build .#dockerImage --impure
+	nix build .#dockerImage
 	./result | docker load
 fi
 

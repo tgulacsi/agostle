@@ -45,12 +45,26 @@
     flake-utils.lib.eachDefaultSystem (
       system:
       let
-        pkgs = import nixpkgs { inherit system; };
+        pkgs = import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+        };
       in
       {
-        nixpkgs.config.allowUnfreePredicate =
-          pkg: builtins.elem (nixpkgs.config.lib.getName pkg) [ "corefonts" ];
-
+        devShells = {
+          default = pkgs.mkShell {
+            buildInputs =
+              with pkgs;
+              [
+                go
+              ]
+              ++ (neededPkgs pkgs);
+            shellHook = ''
+              export CGO_ENABLED=0
+              echo "Welcome to the Agostle devShell!"
+            '';
+          };
+        };
         packages = {
           dockerImage = pkgs.dockerTools.streamLayeredImage {
             name = "agostle";
