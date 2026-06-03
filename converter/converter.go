@@ -151,14 +151,20 @@ func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 	logger.Info("converting image", "ct", contentType, "dest", destfn, "imgtyp", imgtyp)
 	destfn = strings.TrimSuffix(destfn, ".pdf")
 
-	inpfn := destfn + "." + imgtyp
+	var inpfn string
+	var inpIsTemp bool
+	// If already an *os.File, then just use it
 	ifh, ok := r.(*os.File)
 	if ok {
-		logger.Info("seek back", "file", ifh.Name())
+		inpfn = ifh.Name()
+		logger.Info("seek back", "file", inpfn)
 		if _, err := ifh.Seek(0, 0); err != nil {
 			return err
 		}
 	} else {
+		// If not, then save it to inpfn
+		inpIsTemp = true
+		inpfn = destfn + "." + imgtyp
 		logger.Info("save", "to", inpfn)
 		var err error
 		if ifh, err = os.Create(inpfn); err != nil {
@@ -172,6 +178,7 @@ func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 
 	var err error
 	if imgtyp == "heic" {
+		// Convert HEIC to jpeg
 		imgtyp, inpfn = "jpeg", ifh.Name()+".jpeg"
 		var buf strings.Builder
 		cmd := command(ctx, *ConfGm, "convert", ifh.Name(), inpfn)
@@ -179,10 +186,16 @@ func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 		cmd.Stderr = &buf
 		err = cmd.Run()
 		ifh.Close()
-		os.Remove(ifh.Name())
+		if inpIsTemp {
+			unlink(ifh.Name(), "ImageToPdf")
+		}
+		ifh = nil // We'll open inpfn anyway
 		if err != nil {
 			return fmt.Errorf("convert heic to %s %q: %w: %s", imgtyp, cmd.Args, err, buf.String())
 		}
+	}
+	if ifh != nil {
+		ifh.Close()
 	}
 
 	if ifh, err = os.Open(inpfn); err != nil {
