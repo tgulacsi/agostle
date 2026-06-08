@@ -309,16 +309,19 @@ func (c *cmd) start() error {
 }
 
 func (c *cmd) setLimits() error {
+	if c.maxAS == 0 && c.maxDATA == 0 { // won't change, watch out for defaults!
+		return nil
+	}
 	pid := c.Cmd.Process.Pid
 	var firstErr error
 	for _, l := range []struct {
 		Resource int
 		Limit    uint64
 	}{
-		{Resource: unix.RLIMIT_AS, Limit: c.maxAS},
 		{Resource: unix.RLIMIT_DATA, Limit: c.maxDATA},
+		{Resource: unix.RLIMIT_AS, Limit: c.maxAS},
 	} {
-		if l.Limit == 0 {
+		if l.Limit == 0 { // won't change, watch out for defaults!
 			continue
 		}
 		var old unix.Rlimit
@@ -338,7 +341,7 @@ func (pr procRunner) CommandContext(ctx context.Context, what string, args ...st
 		}
 	}
 	return &cmd{Cmd: exec.CommandContext(ctx, what, args...),
-		maxAS: pr.RSS}
+		maxDATA: pr.RSS}
 }
 
 var Exec procRunner

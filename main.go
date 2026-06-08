@@ -70,13 +70,13 @@ func Main() error {
 		Resource int
 		Limit    uint64
 	}{
-		{Resource: unix.RLIMIT_AS, Limit: 4 << 30},
 		{Resource: unix.RLIMIT_DATA, Limit: 4 << 30},
+		{Resource: unix.RLIMIT_AS, Limit: 16 << 30},
 	} {
 		var old unix.Rlimit
 		if err := unix.Prlimit(
 			pid, l.Resource,
-			&unix.Rlimit{Cur: l.Limit, Max: l.Limit}, &old,
+			&unix.Rlimit{Cur: l.Limit, Max: 128 << 30}, &old,
 		); err != nil {
 			return err
 		}

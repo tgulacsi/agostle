@@ -31,6 +31,7 @@
           liberation_ttf
           libreoffice
           mupdf-headless
+          # openimageio
           pdftk
           pkgs.perl5Packages.EmailOutlookMessage
           poppler-utils

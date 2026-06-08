@@ -177,21 +177,16 @@ func imageToPdf(ctx context.Context, destfn string, r io.Reader, contentType str
 	}
 
 	var err error
-	if imgtyp == "heic" {
+	if imgtyp == "heic" || imgtyp == "heif" {
 		// Convert HEIC to jpeg
 		imgtyp, inpfn = "jpeg", ifh.Name()+".jpeg"
-		var buf strings.Builder
-		cmd := command(ctx, *ConfGm, "convert", ifh.Name(), inpfn)
-		cmd.maxAS, cmd.maxDATA = 0, 0 // !!!
-		cmd.Stderr = &buf
-		err = cmd.Run()
-		ifh.Close()
+		err = heicToJpegFiles(ctx, ifh.Name(), inpfn)
 		if inpIsTemp {
 			unlink(ifh.Name(), "ImageToPdf")
 		}
 		ifh = nil // We'll open inpfn anyway
 		if err != nil {
-			return fmt.Errorf("convert heic to %s %q: %w: %s", imgtyp, cmd.Args, err, buf.String())
+			return err
 		}
 	}
 	if ifh != nil {

@@ -26,6 +26,27 @@ func command(ctx context.Context, prg string, args ...string) *cmd {
 	return Exec.CommandContext(ctx, prg, args...)
 }
 
+func heicToJpegFiles(ctx context.Context, inpfn, outfn string) error {
+	var buf strings.Builder
+	cmd := command(ctx, *ConfGm, "convert", inpfn, outfn)
+	cmd.maxAS, cmd.maxDATA = 8<<30, 8<<30 // !!!
+	cmd.Stderr = &buf
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("convert heic to jpeg %q: %w: %s", cmd.Args, err, buf.String())
+	}
+	return nil
+}
+
+func heicToJpeg(ctx context.Context, w io.Writer, r io.Reader) error {
+	var buf strings.Builder
+	cmd := command(ctx, *ConfGm, "convert", "-:heic", "-:jpeg")
+	cmd.maxAS, cmd.maxDATA = 8<<30, 8<<30 // !!!
+	cmd.Stdin, cmd.Stdout = r, w
+	cmd.Stderr = &buf
+	return cmd.Run()
+}
+
 // ImageToPdfGm converts image to PDF using GraphicsMagick
 func ImageToPdfGm(ctx context.Context, w io.Writer, r io.Reader, contentType string) error {
 	//log.Printf("converting image %s to %s", contentType, destfn)
@@ -34,20 +55,14 @@ func ImageToPdfGm(ctx context.Context, w io.Writer, r io.Reader, contentType str
 		imgtyp = contentType[strings.Index(contentType, "/")+1:] + ":"
 	}
 
-	// Convert HEIF to jpeg first
-	if imgtyp == "heif:" {
+	// Convert HEIC to jpeg first
+	if imgtyp == "heic:" || imgtyp == "heif:" {
 		pr, pw := io.Pipe()
-		cmd := command(ctx, *ConfGm, "convert", imgtyp+"-", "jpeg:-")
-		cmd.Stdin = r
-		cmd.Stdout = pw
-		var errout strings.Builder
-		cmd.Stderr = &errout
 		go func() {
 			defer pw.Close()
-			err := cmd.Run()
+			err := heicToJpeg(ctx, pw, r)
 			if err != nil {
-				logger.Error("heif to jpeg", "args", cmd.Args, "error", err, "out", errout.String())
-				err = fmt.Errorf("%s: %s: %w", cmd.Args, errout.String(), err)
+				logger.Error("heic to jpeg", "error", err)
 			}
 			pw.CloseWithError(err)
 		}()
