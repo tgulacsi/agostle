@@ -26,10 +26,12 @@ func command(ctx context.Context, prg string, args ...string) *cmd {
 	return Exec.CommandContext(ctx, prg, args...)
 }
 
+const heicConversionMem = 8 << 30
+
 func heicToJpegFiles(ctx context.Context, inpfn, outfn string) error {
 	var buf strings.Builder
 	cmd := command(ctx, *ConfGm, "convert", inpfn, outfn)
-	cmd.maxAS, cmd.maxDATA = 8<<30, 8<<30 // !!!
+	cmd.maxAS, cmd.maxDATA = heicConversionMem, heicConversionMem
 	cmd.Stderr = &buf
 	err := cmd.Run()
 	if err != nil {
@@ -41,7 +43,7 @@ func heicToJpegFiles(ctx context.Context, inpfn, outfn string) error {
 func heicToJpeg(ctx context.Context, w io.Writer, r io.Reader) error {
 	var buf strings.Builder
 	cmd := command(ctx, *ConfGm, "convert", "-:heic", "-:jpeg")
-	cmd.maxAS, cmd.maxDATA = 8<<30, 8<<30 // !!!
+	cmd.maxAS, cmd.maxDATA = heicConversionMem, heicConversionMem
 	cmd.Stdin, cmd.Stdout = r, w
 	cmd.Stderr = &buf
 	return cmd.Run()
