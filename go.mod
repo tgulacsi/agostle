@@ -6,7 +6,7 @@ require (
 	github.com/UNO-SOFT/filecache v0.4.0
 	github.com/UNO-SOFT/zlog v0.8.6
 	github.com/VictoriaMetrics/metrics v1.38.0
-	github.com/coreos/go-systemd/v22 v22.5.0
+	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/go-kit/kit v0.13.0
 	github.com/google/renameio v1.0.1

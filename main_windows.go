@@ -155,3 +155,5 @@ func doServiceWindows(ctx context.Context, todo string, args []string) error {
 func getListeners() []net.Listener {
 	return nil
 }
+
+func sdNotify(done <-chan struct{}) error { return nil }

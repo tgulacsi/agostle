@@ -247,6 +247,7 @@ func Main() error {
 					return s.Serve(l)
 				})
 			}
+			grp.Go(func() error { return sdNotify(grpCtx.Done()) })
 			<-grpCtx.Done()
 			for _, l := range listeners {
 				l.Close()

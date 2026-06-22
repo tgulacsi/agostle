@@ -9,8 +9,10 @@ package main
 
 import (
 	"net"
+	"time"
 
 	"github.com/coreos/go-systemd/v22/activation"
+	"github.com/coreos/go-systemd/v22/daemon"
 )
 
 func getListeners() []net.Listener {
@@ -23,4 +25,33 @@ func getListeners() []net.Listener {
 		}
 	}
 	return listeners
+}
+
+func sdNotify(done <-chan struct{}) error {
+	notify := func(message string) {
+		if _, err := daemon.SdNotify(false, message); err != nil {
+			logger.Error(message, "error", err)
+		}
+	}
+	notify(daemon.SdNotifyReady)
+	if dur, err := daemon.SdWatchdogEnabled(true); err == nil && dur != 0 {
+		ticker := time.NewTicker(dur / 2)
+	Loop:
+		for {
+			select {
+			case <-ticker.C:
+				notify(daemon.SdNotifyWatchdog)
+			case <-done:
+				ticker.Stop()
+				break Loop
+			}
+		}
+	} else {
+		if err != nil {
+			logger.Error("SdWatchdogEnabled", "error", err)
+		}
+		<-done
+	}
+	notify(daemon.SdNotifyStopping)
+	return nil
 }
