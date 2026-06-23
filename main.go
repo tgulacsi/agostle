@@ -152,10 +152,10 @@ func Main() error {
 			logger.Info("download", "to", destFh.Name())
 			dest := &downloadFile{File: destFh}
 			if err := tc.Download(
-				strings.Replace(strings.Replace(
+				strings.ReplaceAll(strings.ReplaceAll(
 					"/agostle/{{GOOS}}_{{GOARCH}}",
-					"{{GOOS}}", runtime.GOOS, -1),
-					"{{GOARCH}}", runtime.GOARCH, -1),
+					"{{GOOS}}", runtime.GOOS),
+					"{{GOARCH}}", runtime.GOARCH),
 				dest,
 			); err != nil {
 				return fmt.Errorf("download: %w", err)
@@ -193,7 +193,9 @@ func Main() error {
 				listenAddr = args[0]
 			}
 			listeners := getListeners()
+			logger.Warn("getListeners", "listeners", len(listeners), "listenAddr", listenAddr, "args", args, "env", os.Environ())
 			if listenAddr == "" && len(listeners) == 0 {
+				logger.Warn("getListeners", "listeners", len(listeners), "listenAddr", listenAddr, "args", args, "env", os.Environ())
 				listenAddr = *converter.ConfListenAddr
 			}
 			logger.Info("serve", "listeners", len(listeners), "listenAddr", listenAddr)

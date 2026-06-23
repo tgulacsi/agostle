@@ -249,6 +249,9 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 	}
 
 	for item := range files {
+		if isCanceled(item.Error) {
+			return item.Error
+		}
 		openedHere = false
 		if item.File == nil {
 			if item.Filename == "" {
@@ -325,10 +328,10 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 			continue
 		}
 	}
-	logger.Info("zipFiles", "errors", errs)
 	if len(errs) == 0 {
 		return nil
 	}
+	logger.Warn("zipFiles", "errors", errs)
 	sarr := make([]string, 0, len(errs))
 	for _, err = range errs {
 		sarr = append(sarr, err.Error())
@@ -336,12 +339,15 @@ func zipFiles(dest io.Writer, skipOnError, unsafeArchFn bool, files <-chan ArchF
 	return errors.New(strings.Join(sarr, "\n"))
 }
 
+var (
+	safeFnRepl  = strings.NewReplacer("/", "-", `\`, "-")
+	percentRepl = strings.NewReplacer("%", "!P!")
+)
+
 func safeFn(fn string, maskPercent bool) string {
-	fn = url.QueryEscape(
-		strings.Replace(strings.Replace(fn, "/", "-", -1),
-			`\`, "-", -1))
+	fn = url.QueryEscape(safeFnRepl.Replace(fn))
 	if maskPercent {
-		fn = strings.Replace(fn, "%", "!P!", -1)
+		fn = percentRepl.Replace(fn)
 	}
 	return fn
 }
@@ -351,7 +357,7 @@ func unsafeFn(fn string, maskPercent bool) string {
 	}
 	res := fn
 	if maskPercent {
-		res = strings.Replace(fn, "!P!", "%", -1)
+		res = percentRepl.Replace(fn)
 		if res == "" {
 			logger.Info("WARN unsafeFn empty string from " + fn)
 			res = fn

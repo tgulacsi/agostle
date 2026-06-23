@@ -1,4 +1,4 @@
-// Copyright 2017, 2025 The Agostle Authors. All rights reserved.
+// Copyright 2017, 2026 The Agostle Authors. All rights reserved.
 // Use of this source code is governed by an Apache 2.0
 // license that can be found in the LICENSE file.
 
@@ -53,12 +53,17 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 	tbz := make([]ArchFileItem, 0, 2*len(files))
 	defer func() { cleanupFiles(ctx, files, tbz) }()
 	if err != nil {
+		if isCanceled(err) {
+			return err
+		}
 		fcount := 0
 		errs = make([]string, 1, max(1, len(files)))
 		errs[0] = err.Error() + "\n"
 		for _, f := range files {
 			if f.Error == nil {
 				fcount++
+			} else if isCanceled(f.Error) {
+				return err
 			} else {
 				errs = append(errs, f.Archive+": "+f.Error.Error()+"\n")
 			}
@@ -82,6 +87,8 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 		for i, a := range files {
 			if a.Error == nil {
 				fts[i] = a.Filename
+			} else if isCanceled(a.Error) {
+				return a.Error
 			} else {
 				tbz = append(tbz, a)
 			}
@@ -90,6 +97,9 @@ func MailToSplittedPdfZip(ctx context.Context, destfn string, body io.Reader,
 		go splitPdfMulti(ctx, fts, imgmime, imgsize, rch, pages)
 		for ms := range rch {
 			if ms.Error != nil {
+				if isCanceled(ms.Error) {
+					return ms.Error
+				}
 				errs = append(errs, ms.Error.Error())
 			}
 			tbz = append(tbz, ms.Items...)
@@ -207,26 +217,31 @@ func splitPdfMulti(ctx context.Context, files []string, imgmime, imgsize string,
 		}
 		sfiles, _, err = PdfSplit(ctx, fn, pages)
 		if err != nil || len(sfiles) == 0 {
-			logger.Info("Splitting", "file", fn, "error", err)
-			n, encrypted, err := pdfPageNum(ctx, fn)
-			if err != nil {
-				logger.Error("pdfPageNum", "file", fn, "error", err)
-			} else if n == 0 {
-				logger.Warn("pdfPageNum", "file", fn, "n", n, "encrypted", encrypted)
-			} else {
-				logger.Info("pdfPageNum", "file", fn, "n", n, "encrypted", encrypted)
-			}
-			if err = PdfRewrite(ctx, fn, fn); err != nil {
-				logger.Info("Cannot clean", "file", fn, "error", err)
-			} else {
-				if sfiles, _, err = PdfSplit(ctx, fn, pages); err != nil || len(sfiles) == 0 {
-					logger.Info("splitting CLEANED", "file", fn, "error", err)
+			logger.Error("Splitting", "file", fn, "error", err)
+			if !isCanceled(err) {
+				n, encrypted, err := pdfPageNum(ctx, fn)
+				if err != nil {
+					logger.Error("pdfPageNum", "file", fn, "error", err)
+				} else if n == 0 {
+					logger.Warn("pdfPageNum", "file", fn, "n", n, "encrypted", encrypted)
+				} else {
+					logger.Info("pdfPageNum", "file", fn, "n", n, "encrypted", encrypted)
+				}
+				if err = PdfRewrite(ctx, fn, fn); err != nil {
+					logger.Info("Cannot clean", "file", fn, "error", err)
+				} else {
+					if sfiles, _, err = PdfSplit(ctx, fn, pages); err != nil || len(sfiles) == 0 {
+						logger.Info("splitting CLEANED", "file", fn, "error", err)
+					}
 				}
 			}
 		}
 		if err != nil {
 			logger.Info("splitting", "file", fn, "error", err)
 			rch <- maybeArchItems{Error: err}
+			if isCanceled(err) {
+				return
+			}
 			continue
 		}
 		n = mul * len(sfiles)
@@ -270,11 +285,11 @@ func PdfToImageMulti(ctx context.Context, sfiles []string, imgmime, imgsize stri
 			return
 		}
 	}
-	i := strings.Index(imgmime, "/")
-	if i < 0 {
+	_, imgext, ok := strings.Cut(imgmime, "/")
+	if !ok {
 		return
 	}
-	imgext := "." + imgmime[i+1:]
+	imgext = "." + imgext
 	imgfilenames = make([]string, 0, len(sfiles))
 	imgfnsMtx := sync.Mutex{}
 	errs := make([]string, 0, 4)
@@ -632,7 +647,7 @@ func MailToTree(ctx context.Context, outdir string, r io.Reader) error {
 		}
 		ct, _, _ := strings.Cut(mp.ContentType, ";")
 		return fmt.Sprintf("%03d.%s.%s", mp.Seq,
-			strings.Replace(ct, "/", "--", -1), xfn)
+			strings.ReplaceAll(ct, "/", "--"), xfn)
 	}
 
 	// nosemgrep: go.lang.correctness.permissions.file_permission.incorrect-default-permission
@@ -759,7 +774,7 @@ func ExtractingFilter(ctx context.Context,
 			child := part.Spawn()
 			child.ContentType = messageRFC822
 			body, bodyErr := i18nmail.MakeSectionReader(r, bodyThreshold)
-			if err != nil {
+			if bodyErr != nil {
 				err = bodyErr
 				goto Error
 			}
@@ -891,4 +906,8 @@ func DupFilter(ctx context.Context,
 		}
 		outch <- part
 	}
+}
+
+func isCanceled(err error) bool {
+	return err != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded))
 }
