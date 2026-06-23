@@ -29,12 +29,20 @@ func getListeners() []net.Listener {
 
 func sdNotify(done <-chan struct{}) error {
 	notify := func(message string) {
+		logger.Info("sdNotify", "message", message)
 		if _, err := daemon.SdNotify(false, message); err != nil {
 			logger.Error(message, "error", err)
 		}
 	}
+	logger.Info("start stNotify")
+	defer logger.Warn("finish sdNotify")
 	notify(daemon.SdNotifyReady)
-	if dur, err := daemon.SdWatchdogEnabled(true); err == nil && dur != 0 {
+	dur, err := daemon.SdWatchdogEnabled(true)
+	if err != nil || dur == 0 {
+		logger.Warn("watchdog", "dur", dur, "error", err)
+		<-done
+	} else {
+		logger.Info("watchdog", "dur", dur.String())
 		ticker := time.NewTicker(dur / 2)
 	Loop:
 		for {
@@ -46,11 +54,6 @@ func sdNotify(done <-chan struct{}) error {
 				break Loop
 			}
 		}
-	} else {
-		if err != nil {
-			logger.Error("SdWatchdogEnabled", "error", err)
-		}
-		<-done
 	}
 	notify(daemon.SdNotifyStopping)
 	return nil
