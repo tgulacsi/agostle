@@ -567,6 +567,7 @@ pre {
 		"--optimize-images",
 		"--dpi", "96",
 		"--timeout", "30",
+		"--allowed-protocols", "cid,data",
 		inpfn, outfn,
 	}
 	var buf bytes.Buffer
