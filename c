@@ -16,8 +16,5 @@ done
 if command -v nix >/dev/null 2>/dev/null; then
 	nix build .#dockerImage
 	./result | docker load
-fi
-
-if ! br_ctr restart agostle; then
 	exec podman run -ti --rm -p 9500:9500 -v "$(go env GOBIN):/app/bin:ro" localhost/agostle "$@"
 fi
