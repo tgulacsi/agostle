@@ -26,6 +26,7 @@ import (
 	"context"
 
 	"github.com/UNO-SOFT/filecache"
+	"github.com/google/renameio/v2"
 	"github.com/mholt/archives"
 	"github.com/tgulacsi/go/iohlp"
 	"golang.org/x/net/html"
@@ -343,6 +344,9 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 	if fh, ok := r.(*os.File); ok && fileExists(fh.Name()) {
 		inpfn = fh.Name()
 	}
+
+	const maxWidthEasyPrint = "max-width: 100%;"
+	var mCW bool
 	if inpfn == "" {
 		inpfn = nakeFilename(destfn) + ".html"
 		fh, err := os.Create(inpfn)
@@ -356,7 +360,6 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 			return err
 		}
 	} else {
-
 		b, err := os.ReadFile(inpfn)
 		if err == nil {
 			var f func(*html.Node) *html.Node
@@ -385,7 +388,8 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 					case "height", "width":
 						del = true
 					case "style":
-						img.Attr[i].Val = "max-width:100%; max-height:100%"
+						mCW = true
+						img.Attr[i].Val = maxWidthEasyPrint
 					case "src":
 						if !*ConfKeepRemoteImage {
 							if s := img.Attr[i].Val; strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "http://") {
@@ -435,6 +439,19 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 	}
 
 	if *ConfWkhtmltopdf != "" {
+		if mCW {
+			const maxWidthWK = "max-width: fit-content;"
+			if b, err := os.ReadFile(inpfn); err == nil {
+				if err = renameio.WriteFile(inpfn,
+					bytes.ReplaceAll(b,
+						[]byte(`"`+maxWidthEasyPrint+`"`),
+						[]byte(`"`+maxWidthWK+`"`)),
+					0644,
+				); err != nil {
+					logger.Error("writeFile", "inpfn", inpfn)
+				}
+			}
+		}
 		err := wkhtmltopdf(ctx, destfn, inpfn)
 		if err == nil {
 			return nil
