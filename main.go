@@ -260,7 +260,16 @@ func Main() error {
 				cancel()
 				_ = s.Close()
 			}
-			return grp.Wait()
+			if err := grp.Wait(); err != nil {
+				select {
+				case <-ctx.Done():
+					logger.Warn("terminated", "error", err)
+					return nil
+				default:
+					return err
+				}
+			}
+			return nil
 		},
 	}
 	appCmd.Subcommands = append(appCmd.Subcommands, &serveCmd)
