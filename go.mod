@@ -20,11 +20,11 @@ require (
 	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/rogpeppe/retry v0.1.0
 	github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c
-	github.com/tgulacsi/go v0.29.7
+	github.com/tgulacsi/go v0.29.16-0.20260728121359-b4eb6c9bb92c
 	github.com/theupdateframework/go-tuf v0.7.0
 	github.com/zRedShift/mimemagic v1.2.0
 	golang.org/x/image v0.41.0
-	golang.org/x/mod v0.35.0
+	golang.org/x/mod v0.36.0
 	golang.org/x/net v0.55.0
 	golang.org/x/sync v0.20.0
 	golang.org/x/sys v0.45.0
@@ -41,6 +41,7 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
+	github.com/emersion/go-imap v1.2.1 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -76,7 +77,7 @@ go 1.26
 
 // replace github.com/UNO-SOFT/filecache => ../../UNO-SOFT/filecache
 
-//replace github.com/tgulacsi/go => ../go
+// replace github.com/tgulacsi/go => ../go
 
 //replace github.com/UNO-SOFT/ulog => ../../UNO-SOFT/ulog
 

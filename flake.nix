@@ -5,12 +5,14 @@
     # nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
+    nix2container.url = "github:nlewo/nix2container";
   };
 
   outputs =
     {
       self,
       nixpkgs,
+      nix2container,
       flake-utils,
     }:
     let
@@ -50,6 +52,7 @@
           inherit system;
           config.allowUnfree = true;
         };
+        nix2containerPkgs = nix2container.packages.${system};
       in
       {
         devShells = {
@@ -67,6 +70,26 @@
           };
         };
         packages = {
+          agostle = nix2containerPkgs.nix2container.buildImage {
+            name = "agostle";
+            config = {
+              cmd = [
+                "/app/bin/agostle"
+                "serve"
+                "0.0.0.0:9500"
+              ];
+            };
+            copyToRoot =
+              (with pkgs; [
+                # dockerTools.binSh
+                fakeNss
+                # toybox
+                cacert
+                # dash
+              ])
+              ++ (neededPkgs pkgs);
+          };
+
           dockerImage = pkgs.dockerTools.streamLayeredImage {
             name = "agostle";
             tag = "latest";
@@ -74,14 +97,13 @@
             created = "now";
 
             contents =
-              with pkgs;
-              [
+              (with pkgs; [
                 dockerTools.binSh
                 fakeNss
                 toybox
                 cacert
                 dash
-              ]
+              ])
               ++ (neededPkgs pkgs);
 
             config = {
