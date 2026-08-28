@@ -367,36 +367,14 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 		var buf bytes.Buffer
 		// strip comments (esp. if [mso])
 		z := html.NewTokenizer(bytes.NewReader(b))
-		var inStyle, htmlSeen, doctypeSeen bool
+		var inStyle bool
 		for {
 			tt := z.Next()
 			if tt == html.ErrorToken {
 				logger.Error("parse html", "error", z.Err())
 				break
 			}
-			if !doctypeSeen {
-				if tt != html.DoctypeToken {
-					buf.WriteString("<!DOCTYPE html>\n")
-				}
-				doctypeSeen = true
-			}
-			nm, hasAttr := z.TagName()
-			if !htmlSeen && hasAttr && bytes.Equal(nm, []byte("html")) {
-				htmlSeen = true
-				buf.WriteString("<html")
-				for hasAttr {
-					var k, v []byte
-					if k, v, hasAttr = z.TagAttr(); bytes.HasPrefix(k, []byte("xmlns")) {
-						continue
-					}
-					buf.WriteByte(' ')
-					buf.Write(k)
-					buf.WriteByte('=')
-					buf.Write(v)
-				}
-				buf.WriteByte('>')
-				continue
-			}
+			nm, _ := z.TagName()
 
 			if tt == html.CommentToken {
 				continue
