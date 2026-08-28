@@ -74,6 +74,9 @@ var (
 
 	// ConfWkhtmltopdf is the parth for wkhtmltopdf
 	ConfWkhtmltopdf = config.String("wkhtmltopdf", lookPath("wkhtmltopdf"))
+
+	ConfHtmlToPdf = config.String("htmltopdf", "")
+
 	//
 	// ConfUnrtf is the parth for unrtf
 	ConfUnrtf = config.String("unrtf", lookPath("unrtf"))
@@ -158,6 +161,21 @@ func LoadConfig(ctx context.Context, fn string) error {
 	}
 	if err := config.Parse(fn); err != nil {
 		logger.Info("WARN Cannot open config file", "file", fn, "error", err)
+	}
+	if x := *ConfHtmlToPdf; x != "" {
+		if *ConfWeasyPrint == "" && *ConfWkhtmltopdf == "" {
+			logger.Info("nothing to force", "wkhtmltopdf", *ConfWkhtmltopdf, "weasyprint", *ConfWeasyPrint)
+		} else {
+			logger.Info("Force", "htmltopdf", x)
+			switch x {
+			case "weasyprint":
+				*ConfWkhtmltopdf = ""
+			case "wkhtmltopdf":
+				*ConfWeasyPrint = ""
+			default:
+				logger.Error("unknown config", "htmltopdf", x)
+			}
+		}
 	}
 	if *ConfLoffice != "" {
 		if _, err := exec.LookPath(*ConfLoffice); err != nil {

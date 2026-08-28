@@ -338,6 +338,7 @@ func rtfToHTML(ctx context.Context, destfn string, r io.Reader, contentType stri
 func HTMLToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	return Converter(htmlToPdf).WithCache(ctx, destfn, r, contentType, "application/pdf")
 }
+
 func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType string) error {
 	logger := getLogger(ctx).With("func", "HTMLToPdf", "dest", destfn)
 	var inpfn string
@@ -359,66 +360,122 @@ func htmlToPdf(ctx context.Context, destfn string, r io.Reader, contentType stri
 		if _, err = io.Copy(fh, r); err != nil {
 			return err
 		}
-	} else {
-		b, err := os.ReadFile(inpfn)
-		if err == nil {
-			var f func(*html.Node) *html.Node
-			f = func(n *html.Node) *html.Node {
-				if n == nil || n.Type == html.ElementNode && n.Data == "img" {
-					return n
-				}
-				for c := n.FirstChild; c != nil; c = c.NextSibling {
-					if n := f(c); n != nil {
-						return n
-					}
-				}
-				return nil
+	}
+
+	b, err := os.ReadFile(inpfn)
+	if err == nil {
+		var buf bytes.Buffer
+		// strip comments (esp. if [mso])
+		z := html.NewTokenizer(bytes.NewReader(b))
+		var inStyle, htmlSeen, doctypeSeen bool
+		for {
+			tt := z.Next()
+			if tt == html.ErrorToken {
+				logger.Error("parse html", "error", z.Err())
+				break
 			}
-			var buf bytes.Buffer
-			for _, pos := range reHtmlImg.FindAllIndex(b, -1) {
-				line := b[pos[0]:pos[1]]
-				img, _ := html.Parse(bytes.NewReader(line))
-				if img = f(img); img == nil {
-					continue
+			if !doctypeSeen {
+				if tt != html.DoctypeToken {
+					buf.WriteString("<!DOCTYPE html>\n")
 				}
-				// delete height, modify width
-				for i := 0; i < len(img.Attr); i++ {
-					var del bool
-					switch strings.ToLower(img.Attr[i].Key) {
-					case "height", "width":
-						del = true
-					case "style":
-						mCW = true
-						img.Attr[i].Val = maxWidthEasyPrint
-					case "src":
-						if !*ConfKeepRemoteImage {
-							if s := img.Attr[i].Val; strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "http://") {
-								del = true
-							}
-						}
+				doctypeSeen = true
+			}
+			nm, hasAttr := z.TagName()
+			if !htmlSeen && hasAttr && bytes.Equal(nm, []byte("html")) {
+				htmlSeen = true
+				buf.WriteString("<html")
+				for hasAttr {
+					var k, v []byte
+					if k, v, hasAttr = z.TagAttr(); bytes.HasPrefix(k, []byte("xmlns")) {
+						continue
 					}
-					if del {
-						img.Attr[i] = img.Attr[len(img.Attr)-1]
-						img.Attr = img.Attr[:len(img.Attr)-1]
-						i--
-					}
+					buf.WriteByte(' ')
+					buf.Write(k)
+					buf.WriteByte('=')
+					buf.Write(v)
 				}
-				buf.Reset()
-				if err = html.Render(&buf, img); err != nil {
-					logger.Info("html.Render", "img", img, "error", err)
-					continue
-				}
-				logger.Info("htmlToPdf", "old", string(line), "new", buf.String())
-				i := pos[0] + copy(b[pos[0]:pos[1]], buf.Bytes())
-				for i < pos[1] {
-					b[i] = ' '
-					i++
-				}
+				buf.WriteByte('>')
+				continue
 			}
 
-			if err = os.WriteFile(inpfn, b, 0644); err != nil {
-				return fmt.Errorf("overwrite %s: %w", inpfn, err)
+			if tt == html.CommentToken {
+				continue
 			}
+			if inStyle {
+				if tt == html.EndTagToken && bytes.Equal(nm, []byte("style")) {
+					inStyle = false
+				}
+				continue
+			} else if tt == html.StartTagToken && bytes.Equal(nm, []byte("style")) {
+				inStyle = true
+				continue
+			}
+			buf.Write(z.Raw())
+		}
+		b = append([]byte(nil), buf.Bytes()...)
+		buf.Reset()
+
+		var f func(*html.Node) *html.Node
+		f = func(n *html.Node) *html.Node {
+			if n == nil {
+				return n
+			}
+			if n.Type == html.CommentNode {
+				n.Data = ""
+			} else if n.Type == html.ElementNode && n.Data == "img" {
+				return n
+			}
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if n := f(c); n != nil {
+					return n
+				}
+			}
+			return nil
+		}
+		for _, pos := range reHtmlImg.FindAllIndex(b, -1) {
+			line := b[pos[0]:pos[1]]
+			img, _ := html.Parse(bytes.NewReader(line))
+			if img = f(img); img == nil {
+				continue
+			}
+			// delete height, modify width
+			for i := 0; i < len(img.Attr); i++ {
+				var del bool
+				switch strings.ToLower(img.Attr[i].Key) {
+				case "height", "width":
+					del = true
+				case "style":
+					mCW = true
+					img.Attr[i].Val = maxWidthEasyPrint
+				case "src":
+					if !*ConfKeepRemoteImage {
+						if s := img.Attr[i].Val; strings.HasPrefix(s, "https://") || strings.HasPrefix(s, "http://") {
+							del = true
+						}
+					}
+				}
+				if del {
+					img.Attr[i] = img.Attr[len(img.Attr)-1]
+					img.Attr = img.Attr[:len(img.Attr)-1]
+					i--
+				}
+			}
+			buf.Reset()
+			if err = html.Render(&buf, img); err != nil {
+				logger.Info("html.Render", "img", img, "error", err)
+				continue
+			}
+			logger.Info("htmlToPdf", "old", string(line), "new", buf.String())
+			i := pos[0] + copy(b[pos[0]:pos[1]], buf.Bytes())
+			for i < pos[1] {
+				b[i] = ' '
+				i++
+			}
+		}
+		os.Stdout.Write(b)
+
+		if err = os.WriteFile(inpfn, b, 0644); err != nil {
+			return fmt.Errorf("overwrite %s: %w", inpfn, err)
 		}
 	}
 

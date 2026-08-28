@@ -285,7 +285,10 @@ func Main() error {
 		}
 	}
 
-	if err := appCmd.Parse(os.Args[1:]); err != nil {
+	if err := appCmd.Parse(os.Args[1:],
+		ff.WithEnvVarPrefix("AGOSTLE"),
+		ff.WithEnvVars(),
+	); err != nil {
 		if errors.Is(err, ff.ErrHelp) {
 			ffhelp.Command(appCmd).WriteTo(os.Stderr)
 			return nil
