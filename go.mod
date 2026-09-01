@@ -73,7 +73,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-go 1.26
+go 1.27
 
 // replace github.com/UNO-SOFT/filecache => ../../UNO-SOFT/filecache
 
