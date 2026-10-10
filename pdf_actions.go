@@ -5,36 +5,38 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"os"
 	"sort"
 	"strings"
 
-	"context"
-
-	"github.com/peterbourgon/ff/v4"
+	"github.com/UNO-SOFT/cli"
 	"github.com/tgulacsi/agostle/converter"
 )
 
 func init() {
-	pdfCmd := &ff.Command{Name: "pdf", ShortHelp: "pdf commands"}
+	pdfCmd := &cli.Command{Name: "pdf", Summary: "pdf commands"}
 	subcommands = append(subcommands, pdfCmd)
 
 	var out string
-	withOutFlag := func(name string) *ff.FlagSet {
-		fs := ff.NewFlagSet(name)
-		fs.StringVar(&out, 'o', "out", "", "output file")
+	withOutFlag := func(name string) *flag.FlagSet {
+		fs := flag.NewFlagSet(name, flag.ContinueOnError)
+		fs.StringVar(&out, "out", "", "output file")
+		// TODO: "-o"
 		return fs
 	}
 	{
 		var sort bool
 		fs := withOutFlag("merge")
-		fs.BoolVar(&sort, 0, "sort", "shall we sort the files by name before merge?")
-		mergeCmd := ff.Command{Name: "merge", Flags: fs,
-			ShortHelp: "merges the given PDFs into one",
-			Exec: func(ctx context.Context, args []string) error {
+		fs.BoolVar(&sort, "sort", false, "shall we sort the files by name before merge?")
+		mergeCmd := cli.Command{Name: "merge", Flags: fs,
+			Summary: "merges the given PDFs into one",
+			Exec: func(ctx context.Context, state *cli.State) error {
+				args := state.Args
 				for i, s := range args {
 					if s == "" {
 						args[i] = "-"
@@ -46,15 +48,16 @@ func init() {
 				return nil
 			},
 		}
-		pdfCmd.Subcommands = append(pdfCmd.Subcommands, &mergeCmd)
+		pdfCmd.SubCommands = append(pdfCmd.SubCommands, &mergeCmd)
 	}
 
 	fs := withOutFlag("split")
-	flagSplitPages := fs.StringLong("pages", "", "pages (comma separated)")
-	splitCmd := ff.Command{Name: "split", Flags: fs,
-		ShortHelp: "splits the given PDF into one per page",
-		Exec: func(ctx context.Context, args []string) error {
+	flagSplitPages := fs.String("pages", "", "pages (comma separated)")
+	splitCmd := cli.Command{Name: "split", Flags: fs,
+		Summary: "splits the given PDF into one per page",
+		Exec: func(ctx context.Context, state *cli.State) error {
 			var splitInp string
+			args := state.Args
 			if len(args) != 0 {
 				splitInp = args[0]
 			}
@@ -67,12 +70,13 @@ func init() {
 			return nil
 		},
 	}
-	pdfCmd.Subcommands = append(pdfCmd.Subcommands, &splitCmd)
+	pdfCmd.SubCommands = append(pdfCmd.SubCommands, &splitCmd)
 
-	countCmd := ff.Command{Name: "count",
-		ShortHelp: "prints the number of pages in the given pdf",
-		Exec: func(ctx context.Context, args []string) error {
+	countCmd := cli.Command{Name: "count",
+		Summary: "prints the number of pages in the given pdf",
+		Exec: func(ctx context.Context, state *cli.State) error {
 			var countInp string
+			args := state.Args
 			if len(args) != 0 {
 				countInp = args[0]
 			}
@@ -82,13 +86,14 @@ func init() {
 			return nil
 		},
 	}
-	pdfCmd.Subcommands = append(pdfCmd.Subcommands, &countCmd)
+	pdfCmd.SubCommands = append(pdfCmd.SubCommands, &countCmd)
 
 	fs = withOutFlag("clean")
-	cleanCmd := ff.Command{Name: "clean", Flags: fs,
-		ShortHelp: "clean PDF from encryption",
-		Exec: func(ctx context.Context, args []string) error {
+	cleanCmd := cli.Command{Name: "clean", Flags: fs,
+		Summary: "clean PDF from encryption",
+		Exec: func(ctx context.Context, state *cli.State) error {
 			var cleanInp string
+			args := state.Args
 			if len(args) != 0 {
 				cleanInp = args[0]
 			}
@@ -98,16 +103,17 @@ func init() {
 			return nil
 		},
 	}
-	pdfCmd.Subcommands = append(pdfCmd.Subcommands, &cleanCmd)
+	pdfCmd.SubCommands = append(pdfCmd.SubCommands, &cleanCmd)
 
 	{
 		var mime string
 		fs = withOutFlag("topdf")
-		fs.StringVar(&mime, 0, "mime", "application/octet-stream", "input mimetype")
-		topdfCmd := ff.Command{Name: "topdf", Flags: fs,
-			ShortHelp: "tries to convert the given file (you can specify its mime-type) to PDF",
-			Exec: func(ctx context.Context, args []string) error {
+		fs.StringVar(&mime, "mime", "application/octet-stream", "input mimetype")
+		topdfCmd := cli.Command{Name: "topdf", Flags: fs,
+			Summary: "tries to convert the given file (you can specify its mime-type) to PDF",
+			Exec: func(ctx context.Context, state *cli.State) error {
 				var topdfInp string
+				args := state.Args
 				if len(args) != 0 {
 					topdfInp = args[0]
 				}
@@ -117,17 +123,18 @@ func init() {
 				return nil
 			},
 		}
-		pdfCmd.Subcommands = append(pdfCmd.Subcommands, &topdfCmd)
+		pdfCmd.SubCommands = append(pdfCmd.SubCommands, &topdfCmd)
 	}
 
 	fs = withOutFlag("fill")
-	fillPdfCmd := ff.Command{Name: "fill", Flags: fs,
-		ShortHelp: "fill PDF form",
+	fillPdfCmd := cli.Command{Name: "fill", Flags: fs,
+		Summary: "fill PDF form",
 		Usage: `fill PDF form
 input.pdf key1=value1 key2=value2...`,
-		Exec: func(ctx context.Context, args []string) error {
+		Exec: func(ctx context.Context, state *cli.State) error {
 			var fillInp string
 			var fillKeyvals []string
+			args := state.Args
 			if len(args) != 0 {
 				fillInp = args[0]
 				fillKeyvals = args[1:]
@@ -138,7 +145,7 @@ input.pdf key1=value1 key2=value2...`,
 			return nil
 		},
 	}
-	pdfCmd.Subcommands = append(pdfCmd.Subcommands, &fillPdfCmd)
+	pdfCmd.SubCommands = append(pdfCmd.SubCommands, &fillPdfCmd)
 }
 
 func splitPdfZip(ctx context.Context, outfn, inpfn string, pages []uint16) error {

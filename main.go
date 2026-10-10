@@ -26,19 +26,20 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/UNO-SOFT/zlog/v2"
-	"github.com/peterbourgon/ff/v4"
-	"github.com/peterbourgon/ff/v4/ffhelp"
+
 	tufclient "github.com/theupdateframework/go-tuf/client"
 
+	"flag"
 	"github.com/kardianos/osext"
 	"github.com/rogpeppe/retry"
 	"github.com/tgulacsi/agostle/converter"
 	"github.com/tgulacsi/go/i18nmail"
 	"github.com/tgulacsi/go/version"
 	"golang.org/x/sync/errgroup"
-)
 
-// go : generate sh -c "overseer-bindiff printkeys --go-out agostle-keyring.gpg >overseer_keyring.go"
+	// go : generate sh -c "overseer-bindiff printkeys --go-out agostle-keyring.gpg >overseer_keyring.go"
+	"github.com/UNO-SOFT/cli"
+)
 
 const defaultUpdateURL = "https://www.unosoft.hu/tuf"
 
@@ -58,7 +59,7 @@ func main() {
 var (
 	configFile, listenAddr string
 
-	subcommands []*ff.Command
+	subcommands []*cli.Command
 )
 
 func Main() error {
@@ -90,31 +91,31 @@ func Main() error {
 		logFile, gotenbergURL string
 	)
 
-	FS := ff.NewFlagSet("agostle")
-	FS.StringVar(&updateURL, 0, "update-url", updateURL, "URL to download updates from (with GOOS and GOARCH template vars)")
-	FS.BoolVar(&leaveTempFiles, 'x', "leave-tempfiles", "leave tempfiles?")
-	FS.Value('v', "verbose", &verbose, "verbose logging")
-	FS.IntVar(&concurrency, 'C', "concurrency", converter.Concurrency, "number of childs start in parallel")
-	FS.DurationVar(&timeout, 0, "timeout", 10*time.Minute, "timeout for external programs")
-	FS.StringVar(&configFile, 'c', "config", "", "config file (TOML)")
-	FS.StringVar(&logFile, 0, "logfile", "", "logfile")
-	FS.StringVar(converter.ConfGotenbergURL, 0, "gotenberg", "", "gotenberg service URL")
-	FS.Uint64Var(converter.ConfMaxSubprocMemoryBytes, 0, "max-subproc-mem-bytes", converter.DefaultMaxSubprocMemoryBytes, "maximum subprocess memory limit")
-	flagVersion := FS.BoolLong("version", "print version number and ext")
-	flagPrintFS := FS.BoolLong("print-fs", "print file system")
-	appCmd := &ff.Command{
+	FS := flag.NewFlagSet("agostle", flag.ContinueOnError)
+	FS.StringVar(&updateURL, "update-url", updateURL, "URL to download updates from (with GOOS and GOARCH template vars)")
+	FS.BoolVar(&leaveTempFiles, "leave-tempfiles", false, "leave tempfiles?")
+	FS.Var(&verbose, "verbose", "verbose logging")
+	FS.IntVar(&concurrency, "concurrency", converter.Concurrency, "number of childs start in parallel")
+	FS.DurationVar(&timeout, "timeout", 10*time.Minute, "timeout for external programs")
+	FS.StringVar(&configFile, "config", "", "config file (TOML)")
+	FS.StringVar(&logFile, "logfile", "", "logfile")
+	FS.StringVar(converter.ConfGotenbergURL, "gotenberg", "", "gotenberg service URL")
+	FS.Uint64Var(converter.ConfMaxSubprocMemoryBytes, "max-subproc-mem-bytes", converter.DefaultMaxSubprocMemoryBytes, "maximum subprocess memory limit")
+	flagVersion := FS.Bool("version", false, "print version number and ext")
+	flagPrintFS := FS.Bool("print-fs", false, "print file system")
+	appCmd := &cli.Command{
 		Name: "agostle", Flags: FS,
-		ShortHelp:   "agostle is an \"apostle\" which turns everything to PDF",
-		Subcommands: subcommands,
+		Summary:     "agostle is an \"apostle\" which turns everything to PDF",
+		SubCommands: subcommands, FlagConfigs: []cli.FlagConfig{cli.FlagConfig{Name: "leave-tempfiles", Short: "x"}, cli.FlagConfig{Name: "verbose", Short: "v"}, cli.FlagConfig{Name: "concurrency", Short: "C"}, cli.FlagConfig{Name: "config", Short: "c"}},
 	}
 
 	var updateRootJSON, updateRootKeys string
-	FS = ff.NewFlagSet("update")
-	FS.StringVar(&updateRootKeys, 0, "root-keys-string", defaultRootKeys, "CONTENTS of root.json for TUF update")
-	FS.StringVar(&updateRootJSON, 0, "root-keys-file", updateRootJSON, "PATH of root.json for TUF update")
-	updateCmd := ff.Command{Name: "update", Flags: FS,
-		ShortHelp: "update binary to the latest release",
-		Exec: func(ctx context.Context, args []string) error {
+	FS = flag.NewFlagSet("update", flag.ContinueOnError)
+	FS.StringVar(&updateRootKeys, "root-keys-string", defaultRootKeys, "CONTENTS of root.json for TUF update")
+	FS.StringVar(&updateRootJSON, "root-keys-file", updateRootJSON, "PATH of root.json for TUF update")
+	updateCmd := cli.Command{Name: "update", Flags: FS,
+		Summary: "update binary to the latest release",
+		Exec: func(ctx context.Context, state *cli.State) error {
 			self, err := os.Executable()
 			if err != nil {
 				return err
@@ -178,17 +179,18 @@ func Main() error {
 			return nil
 		},
 	}
-	appCmd.Subcommands = append(appCmd.Subcommands, &updateCmd)
+	appCmd.SubCommands = append(appCmd.SubCommands, &updateCmd)
 
 	var savereq bool
 	var regularUpdates time.Duration
-	FS = ff.NewFlagSet("serve")
-	FS.DurationVar(&regularUpdates, 0, "regular-updates", 0, "do regular updates at this interval")
-	FS.BoolVar(&savereq, 0, "savereq", "save requests")
-	serveCmd := ff.Command{Name: "serve", Flags: FS,
-		ShortHelp: "serve HTTP",
-		Usage:     "agostle serve [flags] [addr.to.listen.on:port]",
-		Exec: func(ctx context.Context, args []string) error {
+	FS = flag.NewFlagSet("serve", flag.ContinueOnError)
+	FS.DurationVar(&regularUpdates, "regular-updates", 0, "do regular updates at this interval")
+	FS.BoolVar(&savereq, "savereq", false, "save requests")
+	serveCmd := cli.Command{Name: "serve", Flags: FS,
+		Summary: "serve HTTP",
+		Usage:   "agostle serve [flags] [addr.to.listen.on:port]",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			if len(args) != 0 {
 				listenAddr = args[0]
 			}
@@ -272,7 +274,7 @@ func Main() error {
 			return nil
 		},
 	}
-	appCmd.Subcommands = append(appCmd.Subcommands, &serveCmd)
+	appCmd.SubCommands = append(appCmd.SubCommands, &serveCmd)
 
 	if configFile == "" {
 		if self, execErr := osext.Executable(); execErr != nil {
@@ -285,12 +287,9 @@ func Main() error {
 		}
 	}
 
-	if err := appCmd.Parse(os.Args[1:],
-		ff.WithEnvVarPrefix("AGOSTLE"),
-		ff.WithEnvVars(),
-	); err != nil {
-		if errors.Is(err, ff.ErrHelp) {
-			ffhelp.Command(appCmd).WriteTo(os.Stderr)
+	if err := cli.Parse(appCmd, os.Args[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			cli.PrintHelp(os.Stderr, appCmd)
 			return nil
 		}
 		return err
@@ -410,7 +409,7 @@ func Main() error {
 		}()
 	}
 
-	return appCmd.Run(ctx)
+	return cli.Run(ctx, appCmd, nil)
 }
 
 func logToFile(fn string) (func() error, error) {

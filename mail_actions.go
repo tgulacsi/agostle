@@ -5,13 +5,13 @@
 package main
 
 import (
+	"context"
+	"flag"
 	"fmt"
 	"io"
 	"strings"
 
-	"context"
-
-	"github.com/peterbourgon/ff/v4"
+	"github.com/UNO-SOFT/cli"
 	"github.com/tgulacsi/agostle/converter"
 )
 
@@ -71,9 +71,10 @@ func outlookToEmail(ctx context.Context, outfn, inpfn string) error {
 func init() {
 	inp := "-"
 	var out string
-	withOutFlag := func(name string) *ff.FlagSet {
-		fs := ff.NewFlagSet(name)
-		fs.StringVar(&out, 'o', "out", "", "output file")
+	withOutFlag := func(name string) *flag.FlagSet {
+		fs := flag.NewFlagSet(name, flag.ContinueOnError)
+		fs.StringVar(&out, "out", "", "output file")
+		// TODO: -o
 		return fs
 	}
 	{
@@ -83,15 +84,16 @@ func init() {
 			imgsize       = "640x640"
 		)
 		fs := withOutFlag("mail")
-		fs.BoolVar(&split, 0, "split", "split PDF to pages")
-		fs.BoolVarDefault(&converter.SaveOriginalHTML, 0, "save-original-html", converter.SaveOriginalHTML, "save original html")
-		fs.StringVar(&outimg, 0, "outimg", "", "output image format")
-		fs.StringVar(&imgsize, 0, "imgsize", imgsize, "image size")
-		fs.StringVar(&pageS, 0, "pages", "", "pages (comma separated)")
-		mailToPdfZipCmd := ff.Command{Name: "mail", Flags: fs,
-			ShortHelp: "convert mail to zip of PDFs",
-			Usage:     "mail [-split] [-outimg=image/gif] [-imgsize=640x640] mailfile.eml",
-			LongHelp: `reads a message/rfc822 email, converts all of it to PDF files
+		fs.BoolVar(&split, "split", false, "split PDF to pages")
+		fs.BoolVar(&converter.SaveOriginalHTML, "save-original-html", converter.SaveOriginalHTML, "save original html")
+		fs.StringVar(&outimg, "outimg", "", "output image format")
+		fs.StringVar(&imgsize, "imgsize", imgsize, "image size")
+		fs.StringVar(&pageS, "pages", "", "pages (comma separated)")
+		mailToPdfZipCmd := cli.Command{Name: "mail", Flags: fs,
+			Summary: "convert mail to zip of PDFs",
+			Usage: `mail [-split] [-outimg=image/gif] [-imgsize=640x640] mailfile.eml
+
+reads a message/rfc822 email, converts all of it to PDF files
 (including attachments), and outputs a zip file containing these pdfs,
 optionally splits the PDFs to separate pages, and converts these pages to images.
 
@@ -101,7 +103,8 @@ Usage:
 Examples:
 	mail2pdfzip -split --outimg=image/gif --imgsize=800x800 -o=/tmp/email.pdf.zip email.eml
 `,
-			Exec: func(ctx context.Context, args []string) error {
+			Exec: func(ctx context.Context, state *cli.State) error {
+				args := state.Args
 				if len(args) != 0 {
 					inp = args[0]
 				}
@@ -119,9 +122,10 @@ Examples:
 	}
 
 	fs := withOutFlag("mail2tree")
-	mailToTreeCmd := ff.Command{Name: "mail2tree", Flags: fs,
-		ShortHelp: "extract mail tree to a directory",
-		Exec: func(ctx context.Context, args []string) error {
+	mailToTreeCmd := cli.Command{Name: "mail2tree", Flags: fs,
+		Summary: "extract mail tree to a directory",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			if len(args) != 0 {
 				inp = args[0]
 			}
@@ -134,10 +138,11 @@ Examples:
 	subcommands = append(subcommands, &mailToTreeCmd)
 
 	fs = withOutFlag("outlook2email")
-	outlookToEmailCmd := ff.Command{Name: "outlook2email", Flags: fs,
-		ShortHelp: "convert outlook .msg to standard .eml",
-		LongHelp:  "uses libemail-outlook-message-perl if installed, or docker to install && run that script",
-		Exec: func(ctx context.Context, args []string) error {
+	outlookToEmailCmd := cli.Command{Name: "outlook2email", Flags: fs,
+		Summary: "convert outlook .msg to standard .eml",
+		Usage:   "uses libemail-outlook-message-perl if installed, or docker to install && run that script",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			if len(args) != 0 {
 				inp = args[0]
 			}

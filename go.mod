@@ -3,6 +3,7 @@ module github.com/tgulacsi/agostle
 require (
 	bitbucket.org/zombiezen/gopdf v0.0.0-20190421151423-ab3d04824694
 	github.com/KarpelesLab/reflink v1.0.2
+	github.com/UNO-SOFT/cli v0.0.0-20261009074406-95b18dbd4953
 	github.com/UNO-SOFT/filecache v0.4.0
 	github.com/UNO-SOFT/zlog v0.8.6
 	github.com/VictoriaMetrics/metrics v1.38.0
@@ -17,7 +18,6 @@ require (
 	github.com/mholt/archives v0.1.5
 	github.com/oklog/ulid/v2 v2.1.1
 	github.com/pdfcpu/pdfcpu v0.12.1
-	github.com/peterbourgon/ff/v4 v4.0.0-beta.1
 	github.com/rogpeppe/retry v0.1.0
 	github.com/stvp/go-toml-config v0.0.0-20220807175811-1347a3c4169c
 	github.com/tgulacsi/go v0.29.16-0.20260728121359-b4eb6c9bb92c
@@ -41,7 +41,6 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/dgryski/go-linebreak v0.0.0-20180812204043-d8f37254e7d3 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
-	github.com/emersion/go-imap v1.2.1 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -73,7 +72,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-go 1.27
+go 1.27.0
 
 // replace github.com/UNO-SOFT/filecache => ../../UNO-SOFT/filecache
 

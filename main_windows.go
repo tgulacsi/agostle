@@ -16,8 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/peterbourgon/ff/v4"
-
+	"github.com/UNO-SOFT/cli"
 	"github.com/kardianos/service"
 	"github.com/tgulacsi/agostle/converter"
 )
@@ -30,15 +29,16 @@ const exeName = "agostle.exe"
 func init() {
 	topCmd = []string{"tasklist", "/v", "/fi", "USERNAME eq " + os.Getenv("USER")}
 
-	serviceCmd := ff.Command{Name: "service", ShortHelp: "manage Windows service"}
+	serviceCmd := cli.Command{Name: "service", Summary: "manage Windows service"}
 
 	for _, todo := range []string{"install", "remove", "run", "start", "stop"} {
-		subCmd := ff.Command{Name: todo, ShortHelp: todo + " service",
-			Exec: func(ctx context.Context, args []string) error {
+		subCmd := cli.Command{Name: todo, Summary: todo + " service",
+			Exec: func(ctx context.Context, state *cli.State) error {
+				args := state.Args
 				return doServiceWindows(ctx, todo, args)
 			},
 		}
-		serviceCmd.Subcommands = append(serviceCmd.Subcommands, &subCmd)
+		serviceCmd.SubCommands = append(serviceCmd.SubCommands, &subCmd)
 	}
 }
 
