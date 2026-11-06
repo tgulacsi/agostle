@@ -91,29 +91,35 @@ func Main() error {
 		logFile, gotenbergURL string
 	)
 
-	FS := flag.NewFlagSet("agostle", flag.ContinueOnError)
-	FS.StringVar(&updateURL, "update-url", updateURL, "URL to download updates from (with GOOS and GOARCH template vars)")
-	FS.BoolVar(&leaveTempFiles, "leave-tempfiles", false, "leave tempfiles?")
-	FS.Var(&verbose, "verbose", "verbose logging")
-	FS.IntVar(&concurrency, "concurrency", converter.Concurrency, "number of childs start in parallel")
-	FS.DurationVar(&timeout, "timeout", 10*time.Minute, "timeout for external programs")
-	FS.StringVar(&configFile, "config", "", "config file (TOML)")
-	FS.StringVar(&logFile, "logfile", "", "logfile")
-	FS.StringVar(converter.ConfGotenbergURL, "gotenberg", "", "gotenberg service URL")
-	FS.Uint64Var(converter.ConfMaxSubprocMemoryBytes, "max-subproc-mem-bytes", converter.DefaultMaxSubprocMemoryBytes, "maximum subprocess memory limit")
-	flagVersion := FS.Bool("version", false, "print version number and ext")
-	flagPrintFS := FS.Bool("print-fs", false, "print file system")
+	flags := flag.NewFlagSet("agostle", flag.ContinueOnError)
+	flags.StringVar(&updateURL, "update-url", updateURL, "URL to download updates from (with GOOS and GOARCH template vars)")
+	flags.BoolVar(&leaveTempFiles, "leave-tempfiles", false, "leave tempfiles?")
+	flags.Var(&verbose, "verbose", "verbose logging")
+	flags.IntVar(&concurrency, "concurrency", converter.Concurrency, "number of childs start in parallel")
+	flags.DurationVar(&timeout, "timeout", 10*time.Minute, "timeout for external programs")
+	flags.StringVar(&configFile, "config", "", "config file (TOML)")
+	flags.StringVar(&logFile, "logfile", "", "logfile")
+	flags.StringVar(converter.ConfGotenbergURL, "gotenberg", "", "gotenberg service URL")
+	flags.Uint64Var(converter.ConfMaxSubprocMemoryBytes, "max-subproc-mem-bytes", converter.DefaultMaxSubprocMemoryBytes, "maximum subprocess memory limit")
+	flagVersion := flags.Bool("version", false, "print version number and ext")
+	flagPrintFS := flags.Bool("print-fs", false, "print file system")
 	appCmd := &cli.Command{
-		Name: "agostle", Flags: FS,
+		Name: "agostle", Flags: flags,
+		FlagConfigs: []cli.FlagConfig{
+			{Name: "leave-tempfiles", Short: "x"},
+			{Name: "verbose", Short: "v"},
+			{Name: "concurrency", Short: "C"},
+			{Name: "config", Short: "c"},
+		},
 		Summary:     "agostle is an \"apostle\" which turns everything to PDF",
-		SubCommands: subcommands, FlagConfigs: []cli.FlagConfig{cli.FlagConfig{Name: "leave-tempfiles", Short: "x"}, cli.FlagConfig{Name: "verbose", Short: "v"}, cli.FlagConfig{Name: "concurrency", Short: "C"}, cli.FlagConfig{Name: "config", Short: "c"}},
+		SubCommands: subcommands,
 	}
 
 	var updateRootJSON, updateRootKeys string
-	FS = flag.NewFlagSet("update", flag.ContinueOnError)
-	FS.StringVar(&updateRootKeys, "root-keys-string", defaultRootKeys, "CONTENTS of root.json for TUF update")
-	FS.StringVar(&updateRootJSON, "root-keys-file", updateRootJSON, "PATH of root.json for TUF update")
-	updateCmd := cli.Command{Name: "update", Flags: FS,
+	flags = flag.NewFlagSet("update", flag.ContinueOnError)
+	flags.StringVar(&updateRootKeys, "root-keys-string", defaultRootKeys, "CONTENTS of root.json for TUF update")
+	flags.StringVar(&updateRootJSON, "root-keys-file", updateRootJSON, "PATH of root.json for TUF update")
+	updateCmd := cli.Command{Name: "update", Flags: flags,
 		Summary: "update binary to the latest release",
 		Exec: func(ctx context.Context, state *cli.State) error {
 			self, err := os.Executable()
@@ -183,10 +189,10 @@ func Main() error {
 
 	var savereq bool
 	var regularUpdates time.Duration
-	FS = flag.NewFlagSet("serve", flag.ContinueOnError)
-	FS.DurationVar(&regularUpdates, "regular-updates", 0, "do regular updates at this interval")
-	FS.BoolVar(&savereq, "savereq", false, "save requests")
-	serveCmd := cli.Command{Name: "serve", Flags: FS,
+	flags = flag.NewFlagSet("serve", flag.ContinueOnError)
+	flags.DurationVar(&regularUpdates, "regular-updates", 0, "do regular updates at this interval")
+	flags.BoolVar(&savereq, "savereq", false, "save requests")
+	serveCmd := cli.Command{Name: "serve", Flags: flags,
 		Summary: "serve HTTP",
 		Usage:   "agostle serve [flags] [addr.to.listen.on:port]",
 		Exec: func(ctx context.Context, state *cli.State) error {

@@ -71,11 +71,11 @@ func outlookToEmail(ctx context.Context, outfn, inpfn string) error {
 func init() {
 	inp := "-"
 	var out string
-	withOutFlag := func(name string) *flag.FlagSet {
-		fs := flag.NewFlagSet(name, flag.ContinueOnError)
-		fs.StringVar(&out, "out", "", "output file")
-		// TODO: -o
-		return fs
+	withOutFlag := func(name string, flagConfigs []cli.FlagConfig) (*flag.FlagSet, []cli.FlagConfig) {
+		flags := flag.NewFlagSet(name, flag.ContinueOnError)
+		flags.StringVar(&out, "out", "", "output file")
+		flagConfigs = append(flagConfigs, cli.FlagConfig{Name: "out", Short: "o"})
+		return flags, flagConfigs
 	}
 	{
 		var (
@@ -83,13 +83,14 @@ func init() {
 			outimg, pageS string
 			imgsize       = "640x640"
 		)
-		fs := withOutFlag("mail")
-		fs.BoolVar(&split, "split", false, "split PDF to pages")
-		fs.BoolVar(&converter.SaveOriginalHTML, "save-original-html", converter.SaveOriginalHTML, "save original html")
-		fs.StringVar(&outimg, "outimg", "", "output image format")
-		fs.StringVar(&imgsize, "imgsize", imgsize, "image size")
-		fs.StringVar(&pageS, "pages", "", "pages (comma separated)")
-		mailToPdfZipCmd := cli.Command{Name: "mail", Flags: fs,
+		flags, flagConfigs := withOutFlag("mail", nil)
+		flags.BoolVar(&split, "split", false, "split PDF to pages")
+		flags.BoolVar(&converter.SaveOriginalHTML, "save-original-html", converter.SaveOriginalHTML, "save original html")
+		flags.StringVar(&outimg, "outimg", "", "output image format")
+		flags.StringVar(&imgsize, "imgsize", imgsize, "image size")
+		flags.StringVar(&pageS, "pages", "", "pages (comma separated)")
+		mailToPdfZipCmd := cli.Command{Name: "mail",
+			Flags: flags, FlagConfigs: flagConfigs,
 			Summary: "convert mail to zip of PDFs",
 			Usage: `mail [-split] [-outimg=image/gif] [-imgsize=640x640] mailfile.eml
 
@@ -121,8 +122,9 @@ Examples:
 		subcommands = append(subcommands, &mailToPdfZipCmd)
 	}
 
-	fs := withOutFlag("mail2tree")
-	mailToTreeCmd := cli.Command{Name: "mail2tree", Flags: fs,
+	flags, flagConfigs := withOutFlag("mail2tree", nil)
+	mailToTreeCmd := cli.Command{Name: "mail2tree",
+		Flags: flags, FlagConfigs: flagConfigs,
 		Summary: "extract mail tree to a directory",
 		Exec: func(ctx context.Context, state *cli.State) error {
 			args := state.Args
@@ -137,8 +139,9 @@ Examples:
 	}
 	subcommands = append(subcommands, &mailToTreeCmd)
 
-	fs = withOutFlag("outlook2email")
-	outlookToEmailCmd := cli.Command{Name: "outlook2email", Flags: fs,
+	flags, flagConfigs = withOutFlag("outlook2email", flagConfigs[:0])
+	outlookToEmailCmd := cli.Command{Name: "outlook2email",
+		Flags: flags, FlagConfigs: flagConfigs,
 		Summary: "convert outlook .msg to standard .eml",
 		Usage:   "uses libemail-outlook-message-perl if installed, or docker to install && run that script",
 		Exec: func(ctx context.Context, state *cli.State) error {
